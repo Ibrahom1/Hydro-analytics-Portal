@@ -1,0 +1,2596 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hydromet Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Oxygen|Raleway&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.css" type="text/css">
+  <script
+    src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.min.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="style/style.css" />
+
+  <!-- Custom styles for modern layer highlighting -->
+  <style>
+    .layer-active {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .layer-active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.1));
+      border-radius: 6px;
+      z-index: -1;
+    }
+
+    .layer-active::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10%;
+      bottom: 10%;
+      width: 3px;
+      background: linear-gradient(to bottom, #3b82f6, #6366f1);
+      border-radius: 0 2px 2px 0;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .layer-inactive {
+      transition: all 0.3s ease-in-out;
+    }
+
+    /* Enhanced hover effects for better interactivity */
+    .layer-inactive:hover {
+      background-color: rgba(75, 85, 99, 0.3) !important;
+      transform: translateX(2px);
+      transition: all 0.2s ease-in-out;
+    }
+
+    /* Smooth transitions for all layer labels */
+    label[class*="flex items-center"] {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 6px;
+      position: relative;
+    }
+
+    /* Remove visual checkmark/tick on active layers */
+    .layer-active .relative::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* Ensure no leftover animation or shadow effects */
+    @keyframes checkPulse {
+      from {
+        box-shadow: none;
+      }
+
+      to {
+        box-shadow: none;
+      }
+    }
+
+    .layer-inactive .relative::after {
+      display: none;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50">
+  <!-- Top Navigation Bar -->
+  <nav
+    class="px-5 py-5 flex items-center justify-between shadow-lg border border-white" style="background-color:#002060;">
+    <div class="flex items-center gap-4 logo-container">
+      <img src="media/UI/ndma_logo.png" alt="Logo" class="logo" />
+    </div>
+    <div class="flex-1 text-center heading-container">
+        <div class="bg-glass fixed-bottom-right">
+            N-2
+        </div>
+      <span class="text-white text-5xl font-semibold text-shadow" style="font-family: 'Segoi UI', sans-serif !important; font-weight: 700;">Hydro Analytics 2026</span>
+    </div>
+  </nav>
+
+  <div class="flex min-h-[calc(100vh-4rem)]">
+    <!-- Sidebar -->
+    <div
+      class="w-64 bg-gradient-to-b from-gray-900 to-gray-700 shadow-lg p-4 border-r border-white text-white overflow-y-auto custom-scroll max-h-[calc(100vh-4rem)] sidebar">
+
+      <!-- Dropdown Sections -->
+      <div class="space-y-4">
+        <!-- Boundaries Section -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('option1')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-map"></i>
+              <span>GIS Layers</span>
+            </div>
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="option1" class="hidden p-3 space-y-2">
+            <!-- Boundaries Subsection -->
+            <div class="rounded-md overflow-hidden border border-gray-400">
+              <button
+                class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('boundaries')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-border-all"></i>
+                  <span>Boundaries</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="boundaries" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">National Boundary</span>
+                  <div class="relative">
+                    <input type="checkbox" id="natBoundary" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="natBoundary" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Provincial Boundary</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prvBoundary" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prvBoundary" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">District Boundary</span>
+                  <div class="relative">
+                    <input type="checkbox" id="dstBoundary" class="hidden"
+                      onchange="toggleHighlight(this); handleDisBoundary(this);" />
+                    <label for="dstBoundary" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Tehsil Boundary</span>
+                  <div class="relative">
+                    <input type="checkbox" id="tslBoundary" class="hidden"
+                      onchange="toggleHighlight(this); handleTslBoundary(this);" />
+                    <label for="tslBoundary" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Union Council Boundary</span>
+                  <div class="relative">
+                    <input type="checkbox" id="uncBoundary" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="uncBoundary" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Rivers and Structures Subsection -->
+            <div class="rounded-md overflow-hidden border border-blue-400">
+              <button
+                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('riversStructures')">
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-building"></i>
+                  <span>Rivers & Structures</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="riversStructures" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Pakistan Rivers</span>
+                  <div class="relative">
+                    <input type="checkbox" id="PakRivers" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="PakRivers" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">KP Rivers </span>
+                  <div class="relative">
+                    <input type="checkbox" id="kp_Rivers" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="kp_Rivers" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Reservoirs</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Reservoirs" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Reservoirs" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Indian Structures</span>
+                  <div class="relative">
+                    <input type="checkbox" id="india" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="india" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">GLOF sites</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Glofas" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Glofas" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Barrages</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Barrages" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Barrages" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Watershed</span>
+                  <div class="relative">
+                    <input type="checkbox" id="watershed" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="watershed" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Minor Rivers</span>
+                  <div class="relative">
+                    <input type="checkbox" id="minorRivers" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="minorRivers" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Breaching points</span>
+                  <div class="relative">
+                    <input type="checkbox" id="breach" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="breach" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Telemetries</span>
+                  <div class="relative">
+                    <input type="checkbox" id="telemetric" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="telemetric" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Protection Bands</span>
+                  <div class="relative">
+                    <input type="checkbox" id="protectionBand" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="protectionBand" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Watershed and Streams -->
+
+            <!-- <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-xs">Communication Towers</span>
+              <div class="relative">
+                <input type="checkbox" id="towers_c" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="towers_c" class="cursor-pointer"></label>
+              </div>
+            </label>
+                                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-xs">Mosques</span>
+              <div class="relative">
+                <input type="checkbox" id="mosques_c" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="mosques_c" class="cursor-pointer"></label>
+              </div>
+            </label> -->
+            <!-- Canal Network Punjab Subsection (placed at bottom of GIS Layers) -->
+
+            <div class="rounded-md overflow-hidden border border-green-400">
+              <button
+                class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('canalNetworkPunjab')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-water"></i>
+                  <span>Canal network</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="canalNetworkPunjab" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Main Canal</span>
+                  <div class="relative">
+                    <input type="checkbox" id="mainCanal" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="mainCanal" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Branch Canal</span>
+                  <div class="relative">
+                    <input type="checkbox" id="branchCanal" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="branchCanal" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Distributaries</span>
+                  <div class="relative">
+                    <input type="checkbox" id="distributaries" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="distributaries" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Link Canals</span>
+                  <div class="relative">
+                    <input type="checkbox" id="linkCanals" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="linkCanals" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEW DAMS SECTION -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            class="w-full px-4 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('option6')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-water"></i>
+              <span>Dams</span>
+            </div>
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="option6" class="hidden p-3 space-y-2">
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Future Dams</span>
+              <div class="relative">
+                <input type="checkbox" id="futureDams" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="futureDams" class="cursor-pointer"></label>
+              </div>
+            </label>
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Ongoing Construction</span>
+              <div class="relative">
+                <input type="checkbox" id="ongoingDams" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="ongoingDams" class="cursor-pointer"></label>
+              </div>
+            </label>
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Ready for Construction</span>
+              <div class="relative">
+                <input type="checkbox" id="readyDams" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="readyDams" class="cursor-pointer"></label>
+              </div>
+            </label>
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Under Construction</span>
+              <div class="relative">
+                <input type="checkbox" id="underDams" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="underDams" class="cursor-pointer"></label>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Hydro-met Data Section -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('option2')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-cloud-showers-heavy"></i>
+              <span>Hydro-met Data</span>
+            </div>
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="option2" class="hidden p-3 space-y-2">
+
+
+            <!-- <div class="rounded-md overflow-hidden border border-gray-400 bg-gray-800">
+              <button
+                class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium flex items-center justify-between rounded-md transition-colors text-sm"
+                onclick="toggleSection('localMet')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-map-marker-alt"></i>
+                  <span>Projections 2025</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="localMet" class="hidden p-2 space-y-1">
+           
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">PRCP July</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prcpJuly" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prcpJuly" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">PRCP August</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prcpAugust" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prcpAugust" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">PRCP September</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prcpSept" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prcpSept" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">JAS Accum Precp</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prcpCombined" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prcpCombined" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+              
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Temp July</span>
+                  <div class="relative">
+                    <input type="checkbox" id="tempJuly" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="tempJuly" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Temp August</span>
+                  <div class="relative">
+                    <input type="checkbox" id="tempAugust" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="tempAugust" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Temp September</span>
+                  <div class="relative">
+                    <input type="checkbox" id="tempSept" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="tempSept" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">JAS Accum Temp</span>
+                  <div class="relative">
+                    <input type="checkbox" id="tempCombined" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="tempCombined" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+              </div>
+            </div> -->
+
+            <!-- Global Met Subsection -->
+            <div class="rounded-md overflow-hidden border border-purple-400">
+              <button
+                class="w-full px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('globalMet')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-globe"></i>
+                  <span>Forecast</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="globalMet" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">FFD Telemetries</span>
+                  <div class="relative">
+                    <input type="checkbox" id="ffd" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="ffd" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Summary (1-3 Days)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sum1_3" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sum1_3" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Summary (4-10 Days)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sum4_10" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sum4_10" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Summary (11-30 Days)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sum11_30" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sum11_30" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Summary (1-30 Days)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sum1_30" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sum1_30" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Accumulated PRCP</span>
+                  <div class="relative">
+                    <input type="checkbox" id="accumulatedPrecip" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="accumulatedPrecip" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Probability (50mm)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prob50" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prob50" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Probability (150mm)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prob150" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prob150" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Probability (300mm)</span>
+                  <div class="relative">
+                    <input type="checkbox" id="prob300" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="prob300" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Lightning Forecast Weekly</span>
+                  <div class="relative">
+                    <input type="checkbox" id="ltw" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="ltw" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Weekly Precipitation Accumulation</span>
+                  <div class="relative">
+                    <input type="checkbox" id="wpa" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="wpa" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <!-- Toggles (these add sources/layers when turned on) -->
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Hourly Precipitation Forecast</span>
+                  <div class="relative">
+                    <input type="checkbox" id="hrs-precip-toggle" class="hidden"
+                      onchange="toggleHourlyRainfall(this)" />
+                    <div class="cursor-pointer"></div>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">Weekly Precipitation Forecast</span>
+                  <div class="relative">
+                    <input type="checkbox" id="wky-precip-toggle" class="hidden"
+                      onchange="toggleWeeklyRainfall(this)" />
+                    <div class="cursor-pointer"></div>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">2026 precipitation</span>
+                  <div class="relative">
+                    <input type="checkbox" id="precip2026" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="precip2026" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <!-- Hydro Outlook 2025 Button (Duplicate of 2026) -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            class="w-full px-3 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('option7_2025')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-droplet"></i>
+              <span>Hydro Outlook 2025</span>
+            </div>
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="option7_2025" class="hidden p-3 space-y-3">
+
+            <!-- Riverine Flooding Section 2025 -->
+            <div class="rounded-md overflow-hidden border border-green-400">
+              <button
+                class="w-full px-2 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('riverineFlooding_2025')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-water"></i>
+                  <span>Riverine Flooding</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="riverineFlooding_2025" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Extremely High Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="EHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('EHFE').checked = this.checked; document.getElementById('EHFE').dispatchEvent(new Event('change'));" />
+                    <label for="EHFE_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Very High Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="VHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('VHFE').checked = this.checked; document.getElementById('VHFE').dispatchEvent(new Event('change'));" />
+                    <label for="VHFE_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Swat High Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="swatHighExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatHighExtent').checked = this.checked; document.getElementById('swatHighExtent').dispatchEvent(new Event('change'));" />
+                    <label for="swatHighExtent_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Swat Medium Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="swatExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatExtent').checked = this.checked; document.getElementById('swatExtent').dispatchEvent(new Event('change'));" />
+                    <label for="swatExtent_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Swat Low Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="swatLowExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatLowExtent').checked = this.checked; document.getElementById('swatLowExtent').dispatchEvent(new Event('change'));" />
+                    <label for="swatLowExtent_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kabul High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kabilHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilHighFlood').checked = this.checked; document.getElementById('kabilHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="kabilHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kabul Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kabilMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilMediumFlood').checked = this.checked; document.getElementById('kabilMediumFlood').dispatchEvent(new Event('change'));" />
+                    <label for="kabilMediumFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kabul Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kabilLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilLowFlood').checked = this.checked; document.getElementById('kabilLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="kabilLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper Indus High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="upperIndusHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusHighFlood').checked = this.checked; document.getElementById('upperIndusHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="upperIndusHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper Indus Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="upperIndusFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusFlood').checked = this.checked; document.getElementById('upperIndusFlood').dispatchEvent(new Event('change'));" />
+                    <label for="upperIndusFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper Indus Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="upperIndusLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusLowFlood').checked = this.checked; document.getElementById('upperIndusLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="upperIndusLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Lower Indus High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="lowerIndusHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusHighFlood').checked = this.checked; document.getElementById('lowerIndusHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="lowerIndusHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Lower Indus Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="lowerIndusMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusMediumFlood').checked = this.checked; document.getElementById('lowerIndusMediumFlood').dispatchEvent(new Event('change'));" />
+                    <label for="lowerIndusMediumFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Lower Indus Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="lowerIndusLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusLowFlood').checked = this.checked; document.getElementById('lowerIndusLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="lowerIndusLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhelum High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhelumHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumHighFlood').checked = this.checked; document.getElementById('jhelumHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="jhelumHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhelum Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhelumMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumMediumFlood').checked = this.checked; document.getElementById('jhelumMediumFlood').dispatchEvent(new Event('change'));" />
+                    <label for="jhelumMediumFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhelum Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhelumLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumLowFlood').checked = this.checked; document.getElementById('jhelumLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="jhelumLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Chenab High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="chenabHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabHighFlood').checked = this.checked; document.getElementById('chenabHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="chenabHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Chenab Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="chenabMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabMediumFlood').checked = this.checked; document.getElementById('chenabMediumFlood').dispatchEvent(new Event('change'));" />
+                    <label for="chenabMediumFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Chenab Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="chenabLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabLowFlood').checked = this.checked; document.getElementById('chenabLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="chenabLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ravi High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="raviHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviHighFlood').checked = this.checked; document.getElementById('raviHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="raviHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ravi Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="raviMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviMediumFlood').checked = this.checked; document.getElementById('raviMediumFlood').dispatchEvent(new Event('change'));" />
+                    <label for="raviMediumFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ravi Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="raviLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviLowFlood').checked = this.checked; document.getElementById('raviLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="raviLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sutlej High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sutlejHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejHighFlood').checked = this.checked; document.getElementById('sutlejHighFlood').dispatchEvent(new Event('change'));" />
+                    <label for="sutlejHighFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sutlej Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sutlejMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejMediumFlood').checked = this.checked; document.getElementById('sutlejMediumFlood').dispatchEvent(new Event('change'));" />
+                    <label for="sutlejMediumFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sutlej Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sutlejLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejLowFlood').checked = this.checked; document.getElementById('sutlejLowFlood').dispatchEvent(new Event('change'));" />
+                    <label for="sutlejLowFlood_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+              </div>
+            </div>
+
+            <!-- Torrential Flooding Section 2025 -->
+            <div class="rounded-md overflow-hidden border border-red-400">
+              <button
+                class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('torrentialFlooding_2025')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-cloud-rain"></i>
+                  <span>Hill Torrents</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="torrentialFlooding_2025" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Flood Events 15 Aug</span>
+                  <div class="relative">
+                    <input type="checkbox" id="FE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('FE').checked = this.checked; document.getElementById('FE').dispatchEvent(new Event('change'));" />
+                    <label for="FE_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DI Khan Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="DI_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('DI').checked = this.checked; document.getElementById('DI').dispatchEvent(new Event('change'));" />
+                    <label for="DI_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DI Khan Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="di_ht_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('di_ht').checked = this.checked; document.getElementById('di_ht').dispatchEvent(new Event('change'));" />
+                    <label for="di_ht_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DG Khan Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="DG_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('DG').checked = this.checked; document.getElementById('DG').dispatchEvent(new Event('change'));" />
+                    <label for="DG_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DG Khan Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="dg_ht_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('dg_ht').checked = this.checked; document.getElementById('dg_ht').dispatchEvent(new Event('change'));" />
+                    <label for="dg_ht_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Pir Panjal Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('panjal').checked = this.checked; document.getElementById('panjal').dispatchEvent(new Event('change'));" />
+                    <label for="panjal_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Pir Panjal Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="p_panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('p_panjal').checked = this.checked; document.getElementById('p_panjal').dispatchEvent(new Event('change'));" />
+                    <label for="p_panjal_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kirthar Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Kirthar_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Kirthar').checked = this.checked; document.getElementById('Kirthar').dispatchEvent(new Event('change'));" />
+                    <label for="Kirthar_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kirthar Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Kirthar_extent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Kirthar_extent').checked = this.checked; document.getElementById('Kirthar_extent').dispatchEvent(new Event('change'));" />
+                    <label for="Kirthar_extent_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhal Magsi Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhal').checked = this.checked; document.getElementById('jhal').dispatchEvent(new Event('change'));" />
+                    <label for="jhal_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhal Magsi Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhall_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhall').checked = this.checked; document.getElementById('jhall').dispatchEvent(new Event('change'));" />
+                    <label for="jhall_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sindh Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Sindh_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Sindh').checked = this.checked; document.getElementById('Sindh').dispatchEvent(new Event('change'));" />
+                    <label for="Sindh_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Muzaffarabad Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="muzflash_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzflash').checked = this.checked; document.getElementById('muzflash').dispatchEvent(new Event('change'));" />
+                    <label for="muzflash_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Muzaffarabad Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="muzExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzExtent').checked = this.checked; document.getElementById('muzExtent').dispatchEvent(new Event('change'));" />
+                    <label for="muzExtent_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jamshoro Flooding</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jamshoro_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jamshoro').checked = this.checked; document.getElementById('jamshoro').dispatchEvent(new Event('change'));" />
+                    <label for="jamshoro_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Urban Flooding Section 2025 -->
+            <div class="rounded-md overflow-hidden border border-purple-400">
+              <button
+                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('urbanFloodingSection_2025')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-city"></i>
+                  <span>Urban Flooding</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="urbanFloodingSection_2025" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Hyderabad Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="hyder_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('hyder').checked = this.checked; document.getElementById('hyder').dispatchEvent(new Event('change'));" />
+                    <label for="hyder_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Hyderabad Flash Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="hyderabad_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('hyderabad').checked = this.checked; document.getElementById('hyderabad').dispatchEvent(new Event('change'));" />
+                    <label for="hyderabad_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Urban Flooding KPK</span>
+                  <div class="relative">
+                    <input type="checkbox" id="urbanFloodingKpk_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('urbanFloodingKpk').checked = this.checked; document.getElementById('urbanFloodingKpk').dispatchEvent(new Event('change'));" />
+                    <label for="urbanFloodingKpk_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Urban Flooding Punjab</span>
+                  <div class="relative">
+                    <input type="checkbox" id="urbanFloodingPunjab_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('urbanFloodingPunjab').checked = this.checked; document.getElementById('urbanFloodingPunjab').dispatchEvent(new Event('change'));" />
+                    <label for="urbanFloodingPunjab_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Urban Flooding Sindh</span>
+                  <div class="relative">
+                    <input type="checkbox" id="urbanFloodingSindh_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('urbanFloodingSindh').checked = this.checked; document.getElementById('urbanFloodingSindh').dispatchEvent(new Event('change'));" />
+                    <label for="urbanFloodingSindh_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">KPK Drainage Density</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kpkDrainageDensity_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kpkDrainageDensity').checked = this.checked; document.getElementById('kpkDrainageDensity').dispatchEvent(new Event('change'));" />
+                    <label for="kpkDrainageDensity_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Gujranwala</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Gujranwala_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Gujranwala').checked = this.checked; document.getElementById('Gujranwala').dispatchEvent(new Event('change'));" />
+                    <label for="Gujranwala_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ahp KP</span>
+                  <div class="relative">
+                    <input type="checkbox" id="ahp_kp_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('ahp_kp').checked = this.checked; document.getElementById('ahp_kp').dispatchEvent(new Event('change'));" />
+                    <label for="ahp_kp_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sargodha</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sargodha_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sargodha').checked = this.checked; document.getElementById('sargodha').dispatchEvent(new Event('change'));" />
+                    <label for="sargodha_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Rawalpindi</span>
+                  <div class="relative">
+                    <input type="checkbox" id="rwp_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('rwp').checked = this.checked; document.getElementById('rwp').dispatchEvent(new Event('change'));" />
+                    <label for="rwp_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Faislabad</span>
+                  <div class="relative">
+                    <input type="checkbox" id="fais_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('fais').checked = this.checked; document.getElementById('fais').dispatchEvent(new Event('change'));" />
+                    <label for="fais_2025" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flood Archiving Section -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            class="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('option5')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-archive"></i>
+              <span>Flood Archiving</span>
+            </div>
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="option5" class="hidden p-3 space-y-2">
+            <!-- Flood Extents Subsection -->
+            <div class="rounded-md overflow-hidden border border-gray-400">
+              <button
+                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('historicalFloodExtent')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                  <span>Historic Extents</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="historicalFloodExtent" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Flood Hotspots</span>
+                  <div class="relative">
+                    <input type="checkbox" id="hotspots" class="hidden"
+                      onchange="toggleHighlight(this) ; updateHeaderText();" />
+                    <label for="hotspots" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2010 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2010" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2010" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2011 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2011" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2011" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2012 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2012" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2012" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2013 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2013" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2013" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2014 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2014" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2014" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2015 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2015" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2015" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2022 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2022" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2022" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2024 Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2024" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2024" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 2025 Flood Extent Subsection -->
+            <div class="rounded-md overflow-hidden border border-teal-400">
+              <button
+                class="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('flood2025Extent')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-droplet"></i>
+                  <span>2025 Extents</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="flood2025Extent" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Buner Flood </span>
+                  <div class="relative">
+                    <input type="checkbox" id="buner" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="buner" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 27-28 Aug</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation27" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation27" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 1-2 Sept </span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation1" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation1" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 5 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation5" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation5" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 6 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation6" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation6" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 7 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation7" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation7" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 9 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation9" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation9" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 13 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation13" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation13" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 16 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation16" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation16" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 19 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation19" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation19" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation 21 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundation21" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundation21" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation Com 14 Sept till 21 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundationCom14to21" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundationCom14to21" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Inundation Com 5 Sept till 21 Sept</span>
+                  <div class="relative">
+                    <input type="checkbox" id="inundationCom5to21" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="inundationCom5to21" class="cursor-pointer"></label>
+                  </div>
+                </label>                
+              </div>
+            </div>
+            <!-- Potential Sites Subsection -->
+            <div class="rounded-md overflow-hidden border border-orange-400">
+              <button
+                class="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('potentialSites')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-map-pin"></i>
+                  <span>Potential Sites</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="potentialSites" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Pond Sites</span>
+                  <div class="relative">
+                    <input type="checkbox" id="pondSites" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="pondSites" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">KP Dams</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kpDams" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="kpDams" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">GB</span>
+                  <div class="relative">
+                    <input type="checkbox" id="gb" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="gb" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Retention Reservoirs</span>
+                  <div class="relative">
+                    <input type="checkbox" id="retentionReservoirs" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="retentionReservoirs" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Retention Ponds</span>
+                  <div class="relative">
+                    <input type="checkbox" id="retentionPonds" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="retentionPonds" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DG khan</span>
+                  <div class="relative">
+                    <input type="checkbox" id="dgKhan" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="dgKhan" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Dams</span>
+                  <div class="relative">
+                    <input type="checkbox" id="dams1" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="dams1" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Balochistan</span>
+                  <div class="relative">
+                    <input type="checkbox" id="balochistan" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="balochistan" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Retention Ponds Imp</span>
+                  <div class="relative">
+                    <input type="checkbox" id="rtimp" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="rtimp" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+
+            <!-- <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">2025 Flood Extent</span>
+              <div class="relative">
+                <input type="checkbox" id="flood2025" class="hidden"
+                  onchange="toggleHighlight(this); updateHeaderText();" />
+                <label for="flood2025" class="cursor-pointer"></label>
+              </div>
+            </label> -->
+          </div>
+        </div>
+        <!-- Flood Archiving Section -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            class="w-full px-3 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('option7')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-droplet"></i>
+              <span>Hydro Outlook 2026</span>
+            </div>
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="option7" class="hidden p-3 space-y-3">
+
+            <!-- Riverine Flooding Section -->
+            <div class="rounded-md overflow-hidden border border-green-400">
+              <button
+                class="w-full px-2 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('riverineFlooding')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-water"></i>
+                  <span>Riverine Flooding</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="riverineFlooding" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Extremely High Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="EHFE" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="EHFE" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Very High Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="VHFE" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="VHFE" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Swat High Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="swatHighExtent" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="swatHighExtent" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Swat Medium Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="swatExtent" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="swatExtent" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Swat Low Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="swatLowExtent" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="swatLowExtent" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kabul High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kabilHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="kabilMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kabul Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kabilMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="kabilMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kabul Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kabilLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="kabilLowFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper Indus High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="upperIndusHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="upperIndusHighFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper Indus Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="upperIndusFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="upperIndusFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper Indus Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="upperIndusLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="upperIndusLowFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Lower Indus High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="lowerIndusHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="lowerIndusHighFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Lower Indus Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="lowerIndusMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="lowerIndusMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Lower Indus Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="lowerIndusLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="lowerIndusHighFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhelum High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhelumHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="jhelumHighFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhelum Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhelumMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="jhelumMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhelum Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhelumLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="jhelumLowFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Chenab High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="chenabHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="chenabMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Chenab Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="chenabMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="chenabMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Chenab Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="chenabLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="chenabLowFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ravi High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="raviHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="raviHighFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ravi Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="raviMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="raviMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ravi Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="raviLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="raviLowFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sutlej High Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sutlejHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sutlejHighFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sutlej Medium Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sutlejMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sutlejMediumFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sutlej Low Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sutlejLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sutlejLowFlood" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+              </div>
+            </div>
+
+            <!-- Torrential Flooding Section -->
+            <div class="rounded-md overflow-hidden border border-red-400">
+              <button
+                class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('torrentialFlooding')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-cloud-rain"></i>
+                  <span>Hill Torrents</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="torrentialFlooding" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Flood Events 15 Aug</span>
+                  <div class="relative">
+                    <input type="checkbox" id="FE" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="FE" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DI Khan Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="DI" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="DI" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DI Khan Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="di_ht" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="di_ht" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DG Khan Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="DG" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="DG" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DG Khan Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="dg_ht" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="dg_ht" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Pir Panjal Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="panjal" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="panjal" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Pir Panjal Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="p_panjal" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="p_panjal" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kirthar Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Kirthar" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Kirthar" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Kirthar Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Kirthar_extent" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Kirthar_extent" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhal Magsi Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhal" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="jhal" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jhal Magsi Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jhall" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="jhall" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sindh Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Sindh" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Sindh" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Muzaffarabad Tiff</span>
+                  <div class="relative">
+                    <input type="checkbox" id="muzflash" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="muzflash" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Muzaffarabad Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="muzExtent" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="muzExtent" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Jamshoro Flooding</span>
+                  <div class="relative">
+                    <input type="checkbox" id="jamshoro" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="jamshoro" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Urban Flooding Section -->
+            <div class="rounded-md overflow-hidden border border-purple-400">
+              <button
+                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('urbanFloodingSection')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-city"></i>
+                  <span>Urban Flooding</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="urbanFloodingSection" class="hidden p-2 space-y-1">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Hyderabad Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="hyder" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="hyder" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Hyderabad Flash Flood</span>
+                  <div class="relative">
+                    <input type="checkbox" id="hyderabad" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="hyderabad" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Urban Flooding KPK</span>
+                  <div class="relative">
+                    <input type="checkbox" id="urbanFloodingKpk" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="urbanFloodingKpk" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Urban Flooding Punjab</span>
+                  <div class="relative">
+                    <input type="checkbox" id="urbanFloodingPunjab" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="urbanFloodingPunjab" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Urban Flooding Sindh</span>
+                  <div class="relative">
+                    <input type="checkbox" id="urbanFloodingSindh" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="urbanFloodingSindh" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">KPK Drainage Density</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kpkDrainageDensity" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="kpkDrainageDensity" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Gujranwala</span>
+                  <div class="relative">
+                    <input type="checkbox" id="Gujranwala" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="Gujranwala" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Ahp KP</span>
+                  <div class="relative">
+                    <input type="checkbox" id="ahp_kp" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="ahp_kp" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Sargodha</span>
+                  <div class="relative">
+                    <input type="checkbox" id="sargodha" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="sargodha" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Rawalpindi</span>
+                  <div class="relative">
+                    <input type="checkbox" id="rwp" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="rwp" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Faislabad</span>
+                  <div class="relative">
+                    <input type="checkbox" id="fais" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="fais" class="cursor-pointer"></label>
+                  </div>
+                </label>
+
+                                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Faislabad</span>
+                  <div class="relative">
+                    <input type="checkbox" id="fais" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="fais" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Nowshera</span>
+                  <div class="relative">
+                    <input type="checkbox" id="nowshera" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="nowshera" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Charsadda</span>
+                  <div class="relative">
+                    <input type="checkbox" id="charsadda" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="charsadda" class="cursor-pointer"></label>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- HECRAS Analysis Section -->
+            <!-- <div class="rounded-md overflow-hidden border border-white">
+              <button
+                class="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+                onclick="toggleSection('hecrasSubsection')">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-chart-line"></i>
+                  <span>HECRAS Analysis</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="hecrasSubsection" class="hidden p-2 space-y-2">
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DI Khan (Hybrid)</span>
+                  <input type="checkbox" class="hidden"
+                    onchange="handleHECRASVideo(this, 'media/Videos/DI Khan 2.mp4')">
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DI Khan (Terrain)</span>
+                  <input type="checkbox" class="hidden" onchange="handleHECRASVideo(this, 'media/Videos/DI Khan.mp4')">
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">SINDH MONSOON (Hybrid)</span>
+                  <input type="checkbox" class="hidden"
+                    onchange="handleHECRASVideo(this, 'media/Videos/SINDH_MONSOON(hybrid).mp4')">
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">SINDH MONSOON (Terrain)</span>
+                  <input type="checkbox" class="hidden"
+                    onchange="handleHECRASVideo(this, 'media/Videos/SINDH_MONSOON(terrain).mp4')">
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Upper KPK</span>
+                  <input type="checkbox" class="hidden" onchange="handleHECRASVideo(this, 'media/Videos/upperKPK.mp4')">
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">DG Khan</span>
+                  <input type="checkbox" class="hidden" onchange="handleHECRASVideo(this, 'media/Videos/DG Khan.mp4')">
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">Gujranwala Division</span>
+                  <input type="checkbox" class="hidden"
+                    onchange="handleHECRASVideo(this, 'media/Videos/Gujranwala Division.mp4')">
+                </label>
+              </div>
+            </div> -->
+          </div>
+        </div>
+
+        <!-- Hydro Dashboard Button (Styled to Match Other Sections) -->
+        <!-- <div class="rounded-md overflow-hidden border border-white my-4">
+          <button
+            id="toggleDashboard"
+            class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium flex items-center justify-between rounded-md transition-colors">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-gauge-high"></i>
+              <span id="dashboardText">Hydro Dashboard</span>
+            </div>
+          </button>
+        </div> -->
+        <!-- Hydro Structure Button -->
+        <!-- <div class="rounded-md overflow-hidden border border-white my-4">
+          <button 
+            id="toggleHydrostructure"
+            class="w-full px-4 py-3 bg-black-600 hover:bg-black-700 text-white font-medium flex items-center justify-between rounded-md transition-colors">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-gauge-high"></i>
+              <span id="hydrostructureText">Hydro Structure Portal</span>
+            </div>
+          </button>
+        </div> -->
+        <!-- Advisories Section -->
+        <div class="max-w-4xl mx-auto">
+          <div class="rounded-md overflow-hidden border border-white">
+            <button
+              class="w-full px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+              onclick="toggleSection('option8')">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-exclamation-triangle"></i>
+                <span>Advisories</span>
+              </div>
+              <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div id="option8" class="hidden p-4 space-y-3">
+
+              <!-- Punjab Button -->
+              <button
+                class="region-button w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-medium flex items-center justify-center gap-2 rounded-md transition-colors"
+                onclick="launchAdvisorySlideshow('punjab')">
+                <i class="fa-solid fa-map-marker-alt"></i>
+                <span>PUNJAB</span>
+              </button>
+
+              <!-- Sindh Button -->
+              <button
+                class="region-button w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-medium flex items-center justify-center gap-2 rounded-md transition-colors"
+                onclick="launchAdvisorySlideshow('sindh')">
+                <i class="fa-solid fa-map-marker-alt"></i>
+                <span>SINDH</span>
+              </button>
+
+              <!-- Balochistan Button -->
+              <button
+                class="region-button w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium flex items-center justify-center gap-2 rounded-md transition-colors"
+                onclick="launchAdvisorySlideshow('balochistan')">
+                <i class="fa-solid fa-map-marker-alt"></i>
+                <span>BALOCHISTAN</span>
+              </button>
+
+              <!-- KPK Button -->
+              <button
+                class="region-button w-full px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium flex items-center justify-center gap-2 rounded-md transition-colors"
+                onclick="launchAdvisorySlideshow('kpk')">
+                <i class="fa-solid fa-map-marker-alt"></i>
+                <span>KPK</span>
+              </button>
+
+              <!-- DEW Exposure Button -->
+              <button
+                class="region-button w-full px-4 py-3 bg-gray-500 hover:bg-gray-600 text-white font-medium flex items-center justify-center gap-2 rounded-md transition-colors"
+                onclick="launchAdvisorySlideshow('dew')">
+                <i class="fa-solid fa-map-marker-alt"></i>
+                <span>DEW EXPOSURE</span>
+              </button>
+              <!-- Alerts Button -->
+              <button
+                class="region-button w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-medium flex items-center justify-center gap-2 rounded-md transition-colors"
+                onclick="launchAdvisorySlideshow('alerts')">
+                <i class="fa-solid fa-map-marker-alt"></i>
+                <span>Alerts</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slideshow Modal -->
+        <div id="slideshowModal"
+          style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;background:rgba(0,0,0,0.9);align-items:center;justify-content:center">
+          <img id="slideshowImage" src=""
+            style="max-width:90vw;max-height:90vh;display:block;margin:auto;box-shadow:0 0 24px #000;border-radius:8px;">
+
+          <!-- Close Button -->
+          <button class="control-btn" style="position:fixed;top:30px;right:32px;font-size:2rem;border-radius:8px;"
+            onclick="closeAdvisorySlideshow()">
+            <i class="fa-solid fa-times"></i>
+          </button>
+
+          <!-- Slide Info -->
+          <div id="slideInfo" class="slide-info">
+            <span id="slideCounter">1 / 5</span> - <span id="slideTitle">Image Title</span>
+          </div>
+
+          <!-- Controls -->
+          <div class="slideshow-controls">
+            <button id="prevBtn" class="control-btn" onclick="goToPreviousSlide()">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button id="playPauseBtn" class="control-btn" onclick="toggleSlidePlayback()">
+              <i class="fa-solid fa-play"></i>
+            </button>
+            <button id="nextBtn" class="control-btn" onclick="goToNextSlide()">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+        <!-- Miscellaneous Section -->
+        <div class="rounded-md overflow-hidden border border-gray-400">
+          <button
+            class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
+            onclick="toggleSection('miscellaneous')">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-ellipsis"></i>
+              <span>Miscellaneous</span>
+            </div>
+            <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="miscellaneous" class="hidden p-2 space-y-1">
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded cursor-pointer"
+              onclick="toggleSliderCheckbox()">
+              <span class="text-sm">Slider: Monsoon 2025</span>
+              <div class="relative">
+                <input type="checkbox" id="slider" class="hidden" />
+                <label for="slider" class="cursor-pointer"></label>
+              </div>
+            </label>
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Panjgora River</span>
+              <div class="relative">
+                <input type="checkbox" id="panjgoraRiver" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="panjgoraRiver" class="cursor-pointer"></label>
+              </div>
+            </label>
+
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Swat River</span>
+              <div class="relative">
+                <input type="checkbox" id="swatRiver" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="swatRiver" class="cursor-pointer"></label>
+              </div>
+            </label>
+
+            <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+              <span class="text-sm">Monsoon Video</span>
+              <div class="relative">
+                <input type="checkbox" id="monsoonvideo" class="hidden" onchange="toggleHighlight(this)" />
+                <label for="monsoonvideo" class="cursor-pointer"></label>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Map Containers -->
+    <div class="flex-1 p-4">
+      <div class="w-full h-[calc(100vh-6rem)]">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden relative w-full h-full">
+          <!-- Minimal Header for Map 1 -->
+          <div
+            class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-blue-600 text-white px-4 py-1 rounded-full shadow-sm"
+            style="display :none">
+            <h2 class="text-2xl font-bold whitespace-nowrap">Hydrological Outlook</h2>
+          </div>
+          <div id="map1" class="w-full h-full" style="position: relative;">
+            <!-- Fluid Meter Container -->
+            <div class="fluid-meter-container" id="fluidMeterContainer">
+              <button class="close-btn" onclick="closeFluidMeter()">×</button>
+
+              <div class="meter-header">
+                <div class="meter-title" id="meterTitle">Dam Name</div>
+              </div>
+
+              <div id="fluid-meter"></div>
+
+              <div class="reservoir-level">
+                <div class="reservoir-level-label">Current Reservoir Level</div>
+                <div class="reservoir-level-value" id="reservoirValue">0 ft</div>
+              </div>
+            </div>
+            <!-- IFRAME (initially hidden, styled like map1) -->
+            <iframe id="dashboardFrame" class="w-full h-full hidden" style="position: relative; border: 0;"
+              src="https://lookerstudio.google.com/embed/reporting/77819a68-5bd9-40bd-89b8-34d3ed6d410d/page/p_4ic6qd1wtd"
+              frameborder="0" allowfullscreen
+              sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+            <iframe id="hydrostructureFrame" class="w-full h-full hidden" style="position: relative; border: 0;"
+              src="http://172.18.2.100:5000/" frameborder="0" allowfullscreen
+              sandbox="allow-scripts allow-same-origin"></iframe>
+            <!-- AHP lAYER LEGEND -->
+            <img id="legend-image" src="media/UI/Legend.png" alt="Legend"
+              style="display: none; position: absolute; max-width: 300px; right: 20px; bottom: 20px;">
+            <div class="mt-4 space-y-2 hidden">
+              <input type="range" id="ltw-slider" min="0" max="8" value="0"
+                class="w-full h-2 bg-slate-200 rounded cursor-pointer" />
+              <div id="ltw-dates" class="flex justify-between text-xs text-slate-600"></div>
+              <!-- Gradient Legend -->
+              <div class="relative h-4 rounded overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-lime-400 via-orange-400 to-red-800"></div>
+                <div class="absolute inset-0 flex justify-between text-xl text-white px-1">
+                  <span>Very Low</span>
+                  <span>Low</span>
+                  <span>Moderate</span>
+                  <span>High</span>
+                  <span>Very High</span>
+                </div>
+              </div>
+              <button id="ltw-play"
+                class="w-full px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">
+                ▶
+              </button>
+            </div>
+            <div class="wpa-controls mt-4 space-y-2 hidden">
+              <input type="range" id="wpa-slider" min="0" max="9" value="0"
+                class="w-full h-2 bg-slate-200 rounded cursor-pointer" />
+              <div id="wpa-dates" class="flex justify-between text-xs text-slate-600"></div>
+              <div class="relative h-4 rounded overflow-hidden">
+                <div class="absolute inset-0" style="background: linear-gradient(
+                    to right, 
+                    #e9f2ff 0%,    
+                    #b3d0ff 12.5%, 
+                    #66b2ff 25%,  
+                    #33ccff 37.5%, 
+                    #66ff66 50%,  
+                    #ffff66 62.5%, 
+                    #ffc966 75%,  
+                    #ff3333 87.5%, 
+                    #990000 100%
+                  );">
+                </div>
+                <div class="absolute inset-0 flex justify-between text-xs text-white px-1">
+                  <span style="color: #202020;">0-1</span>
+                  <span style="color: #202020;">40-50</span>
+                  <span style="color: #202020;">120-150</span>
+                </div>
+              </div>
+              <button id="wpa-play"
+                class="w-full px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">
+              </button>
+            </div>
+
+            <!-- Precipitation 2026 Slider -->
+            <div class="precip2026-controls mt-4 space-y-2 hidden">
+              <div class="flex items-center gap-2">
+                <button id="precip2026-play"
+                  class="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors flex-shrink-0">
+                  ▶
+                </button>
+                <div class="flex-1 space-y-1">
+                  <input type="range" id="precip2026-slider" min="0" max="11" value="0"
+                    class="w-full h-2 bg-slate-200 rounded cursor-pointer" />
+                  <div id="precip2026-months" class="flex justify-between text-xs text-slate-600"></div>
+                </div>
+                <button id="precip2026-speed"
+                  class="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors flex-shrink-0">
+                  1x
+                </button>
+              </div>
+              <!-- Opacity Control Section -->
+              <div class="flex items-center gap-2" style="margin-top: 12px;">
+                <button id="precip2026-opacity-btn"
+                  class="px-2 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 transition-colors flex-shrink-0"
+                  title="Toggle Opacity Control">
+                  <i class="fas fa-adjust"></i>
+                </button>
+                <div class="flex-1 relative h-4 rounded overflow-hidden">
+                  <div class="absolute inset-0" style="background: linear-gradient(to right, #ffffff, #7bb0d4, #142e67);">
+                  </div>
+                  <div class="absolute inset-0 flex justify-between text-xs px-2">
+                    <span style="color: #202020;">Low</span>
+                    <span style="color: #ffffff;">Moderate</span>
+                    <span style="color: #ffffff;">High</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Opacity Slider (initially hidden) -->
+              <div id="precip2026-opacity-controls" class="hidden" style="margin-top: 8px;">
+                <div class="flex items-center gap-2 bg-gray-800 bg-opacity-90 p-2 rounded">
+                  <label class="text-xs text-white font-semibold">Opacity:</label>
+                  <input type="range" id="precip2026-opacity-slider" min="0" max="100" value="80"
+                    class="flex-1 h-2 bg-slate-200 rounded cursor-pointer" />
+                  <span id="precip2026-opacity-value" class="text-xs text-white font-bold min-w-[35px]">80%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hourly Precipitation Slider -->
+            <div class="slider-container hidden" id="hrs-precip-controls">
+              <button class="close-button" onclick="closeHourlyRainfall()">×</button>
+              <div class="slider-title">Hourly Precipitation Forecast</div>
+              <input type="range" id="hrs-precip-slider" class="precip-slider" min="0" max="10" value="0" />
+              <div id="hrs-precip-timestamps" class="time-markers"></div>
+
+              <!-- Opacity Control -->
+              <div class="opacity-control">
+                <label for="hrs-opacity-slider">Opacity:</label>
+                <input type="range" id="hrs-opacity-slider" class="opacity-slider" min="0" max="100" value="70" />
+                <span id="hrs-opacity-value">70%</span>
+              </div>
+
+              <!-- Precipitation Legend -->
+              <div class="precip-legend">
+                <div class="precip-gradient"></div>
+                <div class="precip-legend-text">
+                  <span>0.25</span><span>1</span><span>2</span><span>4</span><span>6</span><span>10</span><span>15</span><span>20</span><span>30</span><span>50</span><span>70</span><span>100</span><span>150</span></span><span>200+</span>
+                </div>
+              </div>
+
+              <button id="hrs-precip-playback" class="play-button">▶</button>
+            </div>
+
+            <!-- Weekly Precipitation Slider -->
+            <div class="slider-container hidden" id="wky-precip-controls">
+              <button class="close-button" onclick="closeWeeklyRainfall()">×</button>
+              <div class="slider-title">Weekly Precipitation Forecast</div>
+              <input type="range" id="wky-precip-slider" class="precip-slider" min="0" max="7" value="0" />
+              <div id="wky-precip-calendar" class="time-markers"></div>
+
+              <!-- Opacity Control -->
+              <div class="opacity-control">
+                <label for="wky-opacity-slider">Opacity:</label>
+                <input type="range" id="wky-opacity-slider" class="opacity-slider" min="0" max="100" value="70" />
+                <span id="wky-opacity-value">70%</span>
+              </div>
+
+              <!-- Precipitation Legend -->
+              <div class="precip-legend">
+                <div class="precip-gradient"></div>
+                <div class="precip-legend-text">
+                  <span>0.25</span><span>1</span><span>2</span><span>4</span><span>6</span><span>10</span><span>15</span><span>20</span><span>30</span><span>50</span><span>70</span><span>100</span><span>150</span></span><span>200+</span>
+                </div>
+              </div>
+
+              <button id="wky-precip-playback" class="play-button">▶</button>
+            </div>
+            <div class="timeline-slider-container">
+              <div class="drag-handle" title="Drag to move">
+                <i class="fa-solid fa-arrows-up-down-left-right"></i>
+              </div>
+              <div class="resize-handle" title="Resize horizontally">
+                <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+              </div>
+              <div class="slider-header">
+                <h3 class="slider-title">Monsoon Timeline: July 2025</h3>
+                <button class="close-button" onclick="closeSlider()">×</button>
+              </div>
+              <div class="date-display" id="dateDisplay">Week 1: 01/07/2025</div>
+              <div class="slider-wrapper">
+                <input type="range" min="1" max="31" value="1" class="slider" id="timelineSlider">
+                <div class="week-labels">
+                  <div class="week-label">Week 1<br>1-7</div>
+                  <div class="week-label">Week 2<br>8-14</div>
+                  <div class="week-label">Week 3<br>15-21</div>
+                  <div class="week-label">Week 4<br>22-28</div>
+                  <div class="week-label">Week 5<br>29-31</div>
+                </div>
+              </div>
+              <div class="controls">
+                <button class="control-button" id="playPauseBtn" onclick="togglePlayPause()">
+                  ▶ Play
+                </button>
+                <div class="speed-control">
+                  <label>Speed:</label>
+                  <select class="speed-select" id="speedSelect">
+                    <option value="2000">Slow</option>
+                    <option value="1000" selected>Normal</option>
+                    <option value="500">Fast</option>
+                  </select>
+                </div>
+              </div>
+              <div class="layer-info" id="layerInfo">Layers: Ready to load</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- GEOGLOWS Modal -->
+      <div id="chart-container-geoglows" class="geoglows-modal">
+        <div class="geoglows-modal-content">
+          <div class="chart-header">
+            <div class="chart-title">
+              <div class="chart-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  class="lucide lucide-bar-chart-3" style="color: #fff;">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M18 17V9"></path>
+                  <path d="M13 17V5"></path>
+                  <path d="M8 17v-3"></path>
+                </svg>
+              </div>
+              <p>GeoGLOWS Forecast Chart</p>
+            </div>
+            <button id="chart-close-btn" class="modal-close-btn">&times;</button>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="chart-canvas-geoglows"></canvas>
+            <div id="chart-loader">
+              <span class="loader-spinner"></span>
+              Loading data...
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="geoglowsForecastBtn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="button-icon">
+                <path d="M12 22a9 9 0 0 0 9-9c0-4.97-4.03-11-9-11S3 8.03 3 13a9 9 0 0 0 9 9Z"></path>
+                <path d="M8 15.5c1 1 2.667 1.333 4 .5 1.333-.833 2.667-1.167 4 0"></path>
+                <path d="M8.5 8.5c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S7.448 7 8 7s1 .672 1 1.5Z"></path>
+                <path d="M15.5 8.5c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S14.448 7 15 7s1 .672 1 1.5Z"></path>
+              </svg>
+              Forecast
+            </button>
+            <button id="forecastStatsBtn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="button-icon">
+                <path d="M3 3v18h18"></path>
+                <path d="m19 9-5 5-4-4-3 3"></path>
+              </svg>
+              Forecast Stats
+            </button>
+          </div>
+        </div>
+      </div>
+      <button id="blinkLayersBtn" style="z-index: 9999; position: absolute; top: 16px; right: 150px; display: none;"
+        class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded shadow-lg hover:from-pink-600 hover:to-yellow-500 transition font-semibold">
+        <i class="fa-solid fa-lightbulb animate-pulse"></i>
+        <span>Blink Layers</span>
+      </button>
+
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-lg overflow-hidden relative">
+    <!-- Minimal Header for Map 2 -->
+    <div
+      class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-green-600 text-white px-4 py-1 rounded-full shadow-sm"
+      style="display:none">
+      <h2 class="text-2xl font-bold whitespace-nowrap">
+        Projected Met Conditions
+      </h2>
+    </div>
+
+    <div id="map2" style="display:none" class="w-full h-full"></div>
+    <video id="monsoonVideo" src="media/Videos/video.mp4" autoplay loop controls class="w-full h-full object-cover"
+      style="display: none;">
+    </video>
+  </div>
+  </div>
+  </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+
+    /// document.addEventListener('DOMContentLoaded', function () {
+    /// createImageContainer();
+    /// });
+
+    function toggleSection(id) {
+      const section = document.getElementById(id);
+      const button = section.previousElementSibling;
+      const arrow = button.querySelector('svg');
+
+      if (id.startsWith('option')) {
+        const allSections = document.querySelectorAll('[id^="option"]');
+        allSections.forEach(s => {
+          if (s.id !== id) {
+            s.classList.add('hidden');
+            s.previousElementSibling.querySelector('svg').classList.remove('rotate-180');
+          }
+        });
+      }
+
+      section.classList.toggle('hidden');
+      arrow.classList.toggle('rotate-180');
+    }
+
+    // Optimized toggleHighlight function with modern styling
+    function toggleHighlight(checkbox) {
+      const container = checkbox.closest('label');
+
+      // Modern highlighting with multiple visual effects
+      if (checkbox.checked) {
+        // Add modern active state
+        container.classList.add('layer-active');
+        container.classList.remove('layer-inactive');
+
+        // Add a subtle glow effect to the container
+        container.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15))';
+        container.style.borderLeft = '4px solid #3b82f6';
+        container.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.2)';
+        container.style.transform = 'translateX(4px)';
+        container.style.transition = 'all 0.3s ease-in-out';
+
+        // Make text more prominent
+        const textSpan = container.querySelector('span');
+        if (textSpan) {
+          textSpan.style.color = '#ffffff';
+          textSpan.style.fontWeight = '600';
+          textSpan.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.3)';
+        }
+      } else {
+        // Remove active state
+        container.classList.remove('layer-active');
+        container.classList.add('layer-inactive');
+
+        // Reset to normal state
+        container.style.background = '';
+        container.style.borderLeft = '';
+        container.style.boxShadow = '';
+        container.style.transform = '';
+        container.style.transition = 'all 0.3s ease-in-out';
+
+        // Reset text styling
+        const textSpan = container.querySelector('span');
+        if (textSpan) {
+          textSpan.style.color = '';
+          textSpan.style.fontWeight = '';
+          textSpan.style.textShadow = '';
+        }
+      }
+
+      // Handle monsoon video toggle
+      if (checkbox.id === 'monsoonvideo') {
+        const map = document.getElementById('map2');
+        const video = document.getElementById('monsoonVideo');
+        if (checkbox.checked) {
+          map.style.display = "none";
+          video.style.display = "block";
+          video.play();
+        } else {
+          map.style.display = "block";
+          video.style.display = "none";
+          video.pause();
+        }
+      }
+
+      // Show/hide AHP legend
+      // Show/hide AHP legend
+      if (checkbox.id === 'ahp_kp') {
+        const legendImg = document.getElementById('legend-image');
+        if (checkbox.checked) {
+          if (legendImg) {
+            legendImg.style.display = 'block';
+            legendImg.style.position = 'fixed';  // Add this
+            legendImg.style.zIndex = 9999;       // Add this
+          } else {
+            const img = document.createElement('img');
+            img.id = 'legend-image';
+            img.src = 'Legend.png';
+            img.alt = 'Legend';
+            img.style.position = 'fixed';        // Add this
+            img.style.zIndex = 9999;             // Add this
+            // Optionally set location (e.g., bottom right)
+            img.style.bottom = '20px';           // optional
+            img.style.right = '20px';            // optional
+            document.body.appendChild(img);
+          }
+        } else {
+          if (legendImg) {
+            legendImg.style.display = 'none';
+          }
+        }
+      }
+
+      // Handle timeline slider toggle
+      if (checkbox.id === 'slider') {
+        const timelineContainer = document.querySelector('.timeline-slider-container');
+        if (checkbox.checked) {
+          timelineContainer.style.display = 'block';
+        } else {
+          timelineContainer.style.display = 'none';
+          closeSlider(); // also hides all layers
+        }
+      }
+
+      // Handle FFD telemetries toggle
+      if (checkbox.id === 'ffd') {
+        createFfdLegend();
+        const isVisible = checkbox.checked;
+        if (typeof map1 !== 'undefined' && map1.getLayer("ffd_point")) {
+          map1.setLayoutProperty("ffd_point", "visibility", isVisible ? "visible" : "none");
+        }
+        if (typeof map1 !== 'undefined' && map1.getLayer("ffd_label")) {
+          map1.setLayoutProperty("ffd_label", "visibility", isVisible ? "visible" : "none");
+        }
+        // ffdLegend(); // Commented out: do not show FFD legend on toggle
+        if (isVisible) {
+          showFloodLegend();
+        } else {
+          hideFloodLegend();
+        }
+      }
+
+      // Optional: custom logic for other flood legend updates
+      toggleFloodLegend();
+    }
+
+    // Event delegation for sidebar checkboxes
+    // Wait for DOMContentLoaded to ensure sidebar exists
+    window.addEventListener('DOMContentLoaded', function () {
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar) {
+        sidebar.addEventListener('change', function (e) {
+          if (e.target && e.target.matches('input[type="checkbox"]')) {
+            toggleHighlight(e.target);
+          }
+        });
+      }
+    });
+
+    function updateHeaderText(textOverride) {
+      const headingSpan = document.querySelector('.heading-container span');
+      if (!headingSpan) return;
+
+      // Always make sure it's visible when updating
+      headingSpan.style.display = 'inline';
+
+      if (textOverride) {
+        headingSpan.textContent = textOverride;
+        return;
+      }
+
+      // Fallback logic for checkboxes (if no override provided)
+      const floodCheckboxes = [
+        'hotspots', 'flood2010', 'flood2011', 'flood2012', 'flood2013',
+        'flood2014', 'flood2015', 'flood2023', 'flood2024', 'dams1', 'balochistan', 'dgKhan', 'retentionPonds', 'retentionReservoirs', 'gb', 'kpDams', 'pondSites', 'rtimp'
+      ];
+      const anyFloodChecked = floodCheckboxes.some(id => {
+        const checkbox = document.getElementById(id);
+        return checkbox && checkbox.checked;
+      });
+
+      headingSpan.textContent = anyFloodChecked ? 'Pakistan Flood Insight' : 'Hydro-Analytics 2026';
+    }
+
+    /* Toggling logic for Hydro Dashboard button
+    document.getElementById('toggleDashboard').addEventListener('click', function () {
+      const headingSpan = document.querySelector('.heading-container span');
+      if (!headingSpan) return;
+    
+      // Always show the heading again when this button is clicked
+      headingSpan.style.display = 'inline';
+    
+      // Toggle between the two text values
+      const current = headingSpan.textContent.trim();
+      if (current === 'Hydro Dashboard 2025') {
+        updateHeaderText('Hydro-Analytics 2026');
+      } else {
+        updateHeaderText('Hydro Dashboard 2025');
+      }
+    });
+    
+    document.getElementById('toggleHydrostructure').addEventListener('click', function () {
+      const headingSpan = document.querySelector('.heading-container span');
+      if (!headingSpan) return;
+    
+      const isVisible = headingSpan.style.display !== 'none';
+    
+      if (isVisible) {
+        // Hide the header
+        headingSpan.style.display = 'none';
+      } else {
+        // Show it again with "Hydro-Analytics 2026"
+        headingSpan.style.display = 'inline';
+        headingSpan.textContent = 'Hydro-Analytics 2026';
+      }
+    });
+    */
+  </script>
+  <!-- <script src="script/mosques.js"></script>
+  <script src="script/towers.js"></script> -->
+  <script src="ft_and_percentage.js"></script>
+  <script src="script/telemetries.js"></script>
+  <script src="script/breach.js"></script>
+  <script src="script/sindh_points.js"></script>
+  <script src="script/indian.js"></script>
+  <script src="script/glofas.js"></script>
+  <script src="script/punjab.js"></script>
+  <script src="script/events.js"></script>
+  <script src="script/script.js"></script>
+  <script src="script/map1.js"></script>
+  <script src="script/map2.js"></script>
+
+
+  <!-- Time-enabled Layer Date Picker Modal -->
+  <div id="timeLayerModal" class="time-modal hidden" aria-hidden="true" role="dialog"
+    aria-labelledby="timeLayerModalTitle">
+    <div class="time-modal__panel">
+      <div class="time-modal__header">
+        <h3 id="timeLayerModalTitle" class="time-modal__title">Select Date for Layer</h3>
+        <button type="button" class="time-modal__close" id="timeLayerModalClose"
+          aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="time-modal__body">
+        <label class="time-modal__label" for="timeLayerLayerSelect">Time-enabled Layer</label>
+        <select id="timeLayerLayerSelect" class="time-modal__select"></select>
+        <label class="time-modal__label" for="timeLayerDateInput">Date (UTC)</label>
+        <input id="timeLayerDateInput" class="time-modal__date" type="date" max="9999-12-31" />
+        <!-- Removed Today quick button as per request -->
+        <div id="timeLayerModalError" class="time-modal__error" role="alert" aria-live="assertive"></div>
+        <div class="time-modal__info">
+          <strong>Note:</strong> Only forecast / probability raster layers support time selection. Historical extent &
+          vector layers cannot be time-filtered unless published with a TIME dimension in the WMS service.
+        </div>
+      </div>
+      <div class="time-modal__footer">
+        <button type="button" id="timeLayerCancelBtn" class="time-modal__btn time-modal__btn--secondary">Cancel</button>
+        <button type="button" id="timeLayerApplyBtn" class="time-modal__btn time-modal__btn--primary">Apply
+          Date</button>
+      </div>
+    </div>
+    <div class="time-modal__backdrop"></div>
+  </div>
+
+</body>
+
+</html>
