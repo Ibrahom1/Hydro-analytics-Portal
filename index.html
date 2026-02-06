@@ -634,193 +634,292 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="riverineFlooding_2025" class="hidden p-2 space-y-1">
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Extremely High Flood Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="EHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('EHFE').checked = this.checked; document.getElementById('EHFE').dispatchEvent(new Event('change'));" />
-                    <label for="EHFE_2025" class="cursor-pointer"></label>
+              <div id="riverineFlooding_2025" class="hidden p-2 space-y-3">
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineSwat_2025')">
+                    <span>Swat River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineSwat_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Swat High Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="swatHighExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatHighExtent').checked = this.checked; document.getElementById('swatHighExtent').dispatchEvent(new Event('change'));" />
+                        <label for="swatHighExtent_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Swat Medium Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="swatExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatExtent').checked = this.checked; document.getElementById('swatExtent').dispatchEvent(new Event('change'));" />
+                        <label for="swatExtent_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Swat Low Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="swatLowExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatLowExtent').checked = this.checked; document.getElementById('swatLowExtent').dispatchEvent(new Event('change'));" />
+                        <label for="swatLowExtent_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Very High Flood Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="VHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('VHFE').checked = this.checked; document.getElementById('VHFE').dispatchEvent(new Event('change'));" />
-                    <label for="VHFE_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Swat High Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="swatHighExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatHighExtent').checked = this.checked; document.getElementById('swatHighExtent').dispatchEvent(new Event('change'));" />
-                    <label for="swatHighExtent_2025" class="cursor-pointer"></label>
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineKabul_2025')">
+                    <span>Kabul River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineKabul_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Kabul High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="kabilHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilHighFlood').checked = this.checked; document.getElementById('kabilHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="kabilHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Kabul Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="kabilMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilMediumFlood').checked = this.checked; document.getElementById('kabilMediumFlood').dispatchEvent(new Event('change'));" />
+                        <label for="kabilMediumFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Kabul Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="kabilLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilLowFlood').checked = this.checked; document.getElementById('kabilLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="kabilLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Swat Medium Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="swatExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatExtent').checked = this.checked; document.getElementById('swatExtent').dispatchEvent(new Event('change'));" />
-                    <label for="swatExtent_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Swat Low Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="swatLowExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('swatLowExtent').checked = this.checked; document.getElementById('swatLowExtent').dispatchEvent(new Event('change'));" />
-                    <label for="swatLowExtent_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kabul High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="kabilHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilHighFlood').checked = this.checked; document.getElementById('kabilHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="kabilHighFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kabul Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="kabilMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilMediumFlood').checked = this.checked; document.getElementById('kabilMediumFlood').dispatchEvent(new Event('change'));" />
-                    <label for="kabilMediumFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kabul Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="kabilLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('kabilLowFlood').checked = this.checked; document.getElementById('kabilLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="kabilLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Upper Indus High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="upperIndusHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusHighFlood').checked = this.checked; document.getElementById('upperIndusHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="upperIndusHighFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Upper Indus Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="upperIndusFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusFlood').checked = this.checked; document.getElementById('upperIndusFlood').dispatchEvent(new Event('change'));" />
-                    <label for="upperIndusFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Upper Indus Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="upperIndusLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusLowFlood').checked = this.checked; document.getElementById('upperIndusLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="upperIndusLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Lower Indus High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="lowerIndusHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusHighFlood').checked = this.checked; document.getElementById('lowerIndusHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="lowerIndusHighFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Lower Indus Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="lowerIndusMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusMediumFlood').checked = this.checked; document.getElementById('lowerIndusMediumFlood').dispatchEvent(new Event('change'));" />
-                    <label for="lowerIndusMediumFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Lower Indus Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="lowerIndusLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusLowFlood').checked = this.checked; document.getElementById('lowerIndusLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="lowerIndusLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhelum High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhelumHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumHighFlood').checked = this.checked; document.getElementById('jhelumHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="jhelumHighFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhelum Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhelumMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumMediumFlood').checked = this.checked; document.getElementById('jhelumMediumFlood').dispatchEvent(new Event('change'));" />
-                    <label for="jhelumMediumFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhelum Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhelumLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumLowFlood').checked = this.checked; document.getElementById('jhelumLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="jhelumLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Chenab High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="chenabHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabHighFlood').checked = this.checked; document.getElementById('chenabHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="chenabHighFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Chenab Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="chenabMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabMediumFlood').checked = this.checked; document.getElementById('chenabMediumFlood').dispatchEvent(new Event('change'));" />
-                    <label for="chenabMediumFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Chenab Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="chenabLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabLowFlood').checked = this.checked; document.getElementById('chenabLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="chenabLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Ravi High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="raviHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviHighFlood').checked = this.checked; document.getElementById('raviHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="raviHighFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Ravi Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="raviMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviMediumFlood').checked = this.checked; document.getElementById('raviMediumFlood').dispatchEvent(new Event('change'));" />
-                    <label for="raviMediumFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Ravi Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="raviLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviLowFlood').checked = this.checked; document.getElementById('raviLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="raviLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sutlej High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="sutlejHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejHighFlood').checked = this.checked; document.getElementById('sutlejHighFlood').dispatchEvent(new Event('change'));" />
-                    <label for="sutlejHighFlood_2025" class="cursor-pointer"></label>
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineIndus_2025')">
+                    <span>Indus River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineIndus_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Upper Indus High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="upperIndusHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusHighFlood').checked = this.checked; document.getElementById('upperIndusHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="upperIndusHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Upper Indus Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="upperIndusFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusFlood').checked = this.checked; document.getElementById('upperIndusFlood').dispatchEvent(new Event('change'));" />
+                        <label for="upperIndusFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Upper Indus Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="upperIndusLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('upperIndusLowFlood').checked = this.checked; document.getElementById('upperIndusLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="upperIndusLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Lower Indus High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="lowerIndusHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusHighFlood').checked = this.checked; document.getElementById('lowerIndusHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="lowerIndusHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Lower Indus Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="lowerIndusMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusMediumFlood').checked = this.checked; document.getElementById('lowerIndusMediumFlood').dispatchEvent(new Event('change'));" />
+                        <label for="lowerIndusMediumFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Lower Indus Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="lowerIndusLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('lowerIndusLowFlood').checked = this.checked; document.getElementById('lowerIndusLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="lowerIndusLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sutlej Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="sutlejMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejMediumFlood').checked = this.checked; document.getElementById('sutlejMediumFlood').dispatchEvent(new Event('change'));" />
-                    <label for="sutlejMediumFlood_2025" class="cursor-pointer"></label>
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineJhelum_2025')">
+                    <span>Jhelum River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineJhelum_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Jhelum High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="jhelumHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumHighFlood').checked = this.checked; document.getElementById('jhelumHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="jhelumHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Jhelum Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="jhelumMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumMediumFlood').checked = this.checked; document.getElementById('jhelumMediumFlood').dispatchEvent(new Event('change'));" />
+                        <label for="jhelumMediumFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Jhelum Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="jhelumLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhelumLowFlood').checked = this.checked; document.getElementById('jhelumLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="jhelumLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sutlej Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="sutlejLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejLowFlood').checked = this.checked; document.getElementById('sutlejLowFlood').dispatchEvent(new Event('change'));" />
-                    <label for="sutlejLowFlood_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                </div>
 
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineChenab_2025')">
+                    <span>Chenab River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineChenab_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Chenab High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="chenabHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabHighFlood').checked = this.checked; document.getElementById('chenabHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="chenabHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Chenab Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="chenabMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabMediumFlood').checked = this.checked; document.getElementById('chenabMediumFlood').dispatchEvent(new Event('change'));" />
+                        <label for="chenabMediumFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Chenab Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="chenabLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chenabLowFlood').checked = this.checked; document.getElementById('chenabLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="chenabLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineRavi_2025')">
+                    <span>Ravi River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineRavi_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Ravi High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="raviHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviHighFlood').checked = this.checked; document.getElementById('raviHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="raviHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Ravi Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="raviMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviMediumFlood').checked = this.checked; document.getElementById('raviMediumFlood').dispatchEvent(new Event('change'));" />
+                        <label for="raviMediumFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Ravi Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="raviLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('raviLowFlood').checked = this.checked; document.getElementById('raviLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="raviLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineSutlej_2025')">
+                    <span>Sutlej River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineSutlej_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Sutlej High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="sutlejHighFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejHighFlood').checked = this.checked; document.getElementById('sutlejHighFlood').dispatchEvent(new Event('change'));" />
+                        <label for="sutlejHighFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Sutlej Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="sutlejMediumFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejMediumFlood').checked = this.checked; document.getElementById('sutlejMediumFlood').dispatchEvent(new Event('change'));" />
+                        <label for="sutlejMediumFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Sutlej Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="sutlejLowFlood_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('sutlejLowFlood').checked = this.checked; document.getElementById('sutlejLowFlood').dispatchEvent(new Event('change'));" />
+                        <label for="sutlejLowFlood_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineOther_2025')">
+                    <span>Other</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineOther_2025" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Extremely High Flood Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="EHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('EHFE').checked = this.checked; document.getElementById('EHFE').dispatchEvent(new Event('change'));" />
+                        <label for="EHFE_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Very High Flood Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="VHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('VHFE').checked = this.checked; document.getElementById('VHFE').dispatchEvent(new Event('change'));" />
+                        <label for="VHFE_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1469,193 +1568,292 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="riverineFlooding" class="hidden p-2 space-y-1">
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Extremely High Flood Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="EHFE" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="EHFE" class="cursor-pointer"></label>
+              <div id="riverineFlooding" class="hidden p-2 space-y-3">
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineSwat')">
+                    <span>Swat River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineSwat" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Swat High Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="swatHighExtent" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="swatHighExtent" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Swat Medium Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="swatExtent" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="swatExtent" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Swat Low Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="swatLowExtent" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="swatLowExtent" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Very High Flood Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="VHFE" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="VHFE" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Swat High Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="swatHighExtent" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="swatHighExtent" class="cursor-pointer"></label>
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineKabul')">
+                    <span>Kabul River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineKabul" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Kabul High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="kabilHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="kabilMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Kabul Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="kabilMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="kabilMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Kabul Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="kabilLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="kabilLowFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Swat Medium Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="swatExtent" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="swatExtent" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Swat Low Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="swatLowExtent" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="swatLowExtent" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kabul High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="kabilHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="kabilMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kabul Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="kabilMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="kabilMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kabul Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="kabilLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="kabilLowFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Upper Indus High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="upperIndusHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="upperIndusHighFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Upper Indus Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="upperIndusFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="upperIndusFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Upper Indus Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="upperIndusLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="upperIndusLowFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Lower Indus High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="lowerIndusHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="lowerIndusHighFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Lower Indus Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="lowerIndusMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="lowerIndusMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Lower Indus Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="lowerIndusLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="lowerIndusHighFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhelum High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhelumHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="jhelumHighFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhelum Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhelumMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="jhelumMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhelum Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhelumLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="jhelumLowFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Chenab High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="chenabHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="chenabMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Chenab Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="chenabMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="chenabMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Chenab Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="chenabLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="chenabLowFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Ravi High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="raviHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="raviHighFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Ravi Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="raviMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="raviMediumFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Ravi Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="raviLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="raviLowFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sutlej High Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="sutlejHighFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="sutlejHighFlood" class="cursor-pointer"></label>
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineIndus')">
+                    <span>Indus River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineIndus" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Upper Indus High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="upperIndusHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="upperIndusHighFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Upper Indus Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="upperIndusFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="upperIndusFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Upper Indus Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="upperIndusLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="upperIndusLowFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Lower Indus High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="lowerIndusHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="lowerIndusHighFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Lower Indus Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="lowerIndusMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="lowerIndusMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Lower Indus Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="lowerIndusLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="lowerIndusHighFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sutlej Medium Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="sutlejMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="sutlejMediumFlood" class="cursor-pointer"></label>
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineJhelum')">
+                    <span>Jhelum River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineJhelum" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Jhelum High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="jhelumHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="jhelumHighFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Jhelum Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="jhelumMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="jhelumMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Jhelum Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="jhelumLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="jhelumLowFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
                   </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sutlej Low Flood</span>
-                  <div class="relative">
-                    <input type="checkbox" id="sutlejLowFlood" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="sutlejLowFlood" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                </div>
 
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineChenab')">
+                    <span>Chenab River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineChenab" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Chenab High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="chenabHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="chenabMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Chenab Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="chenabMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="chenabMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Chenab Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="chenabLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="chenabLowFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineRavi')">
+                    <span>Ravi River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineRavi" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Ravi High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="raviHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="raviHighFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Ravi Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="raviMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="raviMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Ravi Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="raviLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="raviLowFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineSutlej')">
+                    <span>Sutlej River</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineSutlej" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Sutlej High Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="sutlejHighFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="sutlejHighFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Sutlej Medium Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="sutlejMediumFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="sutlejMediumFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Sutlej Low Flood</span>
+                      <div class="relative">
+                        <input type="checkbox" id="sutlejLowFlood" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="sutlejLowFlood" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
+                    onclick="toggleSection('riverineOther')">
+                    <span>Other</span>
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="riverineOther" class="hidden p-2 space-y-1">
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Extremely High Flood Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="EHFE" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="EHFE" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Very High Flood Extent</span>
+                      <div class="relative">
+                        <input type="checkbox" id="VHFE" class="hidden" onchange="toggleHighlight(this)" />
+                        <label for="VHFE" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
