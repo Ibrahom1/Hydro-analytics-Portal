@@ -11,9 +11,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css?family=Oxygen|Raleway&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet"
-    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.css" type="text/css">
+  <!-- <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet"> -->
+  <!-- <link rel="stylesheet"
+    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.css" type="text/css"> -->
   <script
     src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.min.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
@@ -25,6 +25,7 @@
     .layer-active {
       position: relative;
       overflow: hidden;
+      z-index: 0;
     }
 
     .layer-active::before {
@@ -36,7 +37,13 @@
       bottom: 0;
       background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.1));
       border-radius: 6px;
-      z-index: -1;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .layer-active>* {
+      position: relative;
+      z-index: 1;
     }
 
     .layer-active::after {
@@ -831,112 +838,197 @@
                 </svg>
               </button>
               <div id="torrentialFlooding_2025" class="hidden p-2 space-y-1">
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Flood Events 15 Aug</span>
-                  <div class="relative">
-                    <input type="checkbox" id="FE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('FE').checked = this.checked; document.getElementById('FE').dispatchEvent(new Event('change'));" />
-                    <label for="FE_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DI Khan Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="DI_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('DI').checked = this.checked; document.getElementById('DI').dispatchEvent(new Event('change'));" />
-                    <label for="DI_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DI Khan Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="di_ht_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('di_ht').checked = this.checked; document.getElementById('di_ht').dispatchEvent(new Event('change'));" />
-                    <label for="di_ht_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DG Khan Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="DG_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('DG').checked = this.checked; document.getElementById('DG').dispatchEvent(new Event('change'));" />
-                    <label for="DG_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DG Khan Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="dg_ht_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('dg_ht').checked = this.checked; document.getElementById('dg_ht').dispatchEvent(new Event('change'));" />
-                    <label for="dg_ht_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Pir Panjal Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('panjal').checked = this.checked; document.getElementById('panjal').dispatchEvent(new Event('change'));" />
-                    <label for="panjal_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Pir Panjal Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="p_panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('p_panjal').checked = this.checked; document.getElementById('p_panjal').dispatchEvent(new Event('change'));" />
-                    <label for="p_panjal_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kirthar Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="Kirthar_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Kirthar').checked = this.checked; document.getElementById('Kirthar').dispatchEvent(new Event('change'));" />
-                    <label for="Kirthar_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kirthar Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="Kirthar_extent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Kirthar_extent').checked = this.checked; document.getElementById('Kirthar_extent').dispatchEvent(new Event('change'));" />
-                    <label for="Kirthar_extent_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhal Magsi Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhal').checked = this.checked; document.getElementById('jhal').dispatchEvent(new Event('change'));" />
-                    <label for="jhal_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhal Magsi Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhall_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhall').checked = this.checked; document.getElementById('jhall').dispatchEvent(new Event('change'));" />
-                    <label for="jhall_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingGeneral_2025')">
+                  <span>General / Other</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingGeneral_2025" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Flood Events 15 Aug</span>
+                    <div class="relative">
+                      <input type="checkbox" id="FE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('FE').checked = this.checked; document.getElementById('FE').dispatchEvent(new Event('change'));" />
+                      <label for="FE_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sindh Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="Sindh_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Sindh').checked = this.checked; document.getElementById('Sindh').dispatchEvent(new Event('change'));" />
-                    <label for="Sindh_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Muzaffarabad Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="muzflash_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzflash').checked = this.checked; document.getElementById('muzflash').dispatchEvent(new Event('change'));" />
-                    <label for="muzflash_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Muzaffarabad Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="muzExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzExtent').checked = this.checked; document.getElementById('muzExtent').dispatchEvent(new Event('change'));" />
-                    <label for="muzExtent_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jamshoro Flooding</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jamshoro_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jamshoro').checked = this.checked; document.getElementById('jamshoro').dispatchEvent(new Event('change'));" />
-                    <label for="jamshoro_2025" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingKp_2025')">
+                  <span>Khyber Pakhtunkhwa (KP)</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingKp_2025" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DI Khan Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="DI_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('DI').checked = this.checked; document.getElementById('DI').dispatchEvent(new Event('change'));" />
+                      <label for="DI_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DI Khan Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="di_ht_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('di_ht').checked = this.checked; document.getElementById('di_ht').dispatchEvent(new Event('change'));" />
+                      <label for="di_ht_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Bajaur 150mm</span>
+                    <div class="relative">
+                      <input type="checkbox" id="bajaur150_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('bajaur150').checked = this.checked; document.getElementById('bajaur150').dispatchEvent(new Event('change'));" />
+                      <label for="bajaur150_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Buner 150mm</span>
+                    <div class="relative">
+                      <input type="checkbox" id="buner150_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('buner150').checked = this.checked; document.getElementById('buner150').dispatchEvent(new Event('change'));" />
+                      <label for="buner150_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingPunjab_2025')">
+                  <span>Punjab</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingPunjab_2025" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DG Khan Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="DG_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('DG').checked = this.checked; document.getElementById('DG').dispatchEvent(new Event('change'));" />
+                      <label for="DG_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DG Khan Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="dg_ht_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('dg_ht').checked = this.checked; document.getElementById('dg_ht').dispatchEvent(new Event('change'));" />
+                      <label for="dg_ht_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Chakwal</span>
+                    <div class="relative">
+                      <input type="checkbox" id="chakwal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('chakwal').checked = this.checked; document.getElementById('chakwal').dispatchEvent(new Event('change'));" />
+                      <label for="chakwal_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingSindh_2025')">
+                  <span>Sindh</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingSindh_2025" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jamshoro Flooding</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jamshoro_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jamshoro').checked = this.checked; document.getElementById('jamshoro').dispatchEvent(new Event('change'));" />
+                      <label for="jamshoro_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Kirthar Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="Kirthar_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Kirthar').checked = this.checked; document.getElementById('Kirthar').dispatchEvent(new Event('change'));" />
+                      <label for="Kirthar_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Kirthar Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="Kirthar_extent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Kirthar_extent').checked = this.checked; document.getElementById('Kirthar_extent').dispatchEvent(new Event('change'));" />
+                      <label for="Kirthar_extent_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Sindh Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="Sindh_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('Sindh').checked = this.checked; document.getElementById('Sindh').dispatchEvent(new Event('change'));" />
+                      <label for="Sindh_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingBalochistan_2025')">
+                  <span>Balochistan</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingBalochistan_2025" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jhal Magsi Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jhal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhal').checked = this.checked; document.getElementById('jhal').dispatchEvent(new Event('change'));" />
+                      <label for="jhal_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jhal Magsi Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jhall_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('jhall').checked = this.checked; document.getElementById('jhall').dispatchEvent(new Event('change'));" />
+                      <label for="jhall_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingGbAjk_2025')">
+                  <span>GB &amp; AJK</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingGbAjk_2025" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Muzaffarabad Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="muzflash_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzflash').checked = this.checked; document.getElementById('muzflash').dispatchEvent(new Event('change'));" />
+                      <label for="muzflash_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Muzaffarabad Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="muzExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzExtent').checked = this.checked; document.getElementById('muzExtent').dispatchEvent(new Event('change'));" />
+                      <label for="muzExtent_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('panjal').checked = this.checked; document.getElementById('panjal').dispatchEvent(new Event('change'));" />
+                      <label for="panjal_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="p_panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('p_panjal').checked = this.checked; document.getElementById('p_panjal').dispatchEvent(new Event('change'));" />
+                      <label for="p_panjal_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -1581,112 +1673,197 @@
                 </svg>
               </button>
               <div id="torrentialFlooding" class="hidden p-2 space-y-1">
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Flood Events 15 Aug</span>
-                  <div class="relative">
-                    <input type="checkbox" id="FE" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="FE" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DI Khan Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="DI" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="DI" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DI Khan Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="di_ht" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="di_ht" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DG Khan Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="DG" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="DG" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">DG Khan Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="dg_ht" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="dg_ht" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Pir Panjal Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="panjal" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="panjal" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Pir Panjal Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="p_panjal" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="p_panjal" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kirthar Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="Kirthar" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="Kirthar" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Kirthar Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="Kirthar_extent" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="Kirthar_extent" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhal Magsi Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhal" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="jhal" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jhal Magsi Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jhall" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="jhall" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingGeneral')">
+                  <span>General / Other</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingGeneral" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Flood Events 15 Aug</span>
+                    <div class="relative">
+                      <input type="checkbox" id="FE" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="FE" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
 
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Sindh Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="Sindh" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="Sindh" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Muzaffarabad Tiff</span>
-                  <div class="relative">
-                    <input type="checkbox" id="muzflash" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="muzflash" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Muzaffarabad Extent</span>
-                  <div class="relative">
-                    <input type="checkbox" id="muzExtent" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="muzExtent" class="cursor-pointer"></label>
-                  </div>
-                </label>
-                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Jamshoro Flooding</span>
-                  <div class="relative">
-                    <input type="checkbox" id="jamshoro" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="jamshoro" class="cursor-pointer"></label>
-                  </div>
-                </label>
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingKp')">
+                  <span>Khyber Pakhtunkhwa (KP)</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingKp" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DI Khan Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="DI" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="DI" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DI Khan Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="di_ht" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="di_ht" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Bajaur 150mm</span>
+                    <div class="relative">
+                      <input type="checkbox" id="bajaur150" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="bajaur150" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Buner 150mm</span>
+                    <div class="relative">
+                      <input type="checkbox" id="buner150" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="buner150" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingPunjab')">
+                  <span>Punjab</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingPunjab" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DG Khan Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="DG" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="DG" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">DG Khan Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="dg_ht" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="dg_ht" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Chakwal</span>
+                    <div class="relative">
+                      <input type="checkbox" id="chakwal" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="chakwal" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingSindh')">
+                  <span>Sindh</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingSindh" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jamshoro Flooding</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jamshoro" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="jamshoro" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Kirthar Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="Kirthar" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="Kirthar" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Kirthar Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="Kirthar_extent" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="Kirthar_extent" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Sindh Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="Sindh" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="Sindh" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingBalochistan')">
+                  <span>Balochistan</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingBalochistan" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jhal Magsi Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jhal" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="jhal" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jhal Magsi Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jhall" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="jhall" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
+
+                <button
+                  class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
+                  onclick="toggleSection('torrentialFloodingGbAjk')">
+                  <span>GB &amp; AJK</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div id="torrentialFloodingGbAjk" class="hidden p-2 space-y-1">
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Muzaffarabad Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="muzflash" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="muzflash" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Muzaffarabad Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="muzExtent" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="muzExtent" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="panjal" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="panjal" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="p_panjal" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="p_panjal" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -1775,14 +1952,6 @@
                   </div>
                 </label>
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">Faislabad</span>
-                  <div class="relative">
-                    <input type="checkbox" id="fais" class="hidden" onchange="toggleHighlight(this)" />
-                    <label for="fais" class="cursor-pointer"></label>
-                  </div>
-                </label>
-
-                                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Faislabad</span>
                   <div class="relative">
                     <input type="checkbox" id="fais" class="hidden" onchange="toggleHighlight(this)" />
@@ -2329,11 +2498,6 @@
 
   <!-- JavaScript -->
   <script>
-
-    /// document.addEventListener('DOMContentLoaded', function () {
-    /// createImageContainer();
-    /// });
-
     function toggleSection(id) {
       const section = document.getElementById(id);
       const button = section.previousElementSibling;
@@ -2353,7 +2517,6 @@
       arrow.classList.toggle('rotate-180');
     }
 
-    // Optimized toggleHighlight function with modern styling
     function toggleHighlight(checkbox) {
       const container = checkbox.closest('label');
 
@@ -2413,7 +2576,6 @@
         }
       }
 
-      // Show/hide AHP legend
       // Show/hide AHP legend
       if (checkbox.id === 'ahp_kp') {
         const legendImg = document.getElementById('legend-image');
@@ -2548,16 +2710,15 @@
   </script>
   <!-- <script src="script/mosques.js"></script>
   <script src="script/towers.js"></script> -->
-  <script src="ft_and_percentage.js"></script>
-  <script src="script/telemetries.js"></script>
-  <script src="script/breach.js"></script>
-  <script src="script/sindh_points.js"></script>
+  <script src="script/ft_and_percentage.js"></script>
+  <script src="script/geojson/layer_telemetries.js"></script>
+  <!-- <script src="script/breach.js"></script> -->
+  <script src="script/geojson/layer_urbanfloodsindh.js"></script>
   <script src="script/indian.js"></script>
-  <script src="script/glofas.js"></script>
-  <script src="script/punjab.js"></script>
-  <script src="script/events.js"></script>
-  <script src="script/script.js"></script>
-  <script src="script/map1.js"></script>
+  <script src="script/geojson/layer_glofas.js"></script>
+  <script src="script/geojson/layer_floodpunjab.js"></script>
+  <script src="script/geojson/layer_floodevent.js"></script>
+  <script src="script/layers.js"></script>
   <script src="script/map2.js"></script>
 
 
