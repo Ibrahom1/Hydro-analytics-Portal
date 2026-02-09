@@ -828,11 +828,9 @@ function toggleHighlight(checkbox) {
   }
 
   if (checkbox.id === 'ffd') {
-    if (typeof createFfdLegend === 'function') {
-      createFfdLegend();
-    }
-    if (typeof ffdLegend === 'function') {
-      ffdLegend();
+    const legend = document.getElementById('ffdLegend');
+    if (legend) {
+      legend.remove();
     }
   }
 
@@ -4149,6 +4147,388 @@ function addHydrometLayersToMap(map) {
         }
       });
 
+      const ffdHistoryConfig = {
+        apiBase: 'http://localhost:5000',
+        defaultDays: 7,
+        minDate: '2025-06-15'
+      };
+
+      let ffdHistoryChart = null;
+      let ffdHistoryFullscreenChart = null;
+      let ffdHistoryName = null;
+      let ffdHistoryLastSeries = null;
+
+      const getTodayStr = () => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const setFFDHistoryStatus = (text) => {
+        const statusEl = document.getElementById('ffd-history-status');
+        if (statusEl) {
+          statusEl.textContent = text;
+        }
+      };
+
+      const renderFFDHistoryChart = (canvasId, labels, inflowData, outflowData, isFullscreen = false) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !window.Chart) {
+          return;
+        }
+
+        if (isFullscreen) {
+          if (ffdHistoryFullscreenChart) {
+            ffdHistoryFullscreenChart.destroy();
+          }
+        } else {
+          if (ffdHistoryChart) {
+            ffdHistoryChart.destroy();
+          }
+        }
+
+        const chartInstance = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Inflow',
+                data: inflowData,
+                borderColor: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                fill: false,
+                tension: 0.35,
+                spanGaps: true,
+                pointRadius: isFullscreen ? 3 : 2
+              },
+              {
+                label: 'Outflow',
+                data: outflowData,
+                borderColor: '#34d399',
+                backgroundColor: 'rgba(52, 211, 153, 0.2)',
+                fill: true,
+                tension: 0.35,
+                spanGaps: true,
+                pointRadius: isFullscreen ? 3 : 2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: {
+                labels: { color: '#e2e8f0' }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    if (context.parsed.y === null) return null;
+                    return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString()} cusecs`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#cbd5f5', maxTicksLimit: isFullscreen ? 12 : 6 },
+                grid: { color: 'rgba(148, 163, 184, 0.15)' }
+              },
+              y: {
+                ticks: { color: '#cbd5f5' },
+                grid: { color: 'rgba(148, 163, 184, 0.15)' }
+              }
+            }
+          }
+        });
+
+        if (isFullscreen) {
+          ffdHistoryFullscreenChart = chartInstance;
+        } else {
+          ffdHistoryChart = chartInstance;
+        }
+      };
+
+      const loadFFDHistoryData = async () => {
+        if (!ffdHistoryName) return;
+
+        const startInput = document.getElementById('ffd-history-start');
+        const endInput = document.getElementById('ffd-history-end');
+        const startVal = startInput ? startInput.value : '';
+        const endVal = endInput ? endInput.value : '';
+
+        let url = `${ffdHistoryConfig.apiBase}/api/history?name=${encodeURIComponent(ffdHistoryName)}`;
+        if (startVal && endVal) {
+          url += `&start_date=${encodeURIComponent(startVal)}&end_date=${encodeURIComponent(endVal)}`;
+          setFFDHistoryStatus(`Showing: ${startVal} to ${endVal}`);
+        } else {
+          url += `&days=${ffdHistoryConfig.defaultDays}`;
+          setFFDHistoryStatus(`Showing: Last ${ffdHistoryConfig.defaultDays} days`);
+        }
+
+        try {
+          setFFDHistoryStatus('Loading history...');
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error('history status');
+          }
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error('history payload');
+          }
+
+          const inflow = Array.isArray(data.inflow) ? data.inflow : [];
+          const outflow = Array.isArray(data.outflow) ? data.outflow : [];
+          if (inflow.length === 0 && outflow.length === 0) {
+            setFFDHistoryStatus('No data for selected range');
+            renderFFDHistoryChart('ffd-history-canvas', [], [], []);
+            ffdHistoryLastSeries = null;
+            return;
+          }
+
+          const labels = [];
+          const indexMap = new Map();
+          const addLabel = (label) => {
+            const safeLabel = label ? String(label) : 'Unknown';
+            if (!indexMap.has(safeLabel)) {
+              indexMap.set(safeLabel, labels.length);
+              labels.push(safeLabel);
+            }
+          };
+
+          inflow.forEach(point => addLabel(point.x));
+          outflow.forEach(point => addLabel(point.x));
+
+          const inflowData = new Array(labels.length).fill(null);
+          const outflowData = new Array(labels.length).fill(null);
+
+          inflow.forEach(point => {
+            const idx = indexMap.get(point.x ? String(point.x) : 'Unknown');
+            if (idx !== undefined) inflowData[idx] = point.y;
+          });
+          outflow.forEach(point => {
+            const idx = indexMap.get(point.x ? String(point.x) : 'Unknown');
+            if (idx !== undefined) outflowData[idx] = point.y;
+          });
+
+          renderFFDHistoryChart('ffd-history-canvas', labels, inflowData, outflowData);
+          ffdHistoryLastSeries = { labels, inflowData, outflowData };
+          if (startVal && endVal) {
+            setFFDHistoryStatus(`Showing: ${startVal} to ${endVal}`);
+          } else {
+            setFFDHistoryStatus(`Showing: Last ${ffdHistoryConfig.defaultDays} days`);
+          }
+        } catch (error) {
+          console.warn('FFD history fetch failed:', error);
+          setFFDHistoryStatus('History service unavailable');
+          renderFFDHistoryChart('ffd-history-canvas', [], [], []);
+          ffdHistoryLastSeries = null;
+        }
+      };
+
+      const ensureFFDHistoryPanelInitialized = () => {
+        if (window.__ffdHistoryPanelReady) return;
+        window.__ffdHistoryPanelReady = true;
+
+        const panel = document.getElementById('ffd-history-panel');
+        const header = document.querySelector('.ffd-history-header');
+        if (!panel) return;
+
+        const closeBtn = document.getElementById('ffd-history-close');
+        const fullscreenBtn = document.getElementById('ffd-history-fullscreen-btn');
+        const fullscreenPanel = document.getElementById('ffd-history-fullscreen-panel');
+        const fullscreenClose = document.getElementById('ffd-history-fullscreen-close');
+        const applyBtn = document.getElementById('ffd-history-apply');
+        const resetBtn = document.getElementById('ffd-history-reset');
+        const startInput = document.getElementById('ffd-history-start');
+        const endInput = document.getElementById('ffd-history-end');
+
+        const today = getTodayStr();
+        if (startInput) {
+          startInput.min = ffdHistoryConfig.minDate;
+          startInput.max = today;
+        }
+        if (endInput) {
+          endInput.min = ffdHistoryConfig.minDate;
+          endInput.max = today;
+        }
+
+        const syncBounds = () => {
+          if (!startInput || !endInput) return;
+          endInput.min = startInput.value || ffdHistoryConfig.minDate;
+          startInput.max = endInput.value || today;
+        };
+
+        if (startInput && endInput) {
+          startInput.addEventListener('change', syncBounds);
+          endInput.addEventListener('change', syncBounds);
+          syncBounds();
+        }
+
+        const stopMapEvents = (event) => {
+          event.stopPropagation();
+        };
+
+        const bindStopEvents = (el) => {
+          if (!el) return;
+          ['pointerdown', 'mousedown', 'touchstart', 'click'].forEach((evt) => {
+            el.addEventListener(evt, stopMapEvents);
+          });
+        };
+
+        bindStopEvents(startInput);
+        bindStopEvents(endInput);
+        bindStopEvents(applyBtn);
+        bindStopEvents(resetBtn);
+
+        const closeFullscreen = () => {
+          if (!fullscreenPanel) return;
+          fullscreenPanel.classList.remove('open');
+          if (ffdHistoryFullscreenChart) {
+            ffdHistoryFullscreenChart.destroy();
+            ffdHistoryFullscreenChart = null;
+          }
+        };
+
+        if (closeBtn) {
+          closeBtn.addEventListener('click', () => {
+            panel.classList.remove('open');
+            closeFullscreen();
+          });
+        }
+
+        if (fullscreenBtn && fullscreenPanel) {
+          fullscreenBtn.addEventListener('click', () => {
+            if (!ffdHistoryLastSeries) {
+              setFFDHistoryStatus('Load history before fullscreen');
+              return;
+            }
+            const fullscreenTitle = document.querySelector('.ffd-history-fullscreen-title');
+            if (fullscreenTitle) {
+              fullscreenTitle.textContent = `${ffdHistoryName || 'FFD'} - Fullscreen History`;
+            }
+            fullscreenPanel.classList.add('open');
+            renderFFDHistoryChart(
+              'ffd-history-canvas-full',
+              ffdHistoryLastSeries.labels,
+              ffdHistoryLastSeries.inflowData,
+              ffdHistoryLastSeries.outflowData,
+              true
+            );
+          });
+        }
+
+        if (fullscreenClose) {
+          fullscreenClose.addEventListener('click', closeFullscreen);
+        }
+
+        if (applyBtn) {
+          applyBtn.addEventListener('click', async () => {
+            if (!startInput || !endInput) return;
+            if (!startInput.value || !endInput.value) {
+              setFFDHistoryStatus('Select both start and end dates');
+              return;
+            }
+            if (new Date(startInput.value) > new Date(endInput.value)) {
+              setFFDHistoryStatus('Start date must be before end date');
+              return;
+            }
+            if (new Date(startInput.value) < new Date(ffdHistoryConfig.minDate)) {
+              startInput.value = ffdHistoryConfig.minDate;
+              syncBounds();
+            }
+            if (new Date(endInput.value) > new Date(today)) {
+              endInput.value = today;
+              syncBounds();
+            }
+            await loadFFDHistoryData();
+          });
+        }
+
+        if (resetBtn) {
+          resetBtn.addEventListener('click', async () => {
+            if (startInput) startInput.value = '';
+            if (endInput) endInput.value = '';
+            await loadFFDHistoryData();
+          });
+        }
+
+        if (header) {
+          let isDragging = false;
+          let startX = 0;
+          let startY = 0;
+          let startLeft = 0;
+          let startTop = 0;
+
+          const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+          const onPointerMove = (event) => {
+            if (!isDragging) return;
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            const rect = panel.getBoundingClientRect();
+            const newLeft = startLeft + dx;
+            const newTop = startTop + dy;
+
+            const maxLeft = window.innerWidth - rect.width - 8;
+            const maxTop = window.innerHeight - rect.height - 8;
+
+            panel.style.left = `${clamp(newLeft, 8, maxLeft)}px`;
+            panel.style.top = `${clamp(newTop, 8, maxTop)}px`;
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+          };
+
+          const onPointerUp = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.classList.remove('dragging');
+            panel.dataset.dragged = 'true';
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+          };
+
+          header.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) return;
+            if (event.target && event.target.closest('button')) return;
+            const rect = panel.getBoundingClientRect();
+            isDragging = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            panel.classList.add('dragging');
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointercancel', onPointerUp);
+          });
+        }
+      };
+
+      const openFFDHistoryPanel = async (name) => {
+        ensureFFDHistoryPanelInitialized();
+
+        const panel = document.getElementById('ffd-history-panel');
+        const titleEl = document.getElementById('ffd-history-name');
+        if (!panel || !titleEl) return;
+
+        ffdHistoryName = name || 'Unknown Station';
+        titleEl.textContent = `${ffdHistoryName} - History`;
+        if (!panel.dataset.dragged) {
+          panel.style.right = '16px';
+          panel.style.bottom = '16px';
+          panel.style.left = 'auto';
+          panel.style.top = 'auto';
+        }
+        panel.classList.add('open');
+        await loadFFDHistoryData();
+      };
+
       // Add popup on click (keeping your existing popup code)
       // Enhanced FFD popup click handler with professional styling and N/A units fix
       map1.on('click', 'ffd_point', (e) => {
@@ -4591,6 +4971,10 @@ function addHydrometLayersToMap(map) {
         if (damData.hasOwnProperty(props.name)) {
           const dam = damData[props.name];
           showDamFluidMeter(props.name, dam.percentage, dam.level);
+        }
+
+        if (props.name) {
+          openFFDHistoryPanel(props.name);
         }
       });
 

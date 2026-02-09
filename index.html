@@ -2420,6 +2420,50 @@
                 <div class="reservoir-level-value" id="reservoirValue">0 ft</div>
               </div>
             </div>
+            <!-- FFD History Side Panel -->
+            <div id="ffd-history-panel" class="ffd-history-panel" aria-live="polite">
+              <div class="ffd-history-header">
+                <div class="ffd-history-title">
+                  <i class="fas fa-chart-line"></i>
+                  <span id="ffd-history-name">FFD History</span>
+                </div>
+                <div class="ffd-history-header-actions">
+                  <button id="ffd-history-fullscreen-btn" class="ffd-history-fullscreen-btn" title="Fullscreen">
+                    <i class="fas fa-expand"></i>
+                  </button>
+                  <button id="ffd-history-close" class="ffd-history-close" title="Close">
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div class="ffd-history-controls">
+                <label class="ffd-history-label">Date Range</label>
+                <div class="ffd-history-inputs">
+                  <input type="date" id="ffd-history-start" />
+                  <span class="ffd-history-sep">to</span>
+                  <input type="date" id="ffd-history-end" />
+                </div>
+                <div class="ffd-history-actions">
+                  <button id="ffd-history-apply" class="ffd-history-btn">Apply</button>
+                  <button id="ffd-history-reset" class="ffd-history-btn ghost">Reset</button>
+                </div>
+                <div id="ffd-history-status" class="ffd-history-status">Showing: Last 7 days</div>
+              </div>
+              <div class="ffd-history-chart">
+                <canvas id="ffd-history-canvas"></canvas>
+              </div>
+            </div>
+            <div id="ffd-history-fullscreen-panel" class="ffd-history-fullscreen">
+              <div class="ffd-history-fullscreen-header">
+                <div class="ffd-history-fullscreen-title">FFD History - Fullscreen</div>
+                <button id="ffd-history-fullscreen-close" class="ffd-history-close" title="Close">
+                  ×
+                </button>
+              </div>
+              <div class="ffd-history-fullscreen-body">
+                <canvas id="ffd-history-canvas-full"></canvas>
+              </div>
+            </div>
             <!-- IFRAME (initially hidden, styled like map1) -->
             <iframe id="dashboardFrame" class="w-full h-full hidden" style="position: relative; border: 0;"
               src="https://lookerstudio.google.com/embed/reporting/77819a68-5bd9-40bd-89b8-34d3ed6d410d/page/p_4ic6qd1wtd"
