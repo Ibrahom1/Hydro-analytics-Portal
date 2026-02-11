@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hydromet Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
   <!-- Fonts -->
@@ -16,7 +16,7 @@
     href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.css" type="text/css"> -->
   <script
     src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.1/mapbox-gl-geocoder.min.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="style/style.css" />
 
@@ -114,41 +114,81 @@
     </div>
   </nav>
 
-  <div class="flex min-h-[calc(100vh-4rem)]">
+  <div class="app-shell min-h-[calc(100vh-4rem)]">
+    <button class="sidebar-toggle sidebar-toggle-floating" id="sidebar-toggle" type="button"
+      aria-label="Toggle sidebar" aria-expanded="true">
+      <span class="sidebar-toggle-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M4 6h16" />
+          <path d="M4 12h16" />
+          <path d="M4 18h16" />
+        </svg>
+      </span>
+    </button>
     <!-- Sidebar -->
     <div
-      class="w-64 bg-gradient-to-b from-gray-900 to-gray-700 shadow-lg p-4 border-r border-white text-white overflow-y-auto custom-scroll max-h-[calc(100vh-4rem)] sidebar">
+      class="glass-sidebar sidebar custom-scroll" id="app-sidebar">
+
+      <div class="sidebar-header">
+        <button class="sidebar-toggle sidebar-toggle-close" id="sidebar-close" type="button"
+          aria-label="Close sidebar" aria-expanded="true">
+          <span class="sidebar-toggle-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </span>
+        </button>
+        <div class="sidebar-search" role="search">
+          <span class="sidebar-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+          </span>
+          <input class="sidebar-search-input" type="search" placeholder="Search layers" aria-label="Search layers" />
+        </div>
+      </div>
 
       <!-- Dropdown Sections -->
-      <div class="space-y-4">
+      <div class="sidebar-body">
+        <div class="sidebar-sections space-y-4">
         <!-- Boundaries Section -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
-            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('option1')">
+            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+            onclick="toggleSection('option1')" title="GIS Layers">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-map"></i>
-              <span>GIS Layers</span>
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/gislayers.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">GIS Layers</span>
             </div>
-            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="option1" class="hidden p-3 space-y-2">
+          <div id="option1" class="hidden p-3 space-y-2 section-panel">
             <!-- Boundaries Subsection -->
             <div class="rounded-md overflow-hidden border border-gray-400">
               <button
-                class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('boundaries')">
+                class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('boundaries')" title="Boundaries">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-border-all"></i>
-                  <span>Boundaries</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                      <path d="M4 12h16M12 4v16" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Boundaries</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="boundaries" class="hidden p-2 space-y-1">
+              <div id="boundaries" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">National Boundary</span>
                   <div class="relative">
@@ -192,17 +232,23 @@
             <!-- Rivers and Structures Subsection -->
             <div class="rounded-md overflow-hidden border border-blue-400">
               <button
-                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('riversStructures')">
+                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('riversStructures')" title="Rivers & Structures">
                 <div class="flex items-center gap-1.5">
-                  <i class="fa-solid fa-building"></i>
-                  <span>Rivers & Structures</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 17V9h14v8" />
+                      <path d="M8 9V6M16 9V6" />
+                      <path d="M3 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Rivers & Structures</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="riversStructures" class="hidden p-2 space-y-1">
+              <div id="riversStructures" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Pakistan Rivers</span>
                   <div class="relative">
@@ -303,17 +349,23 @@
 
             <div class="rounded-md overflow-hidden border border-green-400">
               <button
-                class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('canalNetworkPunjab')">
+                class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('canalNetworkPunjab')" title="Canal network">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-water"></i>
-                  <span>Canal network</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
+                      <circle cx="7" cy="10" r="1.4" />
+                      <circle cx="17" cy="10" r="1.4" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Canal network</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="canalNetworkPunjab" class="hidden p-2 space-y-1">
+              <div id="canalNetworkPunjab" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Main Canal</span>
                   <div class="relative">
@@ -350,17 +402,19 @@
         <!-- NEW DAMS SECTION -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
-            class="w-full px-4 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('option6')">
+            class="w-full px-4 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+            onclick="toggleSection('option6')" title="Dams">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-water"></i>
-              <span>Dams</span>
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/dam.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Dams</span>
             </div>
-            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="option6" class="hidden p-3 space-y-2">
+          <div id="option6" class="hidden p-3 space-y-2 section-panel">
             <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
               <span class="text-sm">Future Dams</span>
               <div class="relative">
@@ -395,17 +449,19 @@
         <!-- Hydro-met Data Section -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
-            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('option2')">
+            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+            onclick="toggleSection('option2')" title="Hydro-met Data">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-cloud-showers-heavy"></i>
-              <span>Hydro-met Data</span>
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/hydromet.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Hydro-met Data</span>
             </div>
-            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="option2" class="hidden p-3 space-y-2">
+          <div id="option2" class="hidden p-3 space-y-2 section-panel">
 
 
             <!-- <div class="rounded-md overflow-hidden border border-gray-400 bg-gray-800">
@@ -487,17 +543,24 @@
             <!-- Global Met Subsection -->
             <div class="rounded-md overflow-hidden border border-purple-400">
               <button
-                class="w-full px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('globalMet')">
+                class="w-full px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('globalMet')" title="Forecast">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-globe"></i>
-                  <span>Forecast</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="8" />
+                      <path d="M4 12h16" />
+                      <path d="M12 4a12 12 0 0 0 0 16" />
+                      <path d="M12 4a12 12 0 0 1 0 16" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Forecast</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="globalMet" class="hidden p-2 space-y-1">
+              <div id="globalMet" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-xs">FFD Telemetries</span>
                   <div class="relative">
@@ -609,32 +672,39 @@
         <!-- Hydro Outlook 2025 Button (Duplicate of 2026) -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
-            class="w-full px-3 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('option7_2025')">
+            class="w-full px-3 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+            onclick="toggleSection('option7_2025')" title="Hydro Outlook 2025">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-droplet"></i>
-              <span>Hydro Outlook 2025</span>
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/hydrooutlook.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Hydro Outlook 2025</span>
             </div>
-            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="option7_2025" class="hidden p-3 space-y-3">
+          <div id="option7_2025" class="hidden p-3 space-y-3 section-panel">
 
             <!-- Riverine Flooding Section 2025 -->
             <div class="rounded-md overflow-hidden border border-green-400">
               <button
-                class="w-full px-2 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('riverineFlooding_2025')">
+                class="w-full px-2 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('riverineFlooding_2025')" title="Riverine Flooding">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-water"></i>
-                  <span>Riverine Flooding</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 4s3 4 3 6a3 3 0 1 1-6 0c0-2 3-6 3-6z" />
+                      <path d="M3 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Riverine Flooding</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="riverineFlooding_2025" class="hidden p-2 space-y-3">
+              <div id="riverineFlooding_2025" class="hidden p-2 space-y-3 section-panel">
                 <div>
                   <button
                     class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
@@ -926,17 +996,22 @@
             <!-- Torrential Flooding Section 2025 -->
             <div class="rounded-md overflow-hidden border border-red-400">
               <button
-                class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('torrentialFlooding_2025')">
+                class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('torrentialFlooding_2025')" title="Hill Torrents">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-cloud-rain"></i>
-                  <span>Hill Torrents</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 15a4 4 0 0 1 1-7 5 5 0 0 1 9 2h1a3 3 0 0 1 0 6H7z" />
+                      <path d="M9 18l-1 2M12 18l-1 2M15 18l-1 2" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Hill Torrents</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="torrentialFlooding_2025" class="hidden p-2 space-y-1">
+              <div id="torrentialFlooding_2025" class="hidden p-2 space-y-1 section-panel">
                 <button
                   class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
                   onclick="toggleSection('torrentialFloodingGeneral_2025')">
@@ -1134,17 +1209,23 @@
             <!-- Urban Flooding Section 2025 -->
             <div class="rounded-md overflow-hidden border border-purple-400">
               <button
-                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('urbanFloodingSection_2025')">
+                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('urbanFloodingSection_2025')" title="Urban Flooding">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-city"></i>
-                  <span>Urban Flooding</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 20V9l6-3v14" />
+                      <path d="M10 20V4l7 3v13" />
+                      <path d="M14 20v-4h3v4" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Urban Flooding</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="urbanFloodingSection_2025" class="hidden p-2 space-y-1">
+              <div id="urbanFloodingSection_2025" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Hyderabad Extent</span>
                   <div class="relative">
@@ -1230,31 +1311,39 @@
         <!-- Flood Archiving Section -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
-            class="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('option5')">
+            class="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+            onclick="toggleSection('option5')" title="Flood Archiving">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-archive"></i>
-              <span>Flood Archiving</span>
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/floodarchiving.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Flood Archiving</span>
             </div>
-            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="option5" class="hidden p-3 space-y-2">
+          <div id="option5" class="hidden p-3 space-y-2 section-panel">
             <!-- Flood Extents Subsection -->
             <div class="rounded-md overflow-hidden border border-gray-400">
               <button
-                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('historicalFloodExtent')">
+                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('historicalFloodExtent')" title="Historic Extents">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-clock-rotate-left"></i>
-                  <span>Historic Extents</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="7" />
+                      <path d="M12 8v5l3 2" />
+                      <path d="M6 6l-2 2" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Historic Extents</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="historicalFloodExtent" class="hidden p-2 space-y-1">
+              <div id="historicalFloodExtent" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Flood Hotspots</span>
                   <div class="relative">
@@ -1333,17 +1422,21 @@
             <!-- 2025 Flood Extent Subsection -->
             <div class="rounded-md overflow-hidden border border-teal-400">
               <button
-                class="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('flood2025Extent')">
+                class="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('flood2025Extent')" title="2025 Extents">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-droplet"></i>
-                  <span>2025 Extents</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 3s5 6 5 9a5 5 0 1 1-10 0c0-3 5-9 5-9z" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">2025 Extents</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="flood2025Extent" class="hidden p-2 space-y-1">
+              <div id="flood2025Extent" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Buner Flood </span>
                   <div class="relative">
@@ -1443,17 +1536,22 @@
             <!-- Potential Sites Subsection -->
             <div class="rounded-md overflow-hidden border border-orange-400">
               <button
-                class="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('potentialSites')">
+                class="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('potentialSites')" title="Potential Sites">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-map-pin"></i>
-                  <span>Potential Sites</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 21s6-6 6-11a6 6 0 1 0-12 0c0 5 6 11 6 11z" />
+                      <circle cx="12" cy="10" r="2" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Potential Sites</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="potentialSites" class="hidden p-2 space-y-1">
+              <div id="potentialSites" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Pond Sites</span>
                   <div class="relative">
@@ -1543,32 +1641,39 @@
         <!-- Flood Archiving Section -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
-            class="w-full px-3 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('option7')">
+            class="w-full px-3 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+            onclick="toggleSection('option7')" title="Hydro Outlook 2026">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-droplet"></i>
-              <span>Hydro Outlook 2026</span>
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/hydrooutlook.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Hydro Outlook 2026</span>
             </div>
-            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="option7" class="hidden p-3 space-y-3">
+          <div id="option7" class="hidden p-3 space-y-3 section-panel">
 
             <!-- Riverine Flooding Section -->
             <div class="rounded-md overflow-hidden border border-green-400">
               <button
-                class="w-full px-2 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('riverineFlooding')">
+                class="w-full px-2 py-2 bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('riverineFlooding')" title="Riverine Flooding">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-water"></i>
-                  <span>Riverine Flooding</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 4s3 4 3 6a3 3 0 1 1-6 0c0-2 3-6 3-6z" />
+                      <path d="M3 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Riverine Flooding</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="riverineFlooding" class="hidden p-2 space-y-3">
+              <div id="riverineFlooding" class="hidden p-2 space-y-3 section-panel">
                 <div>
                   <button
                     class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold flex items-center justify-between rounded-md transition-colors"
@@ -1860,17 +1965,22 @@
             <!-- Torrential Flooding Section -->
             <div class="rounded-md overflow-hidden border border-red-400">
               <button
-                class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('torrentialFlooding')">
+                class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('torrentialFlooding')" title="Hill Torrents">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-cloud-rain"></i>
-                  <span>Hill Torrents</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 15a4 4 0 0 1 1-7 5 5 0 0 1 9 2h1a3 3 0 0 1 0 6H7z" />
+                      <path d="M9 18l-1 2M12 18l-1 2M15 18l-1 2" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Hill Torrents</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="torrentialFlooding" class="hidden p-2 space-y-1">
+              <div id="torrentialFlooding" class="hidden p-2 space-y-1 section-panel">
                 <button
                   class="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium flex items-center justify-between rounded-md transition-colors"
                   onclick="toggleSection('torrentialFloodingGeneral')">
@@ -2068,17 +2178,23 @@
             <!-- Urban Flooding Section -->
             <div class="rounded-md overflow-hidden border border-purple-400">
               <button
-                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-                onclick="toggleSection('urbanFloodingSection')">
+                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('urbanFloodingSection')" title="Urban Flooding">
                 <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-city"></i>
-                  <span>Urban Flooding</span>
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 20V9l6-3v14" />
+                      <path d="M10 20V4l7 3v13" />
+                      <path d="M14 20v-4h3v4" />
+                    </svg>
+                  </span>
+                  <span class="sidebar-label">Urban Flooding</span>
                 </div>
-                <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="urbanFloodingSection" class="hidden p-2 space-y-1">
+              <div id="urbanFloodingSection" class="hidden p-2 space-y-1 section-panel">
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                   <span class="text-sm">Hyderabad Extent</span>
                   <div class="relative">
@@ -2251,17 +2367,19 @@
         <div class="max-w-4xl mx-auto">
           <div class="rounded-md overflow-hidden border border-white">
             <button
-              class="w-full px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-              onclick="toggleSection('option8')">
+              class="w-full px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-section-btn glass-tile"
+              onclick="toggleSection('option8')" title="Advisories">
               <div class="flex items-center gap-2">
-                <i class="fa-solid fa-exclamation-triangle"></i>
-                <span>Advisories</span>
+                <span class="sidebar-icon" aria-hidden="true">
+                  <img src="media/UI/sidebaricons/advisories.gif" alt="" class="sidebar-icon-img" />
+                </span>
+                <span class="sidebar-label">Advisories</span>
               </div>
-              <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <div id="option8" class="hidden p-4 space-y-3">
+            <div id="option8" class="hidden p-4 space-y-3 section-panel">
 
               <!-- Punjab Button -->
               <button
@@ -2346,17 +2464,19 @@
         <!-- Miscellaneous Section -->
         <div class="rounded-md overflow-hidden border border-gray-400">
           <button
-            class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium flex items-center justify-between rounded-md transition-colors"
-            onclick="toggleSection('miscellaneous')">
+            class="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+            onclick="toggleSection('miscellaneous')" title="Miscellaneous">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-ellipsis"></i>
-              <span>Miscellaneous</span>
+              <span class="sidebar-icon sm" aria-hidden="true">
+                <img src="media/UI/sidebaricons/miscellenous.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Miscellaneous</span>
             </div>
-            <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div id="miscellaneous" class="hidden p-2 space-y-1">
+          <div id="miscellaneous" class="hidden p-2 space-y-1 section-panel">
             <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded cursor-pointer"
               onclick="toggleSliderCheckbox()">
               <span class="text-sm">Slider: Monsoon 2025</span>
@@ -2390,12 +2510,13 @@
             </label>
           </div>
         </div>
+        </div>
       </div>
 
     </div>
 
     <!-- Map Containers -->
-    <div class="flex-1 p-4">
+    <div class="map-shell p-4">
       <div class="w-full h-[calc(100vh-6rem)]">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden relative w-full h-full">
           <!-- Minimal Header for Map 1 -->

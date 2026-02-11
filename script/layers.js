@@ -187,6 +187,136 @@ document.addEventListener('DOMContentLoaded', function () {
 // Ensure the sidebar checkbox rows visually highlight when toggled.
 document.addEventListener('DOMContentLoaded', initLayerToggleRowHighlighting);
 
+// Sidebar layer search (filters checkbox rows by text).
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.getElementById('app-sidebar');
+  const searchInput = sidebar?.querySelector('.sidebar-search-input');
+  if (!sidebar || !searchInput) return;
+
+  const labels = Array.from(sidebar.querySelectorAll('label')).filter(label =>
+    label.querySelector('input[type="checkbox"]')
+  );
+  const panels = Array.from(sidebar.querySelectorAll('.section-panel'));
+
+  let searchActive = false;
+
+  const normalize = (value) => String(value || '').toLowerCase().trim();
+
+  const storePanelState = () => {
+    panels.forEach(panel => {
+      panel.dataset.searchHidden = panel.classList.contains('hidden') ? '1' : '0';
+    });
+  };
+
+  const restorePanelState = () => {
+    panels.forEach(panel => {
+      if (!panel.dataset.searchHidden) return;
+      if (panel.dataset.searchHidden === '1') {
+        panel.classList.add('hidden');
+      } else {
+        panel.classList.remove('hidden');
+      }
+      delete panel.dataset.searchHidden;
+    });
+  };
+
+  const clearLabelState = () => {
+    labels.forEach(label => {
+      label.classList.remove('search-hidden', 'search-match');
+    });
+  };
+
+  searchInput.addEventListener('input', () => {
+    const query = normalize(searchInput.value);
+
+    if (!query) {
+      searchActive = false;
+      clearLabelState();
+      restorePanelState();
+      return;
+    }
+
+    if (!searchActive) {
+      searchActive = true;
+      storePanelState();
+    }
+
+    labels.forEach(label => {
+      const text = normalize(label.textContent);
+      const isMatch = text.includes(query);
+      label.classList.toggle('search-hidden', !isMatch);
+      label.classList.toggle('search-match', isMatch);
+    });
+
+    panels.forEach(panel => {
+      const hasMatch = panel.querySelector('label.search-match');
+      if (hasMatch) {
+        panel.classList.remove('hidden');
+      } else {
+        panel.classList.add('hidden');
+      }
+    });
+
+    labels.filter(label => label.classList.contains('search-match')).forEach(label => {
+      let panel = label.closest('.section-panel');
+      while (panel) {
+        panel.classList.remove('hidden');
+        panel = panel.parentElement?.closest('.section-panel');
+      }
+    });
+  });
+});
+
+// Sidebar overlay toggle behavior.
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.getElementById('app-sidebar');
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const closeBtn = document.getElementById('sidebar-close');
+  if (!sidebar || !toggleBtn) return;
+
+  const setClosed = (closed) => {
+    sidebar.classList.toggle('is-closed', closed);
+    toggleBtn.setAttribute('aria-expanded', String(!closed));
+    if (closeBtn) {
+      closeBtn.setAttribute('aria-expanded', String(!closed));
+      closeBtn.style.display = closed ? 'none' : 'inline-flex';
+    }
+    toggleBtn.classList.toggle('is-hidden', !closed);
+  };
+
+  setClosed(false);
+
+  toggleBtn.addEventListener('click', () => {
+    const nextState = !sidebar.classList.contains('is-closed');
+    setClosed(nextState);
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => setClosed(true));
+  }
+});
+
+// Spin the logo like a coin once after 30 seconds.
+document.addEventListener('DOMContentLoaded', () => {
+  const logo = document.querySelector('.logo');
+  if (!logo) return;
+
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return;
+  }
+
+  setTimeout(() => {
+    logo.classList.add('logo-spin-once');
+
+    const cleanup = () => {
+      logo.classList.remove('logo-spin-once');
+      logo.removeEventListener('animationend', cleanup);
+    };
+
+    logo.addEventListener('animationend', cleanup);
+  }, 20000);
+});
+
 
 //Getting dates for the slider layers in met
 
@@ -1868,24 +1998,60 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.addPrecip2026Layers = addPrecip2026Layers;
-  if (map1 && typeof map1.isStyleLoaded === 'function' && map1.isStyleLoaded()) {
-    addPrecip2026Layers();
+  function whenPrecip2026StyleReady(cb) {
+    if (!map1 || typeof map1.isStyleLoaded !== 'function') return;
+    if (map1.isStyleLoaded()) {
+      cb();
+    } else {
+      map1.once('style.load', cb);
+    }
   }
 
-  // Toggle visibility of the Precipitation 2026 layers
-  precip2026Toggle.addEventListener('change', (e) => {
-    const visible = e.target.checked;
-    
+  function syncPrecip2026Visibility() {
+    if (!precip2026Toggle) return;
+    const visible = precip2026Toggle.checked;
+
     for (let month = 1; month <= totalMonths; month++) {
       const layerId = `Precipitation_2026_month_${month}`;
       if (map1.getLayer(layerId)) {
         map1.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
       }
     }
-    
+
     if (visible) {
-      updateActivePrecip2026Layer(0);
+      updateActivePrecip2026Layer(precip2026CurrentIndex);
     }
+  }
+
+  function ensurePrecip2026LayersAndSync() {
+    addPrecip2026Layers();
+    syncPrecip2026Visibility();
+  }
+
+  whenPrecip2026StyleReady(ensurePrecip2026LayersAndSync);
+
+  if (map1 && !map1.__precip2026StyleBound) {
+    map1.__precip2026StyleBound = true;
+    map1.on('style.load', ensurePrecip2026LayersAndSync);
+  }
+
+  // Toggle visibility of the Precipitation 2026 layers
+  precip2026Toggle.addEventListener('change', (e) => {
+    const visible = e.target.checked;
+
+    whenPrecip2026StyleReady(() => {
+      addPrecip2026Layers();
+      for (let month = 1; month <= totalMonths; month++) {
+        const layerId = `Precipitation_2026_month_${month}`;
+        if (map1.getLayer(layerId)) {
+          map1.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+        }
+      }
+
+      if (visible) {
+        updateActivePrecip2026Layer(0);
+      }
+    });
 
     // Toggle the controls container
     const toggleDiv = document.querySelector('.precip2026-controls');
@@ -2566,7 +2732,7 @@ document.getElementById('slideshowModal').addEventListener('click', function(e) 
 });
 // Global GeoServer IP variables
 const mustafa = "172.18.1.60"; // Swat, Panjgora, etc.
-const ahad = "172.18.1.73"; // AJK, Jhal, hyd layers, etc.
+const ahad = "172.18.1.87"; // AJK, Jhal, hyd layers, etc.
 let isPlaying = false;
 let playInterval;
 let currentDay = 1;
@@ -2950,7 +3116,7 @@ const map1Layers = [
 mapboxgl.accessToken = 'pk.eyJ1IjoiemVlc2hhbjEwIiwiYSI6ImNtMXN0YXVhbTBhYnIybHNhOHRheHRwOWoifQ.vgmSlaE3lAnZPy59Ni7SkQ';
 const map1 = new mapboxgl.Map({
   container: 'map1',
-  style: 'mapbox://styles/mapbox/outdoors-v12',
+  style: 'mapbox://styles/mapbox/standard',
   center: [69.3451, 30.3753],
   zoom: 5.2,
   projection: 'mercator'
@@ -2998,6 +3164,70 @@ const controlStates = {
 };
 let pendingCheckboxRestore = false;
 let pendingStyleIsSatellite = false;
+let pendingBasemapConfig = null;
+let pendingLightPreset = 'day';
+
+function getKarachiHour() {
+  try {
+    const hourString = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Karachi',
+      hour: '2-digit',
+      hour12: false
+    }).format(new Date());
+    const hour = Number.parseInt(hourString, 10);
+    return Number.isNaN(hour) ? null : hour;
+  } catch (error) {
+    console.warn('Failed to read Karachi time:', error);
+    return null;
+  }
+}
+
+function getKarachiLightPreset() {
+  const hour = getKarachiHour();
+  if (hour === null) return 'day';
+
+  if (hour >= 5 && hour < 7) return 'dawn';
+  if (hour >= 7 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 19) return 'dusk';
+  return 'night';
+}
+
+function refreshKarachiLightPreset(map) {
+  const nextPreset = getKarachiLightPreset();
+  pendingLightPreset = nextPreset;
+  applyBasemapConfig(map, { lightPreset: nextPreset });
+}
+
+function applyBasemapConfig(map, config) {
+  if (!map || typeof map.setConfigProperty !== 'function' || !config) return;
+
+  if (config.theme) {
+    try {
+      map.setConfigProperty('basemap', 'theme', config.theme);
+    } catch (error) {
+      console.warn('Failed to apply basemap theme:', error);
+    }
+  }
+
+  if (config.lightPreset) {
+    try {
+      map.setConfigProperty('basemap', 'lightPreset', config.lightPreset);
+    } catch (error) {
+      console.warn('Failed to apply basemap light preset:', error);
+    }
+  }
+}
+
+function applyPendingBasemapConfig(map) {
+  const nextConfig = pendingBasemapConfig ? { ...pendingBasemapConfig } : {};
+  if (pendingLightPreset && !nextConfig.lightPreset) {
+    nextConfig.lightPreset = pendingLightPreset;
+  }
+  if (Object.keys(nextConfig).length === 0) return;
+
+  applyBasemapConfig(map, nextConfig);
+  pendingBasemapConfig = null;
+}
 
 // // Global variable to store FFD data to avoid re-fetching on basemap changes
 // let ffdGeojsonData = null;
@@ -10655,6 +10885,9 @@ function runStyleLoadPipeline() {
     }, 800);
   }
 
+  refreshKarachiLightPreset(map1);
+  applyPendingBasemapConfig(map1);
+
   pendingStyleIsSatellite = false;
 }
 
@@ -10812,6 +11045,7 @@ class MapboxStyleSwitcherControl {
           const newStyleUri = JSON.parse(srcElement.dataset.uri);
           pendingStyleIsSatellite = newStyleUri.includes('satellite');
           pendingCheckboxRestore = true;
+          pendingBasemapConfig = style.config ? { ...style.config } : null;
           map.setStyle(newStyleUri);
 
           // Update UI
@@ -10854,7 +11088,7 @@ class MapboxStyleSwitcherControl {
     this.map = undefined;
   }
 }
-MapboxStyleSwitcherControl.DEFAULT_STYLE = "Satellite";
+MapboxStyleSwitcherControl.DEFAULT_STYLE = "Standard";
 MapboxStyleSwitcherControl.DEFAULT_STYLES = [
   { title: "Navigation Night", uri: "mapbox://styles/mapbox/navigation-night-v1" },
   { title: "Light", uri: "mapbox://styles/mapbox/light-v11" },
@@ -10862,11 +11096,15 @@ MapboxStyleSwitcherControl.DEFAULT_STYLES = [
   { title: "Pencil", uri: "mapbox://styles/daudi97/ckdudgjow12jd19prca4m3p1a" },
   { title: "Dark", uri: "mapbox://styles/mapbox/dark-v11" },
   { title: "Outdoors", uri: "mapbox://styles/mapbox/outdoors-v12" },
+  { title: "Standard", uri: "mapbox://styles/mapbox/standard" },
   { title: "Satellite", uri: "mapbox://styles/mapbox/satellite-streets-v12" },
-  { title: "Streets", uri: "mapbox://styles/mapbox/streets-v12" },
+  { title: "Faded", uri: "mapbox://styles/mapbox/standard", config: { theme: "faded" } },
+  { title: "Satellite Latest", uri: "mapbox://styles/mapbox/standard-satellite" },
 ];
 map1.addControl(new mapboxgl.FullscreenControl());
 map1.addControl(new MapboxStyleSwitcherControl());
+refreshKarachiLightPreset(map1);
+setInterval(() => refreshKarachiLightPreset(map1), 5 * 60 * 1000);
 //-----------------------------------------------------Mapbox gl js BasemapSwitcher COntrol END-----------------------------------------------------------------------------------------------//
 
 // restoreLayerVisibility(map1, map1Layers);
