@@ -11096,6 +11096,8 @@ MapboxStyleSwitcherControl.DEFAULT_STYLES = [
   { title: "Pencil", uri: "mapbox://styles/daudi97/ckdudgjow12jd19prca4m3p1a" },
   { title: "Dark", uri: "mapbox://styles/mapbox/dark-v11" },
   { title: "Outdoors", uri: "mapbox://styles/mapbox/outdoors-v12" },
+  { title: "Traffic Day", uri: "mapbox://styles/mapbox/traffic-day-v2" },
+  { title: "Green", uri: "mapbox://styles/linodev/ckw951ybo54sb15ocs835d13d" },
   { title: "Standard", uri: "mapbox://styles/mapbox/standard" },
   { title: "Satellite", uri: "mapbox://styles/mapbox/satellite-streets-v12" },
   { title: "Faded", uri: "mapbox://styles/mapbox/standard", config: { theme: "faded" } },
