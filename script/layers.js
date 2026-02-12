@@ -117,12 +117,7 @@ function handleTslBoundary(checkbox) {
         filter: ["in", "TEHSIL", ""], // Initially no features are selected
       };
 
-      // Insert before 'water' if it exists, otherwise add on top.
-      if (map1.getLayer('water')) {
-        map1.addLayer(layerDef, 'water');
-      } else {
-        map1.addLayer(layerDef);
-      }
+      map1.addLayer(layerDef);
     }
   } else {
     updateBlinkLayersButtonVisibility();
@@ -154,12 +149,7 @@ function handleDisBoundary(checkbox) {
         filter: ["in", "name", ""], // Initially no features are selected
       };
 
-      // Insert before 'water' if it exists, otherwise add on top.
-      if (map1.getLayer('water')) {
-        map1.addLayer(layerDef, 'water');
-      } else {
-        map1.addLayer(layerDef);
-      }
+      map1.addLayer(layerDef);
     }
   } else {
     updateBlinkLayersButtonVisibility();
@@ -198,6 +188,37 @@ document.addEventListener('DOMContentLoaded', () => {
   );
   const panels = Array.from(sidebar.querySelectorAll('.section-panel'));
 
+  const capturePanelPadding = (panel) => {
+    if (!panel.dataset.padTop || !panel.dataset.padBottom) {
+      const styles = window.getComputedStyle(panel);
+      panel.dataset.padTop = styles.paddingTop || '0px';
+      panel.dataset.padBottom = styles.paddingBottom || '0px';
+    }
+  };
+
+  const setPanelPadding = (panel, top, bottom) => {
+    panel.style.paddingTop = top;
+    panel.style.paddingBottom = bottom;
+  };
+
+  const openPanel = (panel) => {
+    capturePanelPadding(panel);
+    panel.classList.remove('hidden');
+    panel.classList.add('is-open');
+    setPanelPadding(panel, panel.dataset.padTop, panel.dataset.padBottom);
+    panel.style.height = `${panel.scrollHeight}px`;
+    panel.style.opacity = '1';
+  };
+
+  const closePanel = (panel) => {
+    capturePanelPadding(panel);
+    panel.classList.remove('is-open');
+    panel.style.height = '0px';
+    panel.style.opacity = '0';
+    setPanelPadding(panel, '0px', '0px');
+    panel.classList.add('hidden');
+  };
+
   let searchActive = false;
 
   const normalize = (value) => String(value || '').toLowerCase().trim();
@@ -212,9 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
     panels.forEach(panel => {
       if (!panel.dataset.searchHidden) return;
       if (panel.dataset.searchHidden === '1') {
-        panel.classList.add('hidden');
+        closePanel(panel);
       } else {
-        panel.classList.remove('hidden');
+        openPanel(panel);
       }
       delete panel.dataset.searchHidden;
     });
@@ -251,16 +272,16 @@ document.addEventListener('DOMContentLoaded', () => {
     panels.forEach(panel => {
       const hasMatch = panel.querySelector('label.search-match');
       if (hasMatch) {
-        panel.classList.remove('hidden');
+        openPanel(panel);
       } else {
-        panel.classList.add('hidden');
+        closePanel(panel);
       }
     });
 
     labels.filter(label => label.classList.contains('search-match')).forEach(label => {
       let panel = label.closest('.section-panel');
       while (panel) {
-        panel.classList.remove('hidden');
+        openPanel(panel);
         panel = panel.parentElement?.closest('.section-panel');
       }
     });
@@ -532,7 +553,7 @@ function addBoundaryLayers(map) {
       "fill-opacity": 0.3, // Semi-transparent
     },
     filter: ["in", "name", ""], // Initially no features are selected
-  }, 'water');
+  });
 
   // Arrays are now global - no need to redeclare here
 
@@ -589,7 +610,7 @@ function addBoundaryLayers(map) {
       "fill-opacity": 0.3, // Semi-transparent
     },
     filter: ["in", "name", ""], // Initially no features are selected
-  }, 'water');
+  });
 
 
   safeAddLayer({
@@ -5457,7 +5478,7 @@ function addHydrometLayersToMap(map) {
     layout: {
       'visibility': 'none'
     }
-  }, 'water');
+  });
 
   document.getElementById("EHFE").addEventListener("change", function () {
     const isVisible = this.checked;
@@ -5488,7 +5509,7 @@ function addHydrometLayersToMap(map) {
     layout: {
       'visibility': 'none'
     }
-  }, 'water');
+  });
 
   document.getElementById("VHFE").addEventListener("change", function () {
     const isVisible = this.checked;
@@ -5745,7 +5766,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("di_ht").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -5777,7 +5798,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("dg_ht").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -5808,7 +5829,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("p_panjal").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -5840,7 +5861,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("hyder").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -5871,7 +5892,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("jhall").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -5935,7 +5956,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("Kirthar_extent").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6082,7 +6103,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("lowerIndusHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6116,7 +6137,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("lowerIndusMediumFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6150,7 +6171,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("lowerIndusLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6181,7 +6202,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("upperIndusHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6212,7 +6233,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("upperIndusFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6244,7 +6265,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("upperIndusLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6275,7 +6296,7 @@ function addHydrometLayersToMap(map) {
     layout: {
       'visibility': 'none'
     }
-  }, 'water');
+  });
 
   document.getElementById("chenabHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
@@ -6307,7 +6328,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("chenabMediumFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6338,7 +6359,7 @@ function addHydrometLayersToMap(map) {
     layout: {
       'visibility': 'none'
     }
-  }, 'water');
+  });
 
   document.getElementById("chenabLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
@@ -6370,7 +6391,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("kabilHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6401,7 +6422,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.9,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("kabilMediumFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6434,7 +6455,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("kabilLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6465,7 +6486,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("jhelumHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6494,7 +6515,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("jhelumMediumFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6531,7 +6552,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("jhelumLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6563,7 +6584,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("swatHighExtent").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6595,7 +6616,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("swatExtent").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6626,7 +6647,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("swatLowExtent").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6659,7 +6680,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("muzExtent").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6744,7 +6765,7 @@ function addHydrometLayersToMap(map) {
           source: 'Terrain_Jhal_Depth',
           paint: { 'raster-opacity': 1 },
           layout: { visibility: 'none' }
-        }, 'water'); // Use 'water' as beforeId for proper ordering
+        }); // Use 'water' as beforeId for proper ordering
         console.log("Layer 'Terrain_Jhal_Depth' added successfully with beforeId");
       } catch (e) {
         // If that fails, add without beforeId
@@ -6822,7 +6843,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.5,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("jamshoro").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6860,7 +6881,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("raviHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6894,7 +6915,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("raviMediumFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6928,7 +6949,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("raviLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6959,7 +6980,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.6,
       "fill-color": "red",
     },
-  }, 'water');
+  });
   document.getElementById("sutlejHighFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -6992,7 +7013,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.8,
       "fill-color": "orange",
     },
-  }, 'water');
+  });
   document.getElementById("sutlejMediumFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -7026,7 +7047,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.45,
       "fill-color": "green",
     },
-  }, 'water');
+  });
   document.getElementById("sutlejLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
@@ -8976,7 +8997,7 @@ function addHydrometLayersToMap(map) {
       this._btn.type = 'button';
       this._btn.className = 'mapboxgl-ctrl-icon time-layer-control-btn';
       this._btn.title = 'Select date for active time layers';
-      this._btn.innerHTML = '🗓';
+      this._btn.innerHTML = '<img src="media/UI/controlicons/activetimelayer.gif" alt="Time layers" />';
       this._btn.addEventListener('click', openTimeModal);
       const c = document.createElement('div');
       c.className = 'mapboxgl-ctrl-group mapboxgl-ctrl';
@@ -9622,7 +9643,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation27").addEventListener("change", function () {
@@ -9658,7 +9679,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation1").addEventListener("change", function () {
@@ -9696,7 +9717,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation5").addEventListener("change", function () {
@@ -9733,7 +9754,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation6").addEventListener("change", function () {
@@ -9768,7 +9789,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation7").addEventListener("change", function () {
@@ -9804,7 +9825,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation9").addEventListener("change", function () {
@@ -9839,7 +9860,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation13").addEventListener("change", function () {
@@ -9874,7 +9895,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation16").addEventListener("change", function () {
@@ -9910,7 +9931,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation19").addEventListener("change", function () {
@@ -9944,7 +9965,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundation21").addEventListener("change", function () {
@@ -9978,7 +9999,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("buner").addEventListener("change", function () {
@@ -10012,7 +10033,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundationCom14to21").addEventListener("change", function () {
@@ -10046,7 +10067,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.4,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("inundationCom5to21").addEventListener("change", function () {
@@ -10365,7 +10386,7 @@ function addHydrometLayersToMap(map) {
       "fill-opacity": 0.7,
       "fill-color": "blue",
     },
-  }, 'water');
+  });
 
   // 3) Toggle via checkbox
   document.getElementById("rtimp").addEventListener("change", function () {
@@ -10720,7 +10741,7 @@ function addHydrometLayersToMap(map) {
           ]
         },
       },
-      'water'
+
     );
   }
 
@@ -11122,7 +11143,7 @@ class RainToggleControl {
 
     const button = document.createElement("button");
     button.className = "rain-toggle-btn";
-    button.innerHTML = `<i class="fas fa-cloud-showers-heavy"></i>`;
+    button.innerHTML = '<img src="media/UI/controlicons/raineffect.gif" alt="Rain effect" />';
     button.title = "Toggle Rain Effect";
 
     button.onclick = () => {
@@ -11186,7 +11207,7 @@ class LayerReorderControl {
     button.className = 'mapboxgl-ctrl-icon layer-reorder-btn';
     button.type = 'button';
     button.title = 'Reorder active layers';
-    button.innerHTML = '<img src="media/UI/reorder.png" alt="Reorder layers" />';
+    button.innerHTML = '<img src="media/UI/controlicons/reorder.gif" alt="Reorder layers" />';
 
     const panel = document.createElement('div');
     panel.className = 'layer-reorder-panel';
@@ -11748,7 +11769,7 @@ class GeoglowsChartControl {
     this._map = map;
     this._btn = document.createElement('button');
     this._btn.className = 'mapboxgl-ctrl-icon geoglows-toggle-btn';
-    this._btn.innerHTML = '<i class="fa fa-line-chart"></i>';
+    this._btn.innerHTML = '<img src="media/UI/controlicons/geoglows.gif" alt="GEOGLOWS" />';
     this._btn.title = 'Enable GEOGLOWS Chart Selection';
     this._btn.onclick = () => {
       controlStates.geoglowsForecastControl = true;
@@ -11806,7 +11827,8 @@ function add3DControl(map) {
 
       // Create button with tooltip and icon
       this._button = document.createElement("button");
-      this._button.innerHTML = `<img src="media/UI/3d.png" alt="threed" style="width: 25px; height: 25px;">`;
+      this._button.className = 'mapboxgl-ctrl-icon threed-toggle-btn';
+      this._button.innerHTML = '<img src="media/UI/controlicons/3d.gif" alt="3D" />';
       this._button.title = tooltipText;
 
       // Add event listener to toggle 3D terrain and adjust pitch and bearing

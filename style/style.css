@@ -198,6 +198,18 @@
   box-shadow: 0 14px 22px rgba(3, 7, 18, 0.35);
 }
 
+.section-panel {
+  overflow: hidden;
+  height: 0;
+  opacity: 0;
+  transition: height 0.35s ease, opacity 0.25s ease;
+  will-change: height, opacity;
+}
+
+.section-panel.is-open {
+  opacity: 1;
+}
+
 
 .sidebar-icon {
   display: inline-flex;
@@ -884,12 +896,37 @@ body {
     border-radius: 10px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
     padding: 10px;
-    display: none;
+    display: block;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.2s ease;
     z-index: 5;
   }
 
   .layer-reorder-panel.is-open {
-    display: block;
+    opacity: 1;
+    max-height: 360px;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .time-layer-control-popup {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .time-layer-control-popup.is-open {
+    opacity: 1;
+    max-height: 360px;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .layer-reorder-header {
@@ -2212,3 +2249,129 @@ body {
 .mapboxgl-ctrl-group .time-layer-control-btn { font-size:18px; }
 .time-layer-control-btn { display:flex; align-items:center; justify-content:center; }
 .time-layer-control-btn:hover { background:rgba(0,0,0,0.1); }
+
+/* === Map control glass overrides + GIF icons === */
+.mapboxgl-ctrl-group,
+.mapboxgl-ctrl-group .mapboxgl-ctrl,
+.mapboxgl-ctrl-group button,
+.rain-toggle-btn,
+.layer-reorder-btn,
+.time-layer-control-btn,
+.geoglows-toggle-btn,
+.threed-toggle-btn {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.mapboxgl-ctrl-group button,
+.rain-toggle-btn,
+.layer-reorder-btn,
+.time-layer-control-btn,
+.geoglows-toggle-btn,
+.threed-toggle-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+  width: 46px;
+  height: 46px;
+  background-size: 78%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
+}
+
+.mapboxgl-style-switcher,
+.mapboxgl-style-switcher.mapboxgl-ctrl-icon {
+  background-image: url("../media/UI/controlicons/layerselection.gif") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 78% !important;
+  background-color: transparent !important;
+}
+
+.mapboxgl-ctrl-fullscreen,
+.mapboxgl-ctrl-fullscreen.mapboxgl-ctrl-icon,
+.mapboxgl-ctrl-fullscreen .mapboxgl-ctrl-icon {
+  background-image: url("../media/UI/controlicons/fullscreen.gif") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 78% !important;
+}
+
+.mapboxgl-style-list {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mapboxgl-ctrl-group .mapboxgl-style-list button {
+  color: #0f172a;
+}
+
+.mapboxgl-style-list button.active {
+  color: #0f172a;
+}
+
+.mapboxgl-style-list button:hover {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+
+.mapboxgl-ctrl-group button:hover,
+.layer-reorder-btn:hover,
+.time-layer-control-btn:hover,
+.geoglows-toggle-btn:hover,
+.threed-toggle-btn:hover,
+.rain-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.rain-toggle-btn.active {
+  background: rgba(59, 130, 246, 0.85);
+  border-color: rgba(59, 130, 246, 0.9);
+  color: #ffffff;
+}
+
+.rain-toggle-btn img,
+.layer-reorder-btn img,
+.time-layer-control-btn img,
+.geoglows-toggle-btn img,
+.threed-toggle-btn img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.time-layer-control-btn {
+  background-image: url("../media/UI/controlicons/activetimelayer.gif") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 78% !important;
+  background-color: transparent !important;
+}
+
+.time-layer-control-btn img {
+  display: none;
+}
+
+.layer-reorder-panel,
+.time-layer-control-popup {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
