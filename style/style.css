@@ -2292,7 +2292,7 @@ body {
 
 .mapboxgl-style-switcher,
 .mapboxgl-style-switcher.mapboxgl-ctrl-icon {
-  background-image: url("../media/UI/controlicons/layerselection.gif") !important;
+  background-image: url("../media/UI/controlicons/layerselection.webp") !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   background-size: 78% !important;
@@ -2302,7 +2302,7 @@ body {
 .mapboxgl-ctrl-fullscreen,
 .mapboxgl-ctrl-fullscreen.mapboxgl-ctrl-icon,
 .mapboxgl-ctrl-fullscreen .mapboxgl-ctrl-icon {
-  background-image: url("../media/UI/controlicons/fullscreen.gif") !important;
+  background-image: url("../media/UI/controlicons/fullscreen.webp") !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   background-size: 78% !important;
@@ -2357,7 +2357,7 @@ body {
 }
 
 .time-layer-control-btn {
-  background-image: url("../media/UI/controlicons/activetimelayer.gif") !important;
+  background-image: url("../media/UI/controlicons/activetimelayer.webp") !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   background-size: 78% !important;

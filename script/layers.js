@@ -8997,7 +8997,7 @@ function addHydrometLayersToMap(map) {
       this._btn.type = 'button';
       this._btn.className = 'mapboxgl-ctrl-icon time-layer-control-btn';
       this._btn.title = 'Select date for active time layers';
-      this._btn.innerHTML = '<img src="media/UI/controlicons/activetimelayer.gif" alt="Time layers" />';
+      this._btn.innerHTML = '<img src="media/UI/controlicons/activetimelayer.webp" alt="Time layers" />';
       this._btn.addEventListener('click', openTimeModal);
       const c = document.createElement('div');
       c.className = 'mapboxgl-ctrl-group mapboxgl-ctrl';
@@ -11143,7 +11143,7 @@ class RainToggleControl {
 
     const button = document.createElement("button");
     button.className = "rain-toggle-btn";
-    button.innerHTML = '<img src="media/UI/controlicons/raineffect.gif" alt="Rain effect" />';
+    button.innerHTML = '<img src="media/UI/controlicons/raineffect.webp" alt="Rain effect" />';
     button.title = "Toggle Rain Effect";
 
     button.onclick = () => {
@@ -11207,7 +11207,7 @@ class LayerReorderControl {
     button.className = 'mapboxgl-ctrl-icon layer-reorder-btn';
     button.type = 'button';
     button.title = 'Reorder active layers';
-    button.innerHTML = '<img src="media/UI/controlicons/reorder.gif" alt="Reorder layers" />';
+    button.innerHTML = '<img src="media/UI/controlicons/reorder.webp" alt="Reorder layers" />';
 
     const panel = document.createElement('div');
     panel.className = 'layer-reorder-panel';
@@ -11769,7 +11769,7 @@ class GeoglowsChartControl {
     this._map = map;
     this._btn = document.createElement('button');
     this._btn.className = 'mapboxgl-ctrl-icon geoglows-toggle-btn';
-    this._btn.innerHTML = '<img src="media/UI/controlicons/geoglows.gif" alt="GEOGLOWS" />';
+    this._btn.innerHTML = '<img src="media/UI/controlicons/geoglows.webp" alt="GEOGLOWS" />';
     this._btn.title = 'Enable GEOGLOWS Chart Selection';
     this._btn.onclick = () => {
       controlStates.geoglowsForecastControl = true;
@@ -11828,7 +11828,7 @@ function add3DControl(map) {
       // Create button with tooltip and icon
       this._button = document.createElement("button");
       this._button.className = 'mapboxgl-ctrl-icon threed-toggle-btn';
-      this._button.innerHTML = '<img src="media/UI/controlicons/3d.gif" alt="3D" />';
+      this._button.innerHTML = '<img src="media/UI/controlicons/3d.webp" alt="3D" />';
       this._button.title = tooltipText;
 
       // Add event listener to toggle 3D terrain and adjust pitch and bearing
