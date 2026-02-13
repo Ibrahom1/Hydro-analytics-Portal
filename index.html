@@ -956,6 +956,13 @@
                   </button>
                   <div id="riverineOther_2025" class="hidden p-2 space-y-1">
                     <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Overall Projection</span>
+                      <div class="relative">
+                        <input type="checkbox" id="overallProjection_2025" class="hidden" onchange="toggleHighlight(this); toggleOverallProjection(this, '2025');" />
+                        <label for="overallProjection_2025" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                       <span class="text-sm">Extremely High Flood Extent</span>
                       <div class="relative">
                         <input type="checkbox" id="EHFE_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('EHFE').checked = this.checked; document.getElementById('EHFE').dispatchEvent(new Event('change'));" />
@@ -1077,6 +1084,20 @@
                       <label for="chakwal_2025" class="cursor-pointer"></label>
                     </div>
                   </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('panjal').checked = this.checked; document.getElementById('panjal').dispatchEvent(new Event('change'));" />
+                      <label for="panjal_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="p_panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('p_panjal').checked = this.checked; document.getElementById('p_panjal').dispatchEvent(new Event('change'));" />
+                      <label for="p_panjal_2025" class="cursor-pointer"></label>
+                    </div>
+                  </label>
                 </div>
 
                 <button
@@ -1164,20 +1185,6 @@
                     <div class="relative">
                       <input type="checkbox" id="muzExtent_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('muzExtent').checked = this.checked; document.getElementById('muzExtent').dispatchEvent(new Event('change'));" />
                       <label for="muzExtent_2025" class="cursor-pointer"></label>
-                    </div>
-                  </label>
-                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Pir Panjal Tiff</span>
-                    <div class="relative">
-                      <input type="checkbox" id="panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('panjal').checked = this.checked; document.getElementById('panjal').dispatchEvent(new Event('change'));" />
-                      <label for="panjal_2025" class="cursor-pointer"></label>
-                    </div>
-                  </label>
-                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Pir Panjal Extent</span>
-                    <div class="relative">
-                      <input type="checkbox" id="p_panjal_2025" class="hidden" onchange="toggleHighlight(this); document.getElementById('p_panjal').checked = this.checked; document.getElementById('p_panjal').dispatchEvent(new Event('change'));" />
-                      <label for="p_panjal_2025" class="cursor-pointer"></label>
                     </div>
                   </label>
                 </div>
@@ -1906,6 +1913,13 @@
                   </button>
                   <div id="riverineOther" class="hidden p-2 space-y-1">
                     <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                      <span class="text-sm">Overall Projection</span>
+                      <div class="relative">
+                        <input type="checkbox" id="overallProjection" class="hidden" onchange="toggleHighlight(this); toggleOverallProjection(this, '2026');" />
+                        <label for="overallProjection" class="cursor-pointer"></label>
+                      </div>
+                    </label>
+                    <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                       <span class="text-sm">Extremely High Flood Extent</span>
                       <div class="relative">
                         <input type="checkbox" id="EHFE" class="hidden" onchange="toggleHighlight(this)" />
@@ -2027,6 +2041,20 @@
                       <label for="chakwal" class="cursor-pointer"></label>
                     </div>
                   </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Tiff</span>
+                    <div class="relative">
+                      <input type="checkbox" id="panjal" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="panjal" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Pir Panjal Extent</span>
+                    <div class="relative">
+                      <input type="checkbox" id="p_panjal" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="p_panjal" class="cursor-pointer"></label>
+                    </div>
+                  </label>
                 </div>
 
                 <button
@@ -2114,20 +2142,6 @@
                     <div class="relative">
                       <input type="checkbox" id="muzExtent" class="hidden" onchange="toggleHighlight(this)" />
                       <label for="muzExtent" class="cursor-pointer"></label>
-                    </div>
-                  </label>
-                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Pir Panjal Tiff</span>
-                    <div class="relative">
-                      <input type="checkbox" id="panjal" class="hidden" onchange="toggleHighlight(this)" />
-                      <label for="panjal" class="cursor-pointer"></label>
-                    </div>
-                  </label>
-                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Pir Panjal Extent</span>
-                    <div class="relative">
-                      <input type="checkbox" id="p_panjal" class="hidden" onchange="toggleHighlight(this)" />
-                      <label for="p_panjal" class="cursor-pointer"></label>
                     </div>
                   </label>
                 </div>
@@ -2850,6 +2864,21 @@
     }
 
     function animateClose(panel) {
+      if (panel.__closeCleanupTimer) {
+        clearTimeout(panel.__closeCleanupTimer);
+        panel.__closeCleanupTimer = null;
+      }
+
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        panel.classList.add('hidden');
+        panel.style.height = '';
+        panel.style.paddingTop = '';
+        panel.style.paddingBottom = '';
+      };
+
       capturePanelPadding(panel);
       panel.style.height = `${panel.scrollHeight}px`;
       panel.style.opacity = '1';
@@ -2863,13 +2892,18 @@
       panel.addEventListener('transitionend', function handler(e) {
         if (e.propertyName !== 'height') return;
         if (panel.style.height === '0px') {
-          panel.classList.add('hidden');
-          panel.style.height = '';
-          panel.style.paddingTop = '';
-          panel.style.paddingBottom = '';
+          cleanup();
         }
         panel.removeEventListener('transitionend', handler);
       });
+
+      // Fallback in case transitionend never fires (nested panels hidden by parent).
+      panel.__closeCleanupTimer = setTimeout(() => {
+        if (panel.style.height === '0px' || !panel.classList.contains('is-open')) {
+          cleanup();
+        }
+        panel.__closeCleanupTimer = null;
+      }, 350);
     }
 
     function toggleSection(id) {
@@ -2889,7 +2923,9 @@
         });
       }
 
-      if (section.classList.contains('hidden')) {
+      const isOpen = section.classList.contains('is-open') && !section.classList.contains('hidden');
+
+      if (!isOpen) {
         animateOpen(section);
         arrow?.classList.add('rotate-180');
       } else {

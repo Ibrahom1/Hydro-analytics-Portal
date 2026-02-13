@@ -990,6 +990,133 @@ function toggleHighlight(checkbox) {
   }
 }
 
+// Overall projection toggle for Hydro Outlook 2025/2026.
+const overallProjectionTargets = {
+  '2026': [
+    'natBoundary',
+    'prvBoundary',
+    'kp_Rivers',
+    'PakRivers',
+    'Reservoirs',
+    'india',
+    'ffd',
+    'swatHighExtent',
+    'kabilHighFlood',
+    'upperIndusHighFlood',
+    'lowerIndusHighFlood',
+    'jhelumMediumFlood',
+    'chenabHighFlood',
+    'raviMediumFlood',
+    'sutlejMediumFlood',
+    'di_ht',
+    'bajaur150',
+    'buner150',
+    'dg_ht',
+    'jamshoro',
+    'Kirthar_extent',
+    'jhall',
+    'muzExtent',
+    'p_panjal',
+    'hyder'
+  ],
+  '2025': [
+    'natBoundary',
+    'prvBoundary',
+    'kp_Rivers',
+    'PakRivers',
+    'Reservoirs',
+    'india',
+    'ffd',
+    'swatHighExtent_2025',
+    'kabilMediumFlood_2025',
+    'upperIndusHighFlood_2025',
+    'lowerIndusHighFlood_2025',
+    'chenabHighFlood_2025',
+    'raviHighFlood_2025',
+    'sutlejHighFlood_2025',
+    'buner150_2025',
+    'bajaur150_2025',
+    'dg_ht_2025',
+    'chakwal_2025',
+    'Kirthar_extent_2025',
+    'jhall_2025',
+    'p_panjal_2025',
+    'hyder_2025',
+    'inundationCom5to21'
+  ]
+};
+
+const overallProjectionVectorLayerIds = [
+  'nationalBoundary',
+  '3_Swat_River_50yr_Flood_Extent',
+  'khfex',
+  'Bajaur_150mm',
+  'Buner_150mm',
+  'DG khan HT',
+  'Pir_Panjal_HT',
+  'KIRTHAR_RANGE',
+  'jhal_magsi_arc_Complete',
+  'DI_Khan_HT',
+  'uihfex',
+  'lihfex',
+  'jmfex',
+  'chfex',
+  'rhfex',
+  'shfex'
+];
+
+const overallProjectionTopRasterLayerIds = [
+  'Flood_Extent_Comulated_5to21f'
+];
+
+function bringOverallProjectionVectorsToTop() {
+  if (typeof map1 === 'undefined' || !map1) return;
+  overallProjectionVectorLayerIds.forEach((layerId) => {
+    if (map1.getLayer(layerId)) {
+      try {
+        map1.moveLayer(layerId);
+      } catch (e) {
+        // Ignore move errors during transient style rebuilds.
+      }
+    }
+  });
+
+  overallProjectionTopRasterLayerIds.forEach((layerId) => {
+    if (map1.getLayer(layerId)) {
+      try {
+        map1.moveLayer(layerId);
+      } catch (e) {
+        // Ignore move errors during transient style rebuilds.
+      }
+    }
+  });
+}
+
+function setCheckboxStateAndDispatch(id, checked) {
+  const checkbox = document.getElementById(id);
+  if (!checkbox) return;
+  if (checkbox.checked === checked) return;
+  checkbox.checked = checked;
+  updateLayerToggleRowHighlight(checkbox);
+  checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function toggleOverallProjection(checkbox, scope = '2026') {
+  if (!checkbox) return;
+  updateLayerToggleRowHighlight(checkbox);
+  const targets = overallProjectionTargets[scope] || [];
+  targets.forEach((id) => setCheckboxStateAndDispatch(id, checkbox.checked));
+
+  if ((scope === '2025' || scope === '2026') && typeof map1 !== 'undefined' && map1) {
+    addBoundaryLayers(map1);
+    setLayerVisibility(map1, 'nationalBoundary', checkbox.checked);
+    setLayerVisibility(map1, 'provincialBoundary', checkbox.checked);
+  }
+
+  // Ensure vector extents stay above raster layers for this grouped toggle.
+  setTimeout(bringOverallProjectionVectorsToTop, 0);
+}
+
 // ============================================
 // OPTIMIZED WEATHER LAYER CONTROLLER WITH OPACITY CONTROLS
 // ============================================
@@ -2752,7 +2879,7 @@ document.getElementById('slideshowModal').addEventListener('click', function(e) 
   }
 });
 // Global GeoServer IP variables
-const mustafa = "172.18.1.60"; // Swat, Panjgora, etc.
+const mustafa = "172.18.1.55"; // Swat, Panjgora, etc.
 const ahad = "172.18.1.87"; // AJK, Jhal, hyd layers, etc.
 let isPlaying = false;
 let playInterval;
@@ -9009,7 +9136,7 @@ function addHydrometLayersToMap(map) {
       this._map = null;
     }
   }
-  // Prevent duplicate control if script re-runs or style is swapped and code path executes again.
+  // Prevent duplicate control if script re-runs or style is swap   e path executes again.
   if (!window.__timeLayerControlAdded) {
     map1.addControl(new TimeLayerControl(), 'top-right');
     window.__timeLayerControlAdded = true;
