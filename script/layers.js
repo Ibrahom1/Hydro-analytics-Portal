@@ -4550,6 +4550,21 @@ function addHydrometLayersToMap(map) {
         const raw = String(value).trim();
         if (!raw) return null;
 
+        const normalizedIsoMatch = raw.match(/^([0-9T:\-\.Z]+)\|(PKT|PST)?$/i);
+        if (normalizedIsoMatch) {
+          const parsedIso = new Date(normalizedIsoMatch[1]);
+          if (Number.isNaN(parsedIso.getTime())) return null;
+          return {
+            date: parsedIso,
+            timezone: normalizedIsoMatch[2] ? normalizedIsoMatch[2].toUpperCase() : 'PKT',
+            hasExplicitYear: true,
+            monthIndex: parsedIso.getMonth(),
+            day: parsedIso.getDate(),
+            hour: parsedIso.getHours(),
+            minute: parsedIso.getMinutes()
+          };
+        }
+
         const match = raw.match(/^(\d{1,2})-([A-Za-z]{3})(?:-(\d{2,4}))?\s+(\d{1,2})(?::(\d{2}))?\s*(PKT|PST)?\s*$/i);
         if (match) {
           const day = Number(match[1]);
@@ -4578,6 +4593,7 @@ function addHydrometLayersToMap(map) {
             return null;
           }
 
+          const hasExplicitYear = Boolean(yearText);
           let year = Number.isInteger(fallbackYear) ? fallbackYear : new Date().getFullYear();
           if (yearText) {
             const parsedYear = Number(yearText);
@@ -4587,11 +4603,27 @@ function addHydrometLayersToMap(map) {
           }
 
           const dt = new Date(year, monthIndex, day, hour, minute, 0, 0);
-          return Number.isNaN(dt.getTime()) ? null : { date: dt, timezone };
+          return Number.isNaN(dt.getTime()) ? null : {
+            date: dt,
+            timezone,
+            hasExplicitYear,
+            monthIndex,
+            day,
+            hour,
+            minute
+          };
         }
 
         const nativeParsed = new Date(raw);
-        return Number.isNaN(nativeParsed.getTime()) ? null : { date: nativeParsed, timezone: '' };
+        return Number.isNaN(nativeParsed.getTime()) ? null : {
+          date: nativeParsed,
+          timezone: '',
+          hasExplicitYear: true,
+          monthIndex: nativeParsed.getMonth(),
+          day: nativeParsed.getDate(),
+          hour: nativeParsed.getHours(),
+          minute: nativeParsed.getMinutes()
+        };
       };
 
       const parseFFDHistoryTimestamp = (value, fallbackYear = null) => {
@@ -4654,6 +4686,46 @@ function addHydrometLayersToMap(map) {
           return `ts:${parsed.date.getTime()}:${parsed.timezone || ''}`;
         }
         return `raw:${String(rawLabel || 'Unknown')}`;
+      };
+
+      const resolveFFDHistorySeriesPoints = (series, fallbackYear) => {
+        if (!Array.isArray(series)) return [];
+
+        const resolved = [];
+        let rollingYear = Number.isInteger(fallbackYear) ? fallbackYear : new Date().getFullYear();
+        let previous = null;
+
+        series.forEach((point) => {
+          const rawLabel = point && point.x ? String(point.x) : 'Unknown';
+          const parsed = parseFFDHistoryTimestampParts(rawLabel, rollingYear);
+          if (!parsed || typeof point?.y !== 'number') return;
+
+          let candidate = parsed.date;
+          if (!parsed.hasExplicitYear && previous && candidate.getTime() < previous.getTime()) {
+            const prevMonth = previous.getMonth();
+            const currMonth = parsed.monthIndex;
+            if (prevMonth >= 9 && currMonth <= 2) {
+              rollingYear += 1;
+              candidate = new Date(rollingYear, parsed.monthIndex, parsed.day, parsed.hour, parsed.minute, 0, 0);
+            }
+          }
+
+          if (parsed.hasExplicitYear) {
+            rollingYear = candidate.getFullYear();
+          }
+
+          if (Number.isNaN(candidate.getTime())) return;
+
+          resolved.push({
+            y: point.y,
+            date: candidate,
+            timezone: parsed.timezone || 'PKT',
+            label: `${candidate.toISOString()}|${parsed.timezone || 'PKT'}`
+          });
+          previous = candidate;
+        });
+
+        return resolved;
       };
 
       const setFFDHistoryStatus = (text) => {
@@ -4803,6 +4875,9 @@ function addHydrometLayersToMap(map) {
             return;
           }
 
+          const resolvedInflow = resolveFFDHistorySeriesPoints(inflow, ffdHistoryFallbackYear);
+          const resolvedOutflow = resolveFFDHistorySeriesPoints(outflow, ffdHistoryFallbackYear);
+
           const labelMetaByKey = new Map();
           const addLabel = (label) => {
             const safeLabel = label ? String(label) : 'Unknown';
@@ -4817,8 +4892,8 @@ function addHydrometLayersToMap(map) {
             }
           };
 
-          inflow.forEach(point => addLabel(point.x));
-          outflow.forEach(point => addLabel(point.x));
+          resolvedInflow.forEach(point => addLabel(point.label));
+          resolvedOutflow.forEach(point => addLabel(point.label));
 
           const orderedMeta = Array.from(labelMetaByKey.values()).sort((a, b) => {
             if (a.ts !== b.ts) return a.ts - b.ts;
@@ -4831,12 +4906,12 @@ function addHydrometLayersToMap(map) {
           const inflowData = new Array(labels.length).fill(null);
           const outflowData = new Array(labels.length).fill(null);
 
-          inflow.forEach(point => {
-            const idx = indexMap.get(getFFDHistoryPointKey(point.x ? String(point.x) : 'Unknown'));
+          resolvedInflow.forEach(point => {
+            const idx = indexMap.get(getFFDHistoryPointKey(point.label));
             if (idx !== undefined) inflowData[idx] = point.y;
           });
-          outflow.forEach(point => {
-            const idx = indexMap.get(getFFDHistoryPointKey(point.x ? String(point.x) : 'Unknown'));
+          resolvedOutflow.forEach(point => {
+            const idx = indexMap.get(getFFDHistoryPointKey(point.label));
             if (idx !== undefined) outflowData[idx] = point.y;
           });
 
