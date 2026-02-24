@@ -4535,6 +4535,7 @@ function addHydrometLayersToMap(map) {
       let ffdHistoryFullscreenChart = null;
       let ffdHistoryName = null;
       let ffdHistoryLastSeries = null;
+      let ffdHistoryFallbackYear = null;
 
       const getTodayStr = () => {
         const now = new Date();
@@ -4544,55 +4545,58 @@ function addHydrometLayersToMap(map) {
         return `${yyyy}-${mm}-${dd}`;
       };
 
-      const parseFFDHistoryTimestamp = (value) => {
+      const parseFFDHistoryTimestampParts = (value, fallbackYear = null) => {
         if (!value) return null;
         const raw = String(value).trim();
         if (!raw) return null;
 
-        const cleaned = raw.replace(/\s*PKT\s*$/i, '').trim();
-        const nativeParsed = new Date(cleaned);
-        if (!Number.isNaN(nativeParsed.getTime())) {
-          return nativeParsed;
-        }
+        const match = raw.match(/^(\d{1,2})-([A-Za-z]{3})(?:-(\d{2,4}))?\s+(\d{1,2})(?::(\d{2}))?\s*(PKT|PST)?\s*$/i);
+        if (match) {
+          const day = Number(match[1]);
+          const monthText = match[2].slice(0, 1).toUpperCase() + match[2].slice(1, 3).toLowerCase();
+          const yearText = match[3];
+          const hour = Number(match[4]);
+          const minute = match[5] !== undefined ? Number(match[5]) : 0;
+          const timezone = match[6] ? match[6].toUpperCase() : 'PKT';
 
-        const match = cleaned.match(/^(\d{1,2})-([A-Za-z]{3})(?:-(\d{2,4}))?\s+(\d{1,2})(?::(\d{2}))?$/);
-        if (!match) return null;
-
-        const day = Number(match[1]);
-        const monthText = match[2].slice(0, 1).toUpperCase() + match[2].slice(1, 3).toLowerCase();
-        const yearText = match[3];
-        const hour = Number(match[4]);
-        const minute = match[5] !== undefined ? Number(match[5]) : 0;
-
-        const monthMap = {
-          Jan: 0,
-          Feb: 1,
-          Mar: 2,
-          Apr: 3,
-          May: 4,
-          Jun: 5,
-          Jul: 6,
-          Aug: 7,
-          Sep: 8,
-          Oct: 9,
-          Nov: 10,
-          Dec: 11
-        };
-        const monthIndex = monthMap[monthText];
-        if (monthIndex === undefined || Number.isNaN(day) || Number.isNaN(hour) || Number.isNaN(minute)) {
-          return null;
-        }
-
-        let year = new Date().getFullYear();
-        if (yearText) {
-          const parsedYear = Number(yearText);
-          if (!Number.isNaN(parsedYear)) {
-            year = yearText.length === 2 ? 2000 + parsedYear : parsedYear;
+          const monthMap = {
+            Jan: 0,
+            Feb: 1,
+            Mar: 2,
+            Apr: 3,
+            May: 4,
+            Jun: 5,
+            Jul: 6,
+            Aug: 7,
+            Sep: 8,
+            Oct: 9,
+            Nov: 10,
+            Dec: 11
+          };
+          const monthIndex = monthMap[monthText];
+          if (monthIndex === undefined || Number.isNaN(day) || Number.isNaN(hour) || Number.isNaN(minute)) {
+            return null;
           }
+
+          let year = Number.isInteger(fallbackYear) ? fallbackYear : new Date().getFullYear();
+          if (yearText) {
+            const parsedYear = Number(yearText);
+            if (!Number.isNaN(parsedYear)) {
+              year = yearText.length === 2 ? 2000 + parsedYear : parsedYear;
+            }
+          }
+
+          const dt = new Date(year, monthIndex, day, hour, minute, 0, 0);
+          return Number.isNaN(dt.getTime()) ? null : { date: dt, timezone };
         }
 
-        const dt = new Date(year, monthIndex, day, hour, minute, 0, 0);
-        return Number.isNaN(dt.getTime()) ? null : dt;
+        const nativeParsed = new Date(raw);
+        return Number.isNaN(nativeParsed.getTime()) ? null : { date: nativeParsed, timezone: '' };
+      };
+
+      const parseFFDHistoryTimestamp = (value, fallbackYear = null) => {
+        const parsed = parseFFDHistoryTimestampParts(value, fallbackYear);
+        return parsed ? parsed.date : null;
       };
 
       const formatFFDHistoryTime = (dateObj) => {
@@ -4607,22 +4611,49 @@ function addHydrometLayersToMap(map) {
         return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
       };
 
-      const formatFFDHistoryDateTime = (rawLabel) => {
-        const parsed = parseFFDHistoryTimestamp(rawLabel);
-        if (!parsed) {
+      const getFFDHistoryTickMode = (labels) => {
+        const parsedDates = (labels || []).map(label => parseFFDHistoryTimestamp(label, ffdHistoryFallbackYear)).filter(Boolean);
+        if (parsedDates.length < 2) {
+          return { includeTimeInTick: true };
+        }
+
+        const minTs = Math.min(...parsedDates.map(dt => dt.getTime()));
+        const maxTs = Math.max(...parsedDates.map(dt => dt.getTime()));
+        const totalHours = (maxTs - minTs) / (1000 * 60 * 60);
+
+        return {
+          includeTimeInTick: totalHours <= 48
+        };
+      };
+
+      const formatFFDHistoryDateTime = (rawLabel, options = {}) => {
+        const includeTimeInTick = options.includeTimeInTick !== false;
+        const parsedParts = parseFFDHistoryTimestampParts(rawLabel, ffdHistoryFallbackYear);
+        if (!parsedParts || !parsedParts.date) {
           return {
             tick: String(rawLabel || ''),
             tooltip: String(rawLabel || '')
           };
         }
 
+        const parsed = parsedParts.date;
+        const timezone = parsedParts.timezone ? ` ${parsedParts.timezone}` : '';
+
         const day = parsed.getDate();
         const month = parsed.toLocaleString('en-US', { month: 'short' });
         const time = formatFFDHistoryTime(parsed);
         return {
-          tick: [`${day} ${month}`, time],
-          tooltip: `${day} ${month}, ${time}`
+          tick: includeTimeInTick ? [`${day} ${month}`, time] : `${day} ${month}`,
+          tooltip: `${day} ${month}, ${time}${timezone}`
         };
+      };
+
+      const getFFDHistoryPointKey = (rawLabel) => {
+        const parsed = parseFFDHistoryTimestampParts(rawLabel, ffdHistoryFallbackYear);
+        if (parsed && parsed.date) {
+          return `ts:${parsed.date.getTime()}:${parsed.timezone || ''}`;
+        }
+        return `raw:${String(rawLabel || 'Unknown')}`;
       };
 
       const setFFDHistoryStatus = (text) => {
@@ -4647,6 +4678,8 @@ function addHydrometLayersToMap(map) {
             ffdHistoryChart.destroy();
           }
         }
+
+        const tickMode = getFFDHistoryTickMode(labels);
 
         const chartInstance = new Chart(canvas, {
           type: 'line',
@@ -4706,8 +4739,8 @@ function addHydrometLayersToMap(map) {
                   minRotation: 0,
                   maxRotation: 0,
                   callback: function (value, index) {
-                    const rawLabel = labels[index];
-                    return formatFFDHistoryDateTime(rawLabel).tick;
+                    const rawLabel = labels[value];
+                    return formatFFDHistoryDateTime(rawLabel, tickMode).tick;
                   }
                 },
                 grid: { color: 'rgba(148, 163, 184, 0.15)' }
@@ -4734,6 +4767,12 @@ function addHydrometLayersToMap(map) {
         const endInput = document.getElementById('ffd-history-end');
         const startVal = startInput ? startInput.value : '';
         const endVal = endInput ? endInput.value : '';
+        ffdHistoryFallbackYear = endVal
+          ? Number(endVal.split('-')[0])
+          : (startVal ? Number(startVal.split('-')[0]) : new Date().getFullYear());
+        if (Number.isNaN(ffdHistoryFallbackYear)) {
+          ffdHistoryFallbackYear = new Date().getFullYear();
+        }
 
         let url = `${ffdHistoryConfig.apiBase}/api/history?name=${encodeURIComponent(ffdHistoryName)}`;
         if (startVal && endVal) {
@@ -4764,28 +4803,40 @@ function addHydrometLayersToMap(map) {
             return;
           }
 
-          const labels = [];
-          const indexMap = new Map();
+          const labelMetaByKey = new Map();
           const addLabel = (label) => {
             const safeLabel = label ? String(label) : 'Unknown';
-            if (!indexMap.has(safeLabel)) {
-              indexMap.set(safeLabel, labels.length);
-              labels.push(safeLabel);
+            const key = getFFDHistoryPointKey(safeLabel);
+            if (!labelMetaByKey.has(key)) {
+              const parsedDate = parseFFDHistoryTimestamp(safeLabel, ffdHistoryFallbackYear);
+              labelMetaByKey.set(key, {
+                key,
+                label: safeLabel,
+                ts: parsedDate ? parsedDate.getTime() : Number.MAX_SAFE_INTEGER
+              });
             }
           };
 
           inflow.forEach(point => addLabel(point.x));
           outflow.forEach(point => addLabel(point.x));
 
+          const orderedMeta = Array.from(labelMetaByKey.values()).sort((a, b) => {
+            if (a.ts !== b.ts) return a.ts - b.ts;
+            return a.label.localeCompare(b.label);
+          });
+
+          const labels = orderedMeta.map(item => item.label);
+          const indexMap = new Map(orderedMeta.map((item, idx) => [item.key, idx]));
+
           const inflowData = new Array(labels.length).fill(null);
           const outflowData = new Array(labels.length).fill(null);
 
           inflow.forEach(point => {
-            const idx = indexMap.get(point.x ? String(point.x) : 'Unknown');
+            const idx = indexMap.get(getFFDHistoryPointKey(point.x ? String(point.x) : 'Unknown'));
             if (idx !== undefined) inflowData[idx] = point.y;
           });
           outflow.forEach(point => {
-            const idx = indexMap.get(point.x ? String(point.x) : 'Unknown');
+            const idx = indexMap.get(getFFDHistoryPointKey(point.x ? String(point.x) : 'Unknown'));
             if (idx !== undefined) outflowData[idx] = point.y;
           });
 
