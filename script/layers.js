@@ -4544,6 +4544,87 @@ function addHydrometLayersToMap(map) {
         return `${yyyy}-${mm}-${dd}`;
       };
 
+      const parseFFDHistoryTimestamp = (value) => {
+        if (!value) return null;
+        const raw = String(value).trim();
+        if (!raw) return null;
+
+        const cleaned = raw.replace(/\s*PKT\s*$/i, '').trim();
+        const nativeParsed = new Date(cleaned);
+        if (!Number.isNaN(nativeParsed.getTime())) {
+          return nativeParsed;
+        }
+
+        const match = cleaned.match(/^(\d{1,2})-([A-Za-z]{3})(?:-(\d{2,4}))?\s+(\d{1,2})(?::(\d{2}))?$/);
+        if (!match) return null;
+
+        const day = Number(match[1]);
+        const monthText = match[2].slice(0, 1).toUpperCase() + match[2].slice(1, 3).toLowerCase();
+        const yearText = match[3];
+        const hour = Number(match[4]);
+        const minute = match[5] !== undefined ? Number(match[5]) : 0;
+
+        const monthMap = {
+          Jan: 0,
+          Feb: 1,
+          Mar: 2,
+          Apr: 3,
+          May: 4,
+          Jun: 5,
+          Jul: 6,
+          Aug: 7,
+          Sep: 8,
+          Oct: 9,
+          Nov: 10,
+          Dec: 11
+        };
+        const monthIndex = monthMap[monthText];
+        if (monthIndex === undefined || Number.isNaN(day) || Number.isNaN(hour) || Number.isNaN(minute)) {
+          return null;
+        }
+
+        let year = new Date().getFullYear();
+        if (yearText) {
+          const parsedYear = Number(yearText);
+          if (!Number.isNaN(parsedYear)) {
+            year = yearText.length === 2 ? 2000 + parsedYear : parsedYear;
+          }
+        }
+
+        const dt = new Date(year, monthIndex, day, hour, minute, 0, 0);
+        return Number.isNaN(dt.getTime()) ? null : dt;
+      };
+
+      const formatFFDHistoryTime = (dateObj) => {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '';
+        const hours = dateObj.getHours();
+        const minutes = dateObj.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const hour12 = hours % 12 || 12;
+        if (minutes === 0) {
+          return `${hour12} ${ampm}`;
+        }
+        return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+      };
+
+      const formatFFDHistoryDateTime = (rawLabel) => {
+        const parsed = parseFFDHistoryTimestamp(rawLabel);
+        if (!parsed) {
+          return {
+            tick: String(rawLabel || ''),
+            tooltip: String(rawLabel || '')
+          };
+        }
+
+        const day = parsed.getDate();
+        const month = parsed.toLocaleString('en-US', { month: 'short' });
+        const time = formatFFDHistoryTime(parsed);
+        return {
+          tick: [`${day} ${month}`, time],
+          tooltip: `${day} ${month}, ${time}`
+        };
+      };
+
       const setFFDHistoryStatus = (text) => {
         const statusEl = document.getElementById('ffd-history-status');
         if (statusEl) {
@@ -4604,6 +4685,11 @@ function addHydrometLayersToMap(map) {
               },
               tooltip: {
                 callbacks: {
+                  title: function (items) {
+                    if (!items || !items.length) return '';
+                    const label = items[0].label;
+                    return formatFFDHistoryDateTime(label).tooltip;
+                  },
                   label: function (context) {
                     if (context.parsed.y === null) return null;
                     return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString()} cusecs`;
@@ -4613,7 +4699,17 @@ function addHydrometLayersToMap(map) {
             },
             scales: {
               x: {
-                ticks: { color: '#cbd5f5', maxTicksLimit: isFullscreen ? 12 : 6 },
+                ticks: {
+                  color: '#cbd5f5',
+                  maxTicksLimit: isFullscreen ? 12 : 6,
+                  autoSkip: true,
+                  minRotation: 0,
+                  maxRotation: 0,
+                  callback: function (value, index) {
+                    const rawLabel = labels[index];
+                    return formatFFDHistoryDateTime(rawLabel).tick;
+                  }
+                },
                 grid: { color: 'rgba(148, 163, 184, 0.15)' }
               },
               y: {
@@ -4717,13 +4813,29 @@ function addHydrometLayersToMap(map) {
         if (!panel) return;
 
         const closeBtn = document.getElementById('ffd-history-close');
+        const dateToggleBtn = document.getElementById('ffd-history-date-toggle');
         const fullscreenBtn = document.getElementById('ffd-history-fullscreen-btn');
         const fullscreenPanel = document.getElementById('ffd-history-fullscreen-panel');
         const fullscreenClose = document.getElementById('ffd-history-fullscreen-close');
+        const controlsSection = panel.querySelector('.ffd-history-controls');
         const applyBtn = document.getElementById('ffd-history-apply');
         const resetBtn = document.getElementById('ffd-history-reset');
         const startInput = document.getElementById('ffd-history-start');
         const endInput = document.getElementById('ffd-history-end');
+
+        const setControlsOpen = (isOpen) => {
+          panel.classList.toggle('controls-open', isOpen);
+          if (dateToggleBtn) {
+            dateToggleBtn.setAttribute('aria-expanded', String(isOpen));
+          }
+          if (ffdHistoryChart) {
+            requestAnimationFrame(() => {
+              ffdHistoryChart.resize();
+            });
+          }
+        };
+
+        setControlsOpen(false);
 
         const today = getTodayStr();
         if (startInput) {
@@ -4762,6 +4874,15 @@ function addHydrometLayersToMap(map) {
         bindStopEvents(endInput);
         bindStopEvents(applyBtn);
         bindStopEvents(resetBtn);
+        bindStopEvents(dateToggleBtn);
+        bindStopEvents(controlsSection);
+
+        if (dateToggleBtn) {
+          dateToggleBtn.addEventListener('click', () => {
+            const isOpen = panel.classList.contains('controls-open');
+            setControlsOpen(!isOpen);
+          });
+        }
 
         const closeFullscreen = () => {
           if (!fullscreenPanel) return;
@@ -4897,6 +5018,11 @@ function addHydrometLayersToMap(map) {
 
         ffdHistoryName = name || 'Unknown Station';
         titleEl.textContent = `${ffdHistoryName} - History`;
+        panel.classList.remove('controls-open');
+        const dateToggleBtn = document.getElementById('ffd-history-date-toggle');
+        if (dateToggleBtn) {
+          dateToggleBtn.setAttribute('aria-expanded', 'false');
+        }
         if (!panel.dataset.dragged) {
           panel.style.right = '16px';
           panel.style.bottom = '16px';

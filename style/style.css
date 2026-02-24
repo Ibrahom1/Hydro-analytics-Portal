@@ -635,6 +635,7 @@ body {
   gap: 6px;
 }
 
+.ffd-history-date-toggle,
 .ffd-history-fullscreen-btn {
   background: rgba(148, 163, 184, 0.15);
   border: 1px solid rgba(148, 163, 184, 0.35);
@@ -649,8 +650,14 @@ body {
   font-size: 12px;
 }
 
+.ffd-history-date-toggle:hover,
 .ffd-history-fullscreen-btn:hover {
   background: rgba(148, 163, 184, 0.25);
+}
+
+.ffd-history-panel.controls-open .ffd-history-date-toggle {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.5);
 }
 
 .ffd-history-close {
@@ -669,9 +676,13 @@ body {
 
 .ffd-history-controls {
   padding: 10px 12px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 8px;
+}
+
+.ffd-history-panel.controls-open .ffd-history-controls {
+  display: flex;
 }
 
 .ffd-history-label {
@@ -725,12 +736,18 @@ body {
 }
 
 .ffd-history-status {
+  padding: 0 12px;
+  margin-top: 8px;
   font-size: 12px;
   color: #cbd5f5;
 }
 
 .ffd-history-chart {
-  padding: 10px 12px 12px;
+  padding: 8px 12px 12px;
+  height: 310px;
+}
+
+.ffd-history-panel.controls-open .ffd-history-chart {
   height: 240px;
 }
 
@@ -773,6 +790,14 @@ body {
     right: 8px;
     bottom: 8px;
     max-height: calc(100% - 16px);
+  }
+
+  .ffd-history-chart {
+    height: 260px;
+  }
+
+  .ffd-history-panel.controls-open .ffd-history-chart {
+    height: 210px;
   }
 }
 
