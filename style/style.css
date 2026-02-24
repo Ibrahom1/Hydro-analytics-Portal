@@ -706,6 +706,12 @@ body {
   padding: 6px 8px;
   border-radius: 6px;
   font-size: 12px;
+  color-scheme: light;
+}
+
+.ffd-history-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 
 .ffd-history-sep {
@@ -755,7 +761,7 @@ body {
   position: absolute;
   inset: 0;
   background: rgba(2, 6, 23, 0.92);
-  z-index: 11000;
+  z-index: 1000002;
   display: none;
   flex-direction: column;
 }
