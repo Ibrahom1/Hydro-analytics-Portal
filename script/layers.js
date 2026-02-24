@@ -1,7 +1,7 @@
 // Global GeoServer IP variables
 const geoserverUrl='172.18.7.35'
-const mamAyman = "172.18.1.188"; // National, Provincial, District, Tehsil
-const mamHimael = "172.18.1.151"; // Union Council
+const mamAyman = "172.18.1.168"; // National, Provincial, District, Tehsil
+const mamHimael = "172.18.1.147"; // Union Council
 const mapDiv = document.getElementById("map1");
 
 function updateLayerToggleRowHighlight(checkbox) {
@@ -10872,14 +10872,36 @@ function addHydrometLayersToMap(map) {
     );
   }
 
+  if (!map1.getLayer("Combined_label")) {
+    map1.addLayer({
+      id: "Combined_label",
+      type: "symbol",
+      source: "Combined",
+      "source-layer": "water_shed",
+      layout: {
+        visibility: "none",
+        "text-field": ["coalesce", ["get", "name"], ""],
+        "text-letter-spacing": 0.1,
+        "text-size": 12,
+        "text-offset": [0, 0],
+        "text-anchor": "center",
+      },
+      paint: {
+        "text-color": "black",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 1,
+      },
+    });
+  }
+
 
   document.getElementById("watershed").addEventListener("change", function () {
     const isVisible = this.checked;
-    map1.setLayoutProperty(
-      "Combined",
-      "visibility",
-      isVisible ? "visible" : "none"
-    );
+    ["Combined", "Combined_label"].forEach((layerId) => {
+      if (map1.getLayer(layerId)) {
+        map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
+      }
+    });
   });
 }
 
@@ -12153,7 +12175,7 @@ function getMap1VisibilityStates() {
     { checkboxId: 'india', layers: ['indian'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },
     { checkboxId: 'Barrages', layers: ['Barrages'] },
-    { checkboxId: 'watershed', layers: ['Combined'] },
+    { checkboxId: 'watershed', layers: ['Combined', 'Combined_label'] },
     { checkboxId: 'minorRivers', layers: ['minor_rivers_outline', 'minor_rivers_label'] },
     // Canal network Punjab
     { checkboxId: 'mainCanal', layers: ['main_canals_line'] },
@@ -12592,7 +12614,7 @@ function FluidMeter() {
       drawBubblesLayer(dt);
     }
     context.restore();
-  }
+  } 
 
   function drawFluidLayer(layer, dt) {
     if (layer.angularSpeed > 0) {
@@ -12695,7 +12717,7 @@ function FluidMeter() {
     context.fillStyle = options.fontFillStyle;
     context.textAlign = "center";
     context.textBaseline = 'middle';
-    context.filter = "drop-shadow(0px 0px 5px rgba(0,0,0,0.4))"
+    context.filter = "drop-shadow(0px 0px 5px rgba(0,0,0  ,0.4))"
     context.fillText(text, options.size / 2, options.size / 2);
     context.restore();
   }
