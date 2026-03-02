@@ -1,7 +1,8 @@
 // Global GeoServer IP variables
 const geoserverUrl='172.18.7.35'
 const mamAyman = "172.18.1.168"; // National, Provincial, District, Tehsil
-const mamHimael = "172.18.1.147"; // Union Council
+const mamHimael = "172.18.1.147";
+const ibrahim  = "172.18.1.110";
 const mapDiv = document.getElementById("map1");
 
 function updateLayerToggleRowHighlight(checkbox) {
@@ -1015,7 +1016,10 @@ const overallProjectionTargets = {
     'jamshoro',
     'Kirthar_extent',
     'jhall',
+    'jammuTawiHigh',
+    'jammuTawiMedium',
     'muzExtent',
+    'gilgitHigh',
     'p_panjal',
     'hyder'
   ],
@@ -1052,6 +1056,9 @@ const overallProjectionVectorLayerIds = [
   'khfex',
   'Bajaur_150mm',
   'Buner_150mm',
+  'gilgit_river',
+  'jammu_tawi_high',
+  'jammu_tawi_medium',
   'DG khan HT',
   'Pir_Panjal_HT',
   'KIRTHAR_RANGE',
@@ -4935,7 +4942,7 @@ function addHydrometLayersToMap(map) {
         window.__ffdHistoryPanelReady = true;
 
         const panel = document.getElementById('ffd-history-panel');
-        const header = document.querySelector('.ffd-history-header');
+        const header = panel.querySelector('.ffd-history-header');
         if (!panel) return;
 
         const closeBtn = document.getElementById('ffd-history-close');
@@ -5088,34 +5095,55 @@ function addHydrometLayersToMap(map) {
           let startY = 0;
           let startLeft = 0;
           let startTop = 0;
+          let panelWidth = 0;
+          let panelHeight = 0;
+          let pointerId = null;
+          let hasMoved = false;
 
           const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+          const detachDragListeners = () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            window.removeEventListener('blur', onPointerUp);
+          };
+
+          const endDrag = () => {
+            isDragging = false;
+            pointerId = null;
+            panel.classList.remove('dragging');
+            detachDragListeners();
+          };
+
           const onPointerMove = (event) => {
             if (!isDragging) return;
+            if (pointerId !== null && event.pointerId !== pointerId) return;
+
+            hasMoved = true;
             const dx = event.clientX - startX;
             const dy = event.clientY - startY;
-            const rect = panel.getBoundingClientRect();
             const newLeft = startLeft + dx;
             const newTop = startTop + dy;
 
-            const maxLeft = window.innerWidth - rect.width - 8;
-            const maxTop = window.innerHeight - rect.height - 8;
+            const maxLeft = Math.max(8, window.innerWidth - panelWidth - 8);
+            const maxTop = Math.max(8, window.innerHeight - panelHeight - 8);
 
             panel.style.left = `${clamp(newLeft, 8, maxLeft)}px`;
             panel.style.top = `${clamp(newTop, 8, maxTop)}px`;
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
+            event.preventDefault();
           };
 
-          const onPointerUp = () => {
+          const onPointerUp = (event) => {
             if (!isDragging) return;
-            isDragging = false;
-            panel.classList.remove('dragging');
-            panel.dataset.dragged = 'true';
-            window.removeEventListener('pointermove', onPointerMove);
-            window.removeEventListener('pointerup', onPointerUp);
-            window.removeEventListener('pointercancel', onPointerUp);
+            if (pointerId !== null && event && event.pointerId !== undefined && event.pointerId !== pointerId) return;
+
+            if (hasMoved) {
+              panel.dataset.dragged = 'true';
+            }
+            endDrag();
           };
 
           header.addEventListener('pointerdown', (event) => {
@@ -5123,15 +5151,33 @@ function addHydrometLayersToMap(map) {
             if (event.target && event.target.closest('button')) return;
             const rect = panel.getBoundingClientRect();
             isDragging = true;
+            hasMoved = false;
+            pointerId = event.pointerId;
             startX = event.clientX;
             startY = event.clientY;
             startLeft = rect.left;
             startTop = rect.top;
+            panelWidth = rect.width;
+            panelHeight = rect.height;
             panel.classList.add('dragging');
+            if (typeof header.setPointerCapture === 'function' && event.pointerId !== undefined) {
+              try {
+                header.setPointerCapture(event.pointerId);
+              } catch (_) {
+                // Ignore capture failures; listeners still handle drag.
+              }
+            }
             window.addEventListener('pointermove', onPointerMove);
             window.addEventListener('pointerup', onPointerUp);
             window.addEventListener('pointercancel', onPointerUp);
+            window.addEventListener('blur', onPointerUp);
           });
+
+          if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+              endDrag();
+            }, true);
+          }
         }
       };
 
@@ -6382,7 +6428,7 @@ function addHydrometLayersToMap(map) {
         "visibility",
         isVisible ? "visible" : "none"
       );
-    });
+    }); 
   }
 
   // Hill Torrents (Hydrooutlook 2026) - Buner 150mm (WFS GeoJSON)
@@ -6459,6 +6505,127 @@ function addHydrometLayersToMap(map) {
       );
     });
   }
+
+  // Hill Torrents (Hydrooutlook 2026) - Gilgit High
+  if (!map1.getSource("gilgit_river")) {
+    map1.addSource("gilgit_river", {
+      type: "vector",
+      scheme: "tms",
+      tiles: [
+        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:gilgit_river@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      ],
+    });
+  }
+
+  if (!map1.getLayer("gilgit_river")) {
+    map1.addLayer({
+      id: "gilgit_river",
+      type: "fill",
+      source: "gilgit_river",
+      "source-layer": "gilgit_river",
+      layout: {
+        visibility: " none"
+      },
+      paint: {
+        "fill-outline-color": "#ff0000",
+        "fill-opacity": 0.7,
+        "fill-color": "#ff0000"
+      }
+    });
+  }
+
+  const gilgitHighCheckbox = document.getElementById("gilgitHigh");
+  if (gilgitHighCheckbox) {
+    gilgitHighCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "gilgit_river",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Jammu Tawi High
+  if (!map1.getSource("jammu_tawi_high")) {
+    map1.addSource("jammu_tawi_high", {
+      type: "vector",
+      scheme: "tms",
+      tiles: [
+        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:jammu%20tawi%209R%20%28300mm%29@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      ],
+    });
+  }
+
+  if (!map1.getLayer("jammu_tawi_high")) {
+    map1.addLayer({
+      id: "jammu_tawi_high",
+      type: "fill",
+      source: "jammu_tawi_high",
+      "source-layer": "jammu tawi 9R (300mm)",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-outline-color": "#ff0000",
+        "fill-opacity": 0.7,
+        "fill-color": "#ff0000"
+      }
+    });
+  }
+
+  const jammuTawiHighCheckbox = document.getElementById("jammuTawiHigh");
+  if (jammuTawiHighCheckbox) {
+    jammuTawiHighCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "jammu_tawi_high",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Jammu Tawi Medium
+  if (!map1.getSource("jammu_tawi_medium")) {
+    map1.addSource("jammu_tawi_medium", {
+      type: "vector",
+      scheme: "tms",
+      tiles: [  
+        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:Jammu%20tawi%20%28150mm%29@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      ],
+    });
+  }
+
+  if (!map1.getLayer("jammu_tawi_medium")) {
+    map1.addLayer({
+      id: "jammu_tawi_medium",
+      type: "fill",
+      source: "jammu_tawi_medium",
+      "source-layer": "Jammu tawi (150mm)",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-outline-color": "#ffa500",
+        "fill-opacity": 0.7,
+        "fill-color": "#ffa500"
+      }
+    });
+  }
+
+  const jammuTawiMediumCheckbox = document.getElementById("jammuTawiMedium");
+  if (jammuTawiMediumCheckbox) {
+    jammuTawiMediumCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "jammu_tawi_medium",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
   ///Flood extent of riverine flooding
   //lower indus high flood extent
   map1.addSource("lihfex", {
@@ -6903,13 +7070,6 @@ function addHydrometLayersToMap(map) {
       isVisible ? "visible" : "none"
     );
   });
-
-
-
-
-
-
-
   // Jhelum low flood extent
   map1.addSource("jlfex", {
     type: "vector",
@@ -6935,7 +7095,7 @@ function addHydrometLayersToMap(map) {
   document.getElementById("jhelumLowFlood").addEventListener("change", function () {
     const isVisible = this.checked;
     map1.setLayoutProperty(
-      "jlfex",
+      "jlfex", 
       "visibility",
       isVisible ? "visible" : "none"
     );
@@ -9863,7 +10023,7 @@ function addHydrometLayersToMap(map) {
     }
   });
 
-  //2024 FLOOD EXTENT
+  // 2024 AUGUST FLOOD EXTENT
   map1.addSource("VIIRS_20240420_20240424_MaximumFloodExtent_Pakistan", {
     type: "vector",
     scheme: "tms",
@@ -9897,6 +10057,38 @@ function addHydrometLayersToMap(map) {
     // restoreLayerVisibility(map2, map2Layers);
 
   });
+
+  // 2024 SEPTEMBER FLOOD EXTENT
+  map1.addSource("VIIRS_20240910_20240924_MaximumFloodExtent_PAK", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${ibrahim}:8080/geoserver/gwc/service/tms/1.0.0/Boundaries:2024 sept@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "VIIRS_20240910_20240924_MaximumFloodExtent_PAK",
+    type: "fill",
+    source: "VIIRS_20240910_20240924_MaximumFloodExtent_PAK",
+    "source-layer": "2024 sept",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "fill-outline-color": "red",
+      "fill-opacity": 0.7,
+      "fill-color": "red",
+    },
+  });
+  document.getElementById("flood2024sep").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty(
+      "VIIRS_20240910_20240924_MaximumFloodExtent_PAK",
+      "visibility",
+      isVisible ? "visible" : "none"
+    );
+  });
+
   ///FLOOD EXTENT 2025
 
   // // Add raster source from WMS

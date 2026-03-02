@@ -102,15 +102,15 @@
 <body class="bg-slate-50">
   <!-- Top Navigation Bar -->
   <nav
-    class="px-5 py-5 flex items-center justify-between shadow-lg border border-white" style="background-color:#002060;">
+    class="px-5 py-5 flex items-center justify-between shadow-lg border border-white" style="background-color:#9b0f00;">
     <div class="flex items-center gap-4 logo-container">
       <img src="media/UI/ndma_logo.png" alt="Logo" class="logo" />
     </div>
     <div class="flex-1 text-center heading-container">
         <div class="bg-glass fixed-bottom-right">
-            N-2
+            N-5
         </div>
-      <span class="text-white text-5xl font-semibold text-shadow" style="font-family: 'Segoi UI', sans-serif !important; font-weight: 700;">Hydro Analytics 2026</span>
+      <span class="text-white text-5xl font-semibold" style="font-family: 'Segoi UI', sans-serif !important; font-weight: 700;">National Hydro Analytics 2026</span>
     </div>
   </nav>
 
@@ -1386,11 +1386,19 @@
                   </div>
                 </label>
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                  <span class="text-sm">2024 Flood Extent</span>
+                  <span class="text-sm">2024 August Flood Extent</span>
                   <div class="relative">
                     <input type="checkbox" id="flood2024" class="hidden"
                       onchange="toggleHighlight(this); updateHeaderText();" />
                     <label for="flood2024" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-sm">2024 September Flood Extent</span>
+                  <div class="relative">
+                    <input type="checkbox" id="flood2024sep" class="hidden"
+                      onchange="toggleHighlight(this); updateHeaderText();" />
+                    <label for="flood2024sep" class="cursor-pointer"></label>
                   </div>
                 </label>
               </div>
@@ -2042,6 +2050,20 @@
                     </div>
                   </label>
                   <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jammu Tawi High</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jammuTawiHigh" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="jammuTawiHigh" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Jammu Tawi Medium</span>
+                    <div class="relative">
+                      <input type="checkbox" id="jammuTawiMedium" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="jammuTawiMedium" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
                     <span class="text-sm">Pir Panjal Tiff</span>
                     <div class="relative">
                       <input type="checkbox" id="panjal" class="hidden" onchange="toggleHighlight(this)" />
@@ -2142,6 +2164,13 @@
                     <div class="relative">
                       <input type="checkbox" id="muzExtent" class="hidden" onchange="toggleHighlight(this)" />
                       <label for="muzExtent" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Gilgit High</span>
+                    <div class="relative">
+                      <input type="checkbox" id="gilgitHigh" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="gilgitHigh" class="cursor-pointer"></label>
                     </div>
                   </label>
                 </div>
@@ -3084,7 +3113,7 @@
       // Fallback logic for checkboxes (if no override provided)
       const floodCheckboxes = [
         'hotspots', 'flood2010', 'flood2011', 'flood2012', 'flood2013',
-        'flood2014', 'flood2015', 'flood2023', 'flood2024', 'dams1', 'balochistan', 'dgKhan', 'retentionPonds', 'retentionReservoirs', 'gb', 'kpDams', 'pondSites', 'rtimp'
+        'flood2014', 'flood2015', 'flood2023', 'flood2024', 'flood2024sep', 'dams1', 'balochistan', 'dgKhan', 'retentionPonds', 'retentionReservoirs', 'gb', 'kpDams', 'pondSites', 'rtimp'
       ];
       const anyFloodChecked = floodCheckboxes.some(id => {
         const checkbox = document.getElementById(id);
