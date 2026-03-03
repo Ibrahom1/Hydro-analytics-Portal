@@ -13,6 +13,6 @@ let val_Bhakra='1677.18'
 let fillPercentage_Tarbela = 31
 let fillPercentage_Mangla= 33
 let fillPercentage_Chashma = 21
-let fillPercentage_Thein= 90
+let fillPercentage_Thein= 50
 let fillPercentage_Pong= 99
 let fillPercentage_Bhakra= 88 
