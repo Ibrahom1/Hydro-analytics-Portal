@@ -2017,6 +2017,13 @@
                       <label for="buner150" class="cursor-pointer"></label>
                     </div>
                   </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Mardan medium</span>
+                    <div class="relative">
+                      <input type="checkbox" id="mardanMedium" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="mardanMedium" class="cursor-pointer"></label>
+                    </div>
+                  </label>
                 </div>
 
                 <button
@@ -2050,17 +2057,52 @@
                     </div>
                   </label>
                   <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Jammu Tawi High</span>
+                    <span class="text-sm">Palkhu Low</span>
                     <div class="relative">
-                      <input type="checkbox" id="jammuTawiHigh" class="hidden" onchange="toggleHighlight(this)" />
-                      <label for="jammuTawiHigh" class="cursor-pointer"></label>
+                      <input type="checkbox" id="palkhuLow" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="palkhuLow" class="cursor-pointer"></label>
                     </div>
                   </label>
                   <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Jammu Tawi Medium</span>
+                    <span class="text-sm">Palkhu Medium</span>
                     <div class="relative">
-                      <input type="checkbox" id="jammuTawiMedium" class="hidden" onchange="toggleHighlight(this)" />
-                      <label for="jammuTawiMedium" class="cursor-pointer"></label>
+                      <input type="checkbox" id="palkhuMedium" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="palkhuMedium" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Palkhu High</span>
+                    <div class="relative">
+                      <input type="checkbox" id="palkhuHigh" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="palkhuHigh" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Baein & Basantar Medium</span>
+                    <div class="relative">
+                      <input type="checkbox" id="baeinBasantarMedium" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="baeinBasantarMedium" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Baein & Basantar High</span>
+                    <div class="relative">
+                      <input type="checkbox" id="baeinBasantarHigh" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="baeinBasantarHigh" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Manawar Tawi Low</span>
+                    <div class="relative">
+                      <input type="checkbox" id="manawarTawiLow" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="manawarTawiLow" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Manawar Tawi Medium</span>
+                    <div class="relative">
+                      <input type="checkbox" id="manawarTawiMedium" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="manawarTawiMedium" class="cursor-pointer"></label>
                     </div>
                   </label>
                   <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
@@ -2141,6 +2183,20 @@
                       <label for="jhall" class="cursor-pointer"></label>
                     </div>
                   </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Kech & Panjgur Medium</span>
+                    <div class="relative">
+                      <input type="checkbox" id="kechPanjgurMedium" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="kechPanjgurMedium" class="cursor-pointer"></label>
+                    </div>
+                  </label>
+                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                    <span class="text-sm">Kech & Panjgur High</span>
+                    <div class="relative">
+                      <input type="checkbox" id="kechPanjgurHigh" class="hidden" onchange="toggleHighlight(this)" />
+                      <label for="kechPanjgurHigh" class="cursor-pointer"></label>
+                    </div>
+                  </label>
                 </div>
 
                 <button
@@ -2164,13 +2220,6 @@
                     <div class="relative">
                       <input type="checkbox" id="muzExtent" class="hidden" onchange="toggleHighlight(this)" />
                       <label for="muzExtent" class="cursor-pointer"></label>
-                    </div>
-                  </label>
-                  <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
-                    <span class="text-sm">Gilgit High</span>
-                    <div class="relative">
-                      <input type="checkbox" id="gilgitHigh" class="hidden" onchange="toggleHighlight(this)" />
-                      <label for="gilgitHigh" class="cursor-pointer"></label>
                     </div>
                   </label>
                 </div>
@@ -2529,14 +2578,32 @@
               <button class="close-btn" onclick="closeFluidMeter()">×</button>
 
               <div class="meter-header">
+                <div class="meter-meta-row">
+                  <div class="meter-meta" id="meterMeta">LIVE</div>
+                  <div class="meter-live" id="meterLive">LIVE</div>
+                </div>
                 <div class="meter-title" id="meterTitle">Dam Name</div>
               </div>
 
-              <div id="fluid-meter"></div>
+              <div class="meter-main">
+                <div id="fluid-meter"></div>
 
-              <div class="reservoir-level">
-                <div class="reservoir-level-label">Current Reservoir Level</div>
-                <div class="reservoir-level-value" id="reservoirValue">0 ft</div>
+                <div class="reservoir-level">
+                  <div class="reservoir-level-label">Current Level</div>
+                  <div class="reservoir-level-value" id="reservoirValue">0 ft</div>
+                  <div class="capacity-card">
+                    <div class="capacity-label">Total Capacity</div>
+                    <div class="capacity-value" id="reservoirCapacityValue">0 ft</div>
+                    <div class="capacity-note" id="reservoirCapacityNote">Capacity data unavailable</div>
+                  </div>
+                  <div class="reservoir-timestamp" id="reservoirTimestamp">Live</div>
+                </div>
+              </div>
+
+              <div class="dam-insights" id="damInsights">
+                <div class="dam-insights-strip" id="damInsightsStrip"></div>
+                <div class="dam-bars-title" id="damBarsTitle">Comparison</div>
+                <div class="dam-insights-chart" id="damInsightsChart"></div>
               </div>
             </div>
             <!-- FFD History Side Panel -->

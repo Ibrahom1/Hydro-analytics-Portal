@@ -1012,14 +1012,16 @@ const overallProjectionTargets = {
     'di_ht',
     'bajaur150',
     'buner150',
+    'mardanMedium',
     'dg_ht',
     'jamshoro',
     'Kirthar_extent',
     'jhall',
-    'jammuTawiHigh',
-    'jammuTawiMedium',
+    'kechPanjgurMedium',
+    'kechPanjgurHigh',
+    'manawarTawiLow',
+    'manawarTawiMedium',
     'muzExtent',
-    'gilgitHigh',
     'p_panjal',
     'hyder'
   ],
@@ -1056,9 +1058,11 @@ const overallProjectionVectorLayerIds = [
   'khfex',
   'Bajaur_150mm',
   'Buner_150mm',
-  'gilgit_river',
-  'jammu_tawi_high',
-  'jammu_tawi_medium',
+  'Mardan_inundation_filter',
+  'kech_panjgur_50mm_filter',
+  'kech_panjgur_100mm_filter',
+  'munawar_tawi_60mm_filter',
+  'munawar_150mm_filter',
   'DG khan HT',
   'Pir_Panjal_HT',
   'KIRTHAR_RANGE',
@@ -3260,6 +3264,9 @@ const map1Layers = [
   "Terrain_Jhal_Depth", "Terrain_hyd", "Depth_Max_Terrain_DEM_AJK1",
   // Other important layers that were missing
   "glofas", "ffd_point", "ffd_label", "DI_Khan_HT", "DG khan HT", "Pir_Panjal_HT",
+  "Mardan_inundation_filter",
+  "kech_panjgur_50mm_filter", "kech_panjgur_100mm_filter",
+  "munawar_tawi_60mm_filter", "munawar_150mm_filter",
   "Hyderabad_arc", "jhal_magsi_arc_Complete", "KIRTHAR_RANGE", "lihfex", "limfex",
   "lilfex", "uihfex", "uilfex", "chfex", "clfex", "klfex", "jhfex", "jmfex",
   "3_Swat_River_50yr_Flood_Extent", "1_Swat_River_5yr_Flood_Extent", "Muzafferabad_arc",
@@ -5144,6 +5151,13 @@ function addHydrometLayersToMap(map) {
               panel.dataset.dragged = 'true';
             }
             endDrag();
+
+            const fluidContainer = document.getElementById('fluidMeterContainer');
+            if (fluidContainer && fluidContainer.style.display === 'block') {
+              if (!fluidContainer.style.left || fluidContainer.style.left === 'auto') {
+                dockFluidMeter(fluidContainer);
+              }
+            }
           };
 
           header.addEventListener('pointerdown', (event) => {
@@ -5195,13 +5209,23 @@ function addHydrometLayersToMap(map) {
         if (dateToggleBtn) {
           dateToggleBtn.setAttribute('aria-expanded', 'false');
         }
-        if (!panel.dataset.dragged) {
-          panel.style.right = '16px';
-          panel.style.bottom = '16px';
-          panel.style.left = 'auto';
-          panel.style.top = 'auto';
-        }
+        panel.dataset.dragged = '';
+        panel.style.width = `${Math.round(getDockPanelWidth())}px`;
+        panel.style.right = '16px';
+        panel.style.bottom = '16px';
+        panel.style.left = 'auto';
+        panel.style.top = 'auto';
         panel.classList.add('open');
+
+        const fluidContainer = document.getElementById('fluidMeterContainer');
+        if (fluidContainer && fluidContainer.style.display === 'block') {
+          if (!fluidContainer.style.left || fluidContainer.style.left === 'auto') {
+            dockFluidMeter(fluidContainer);
+          }
+        }
+
+        alignFFDHistoryPanelToFluidMeter();
+
         await loadFFDHistoryData();
       };
 
@@ -5639,14 +5663,47 @@ function addHydrometLayersToMap(map) {
 
         // Check if this is one of our special dams and show fluid meter with reservoir level
         const damData = {
-          'Mangla Dam': { percentage: fillPercentage_Mangla, level: val_Mangla },
-          'Chashma': { percentage: fillPercentage_Chashma, level: val_Chashma },
-          'Tarbela Dam': { percentage: fillPercentage_Tarbela, level: val_Tarbela }
+          'Mangla Dam': {
+            percentage: fillPercentage_Mangla,
+            level: val_Mangla,
+            country: 'Pakistan',
+            region: 'Mirpur, AJK',
+            fullCapacity: 1242,
+            lastYearLevel: lastYearLevel_Mangla,
+            avg5YearLevel: avg5YearLevel_Mangla,
+            variation5Year: variation5Year_Mangla,
+            variationArrow: variation5YearArrow_Mangla,
+            variationTrend: variation5YearTrend_Mangla
+          },
+          'Chashma': {
+            percentage: fillPercentage_Chashma,
+            level: val_Chashma,
+            country: 'Pakistan',
+            region: 'Mianwali, Punjab',
+            fullCapacity: 649,
+            lastYearLevel: lastYearLevel_Chashma,
+            avg5YearLevel: avg5YearLevel_Chashma,
+            variation5Year: variation5Year_Chashma,
+            variationArrow: variation5YearArrow_Chashma,
+            variationTrend: variation5YearTrend_Chashma
+          },
+          'Tarbela Dam': {
+            percentage: fillPercentage_Tarbela,
+            level: val_Tarbela,
+            country: 'Pakistan',
+            region: 'Haripur, KP',
+            fullCapacity: 1550,
+            lastYearLevel: lastYearLevel_Tarbela,
+            avg5YearLevel: avg5YearLevel_Tarbela,
+            variation5Year: variation5Year_Tarbela,
+            variationArrow: variation5YearArrow_Tarbela,
+            variationTrend: variation5YearTrend_Tarbela
+          }
         };
 
         if (damData.hasOwnProperty(props.name)) {
           const dam = damData[props.name];
-          showDamFluidMeter(props.name, dam.percentage, dam.level);
+          showDamFluidMeter(props.name, dam.percentage, dam.level, dam);
         }
 
         if (props.name) {
@@ -6467,6 +6524,111 @@ function addHydrometLayersToMap(map) {
     });
   }
 
+  // Hill Torrents (Hydrooutlook 2026) - Mardan medium (WFS GeoJSON)
+  if (!map1.getSource("Mardan_inundation_filter")) {
+    map1.addSource("Mardan_inundation_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Mardan_inundation_filter&outputFormat=application/json&srsName=EPSG:4326`
+    });
+  }
+
+  if (!map1.getLayer("Mardan_inundation_filter")) {
+    map1.addLayer({
+      id: "Mardan_inundation_filter",
+      type: "fill",
+      source: "Mardan_inundation_filter",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#ff8c00"
+      }
+    });
+  }
+
+  const mardanMediumCheckbox = document.getElementById("mardanMedium");
+  if (mardanMediumCheckbox) {
+    mardanMediumCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "Mardan_inundation_filter",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Kech & Panjgur Medium (50mm)
+  if (!map1.getSource("kech_panjgur_50mm_filter")) {
+    map1.addSource("kech_panjgur_50mm_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:kech%26panjgur_50mm_filter&outputFormat=application/json&srsName=EPSG:4326`
+    });
+  }
+
+  if (!map1.getLayer("kech_panjgur_50mm_filter")) {
+    map1.addLayer({
+      id: "kech_panjgur_50mm_filter",
+      type: "fill",
+      source: "kech_panjgur_50mm_filter",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#ff8c00"
+      }
+    });
+  }
+
+  const kechPanjgurMediumCheckbox = document.getElementById("kechPanjgurMedium");
+  if (kechPanjgurMediumCheckbox) {
+    kechPanjgurMediumCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "kech_panjgur_50mm_filter",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Kech & Panjgur High (100mm)
+  if (!map1.getSource("kech_panjgur_100mm_filter")) {
+    map1.addSource("kech_panjgur_100mm_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:kech%26panjgaur_100mm_filter&outputFormat=application/json&srsName=EPSG:4326`
+    });
+  }
+
+  if (!map1.getLayer("kech_panjgur_100mm_filter")) {
+    map1.addLayer({
+      id: "kech_panjgur_100mm_filter",
+      type: "fill",
+      source: "kech_panjgur_100mm_filter",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#ff0000"
+      }
+    });
+  }
+
+  const kechPanjgurHighCheckbox = document.getElementById("kechPanjgurHigh");
+  if (kechPanjgurHighCheckbox) {
+    kechPanjgurHighCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "kech_panjgur_100mm_filter",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
   // Hill Torrents (Hydrooutlook 2026) - Chakwal (WFS GeoJSON)
   if (!map1.getSource("Chakwal_inundation")) {
     map1.addSource("Chakwal_inundation", {
@@ -6487,7 +6649,6 @@ function addHydrometLayersToMap(map) {
         visibility: "none"
       },
       paint: {
-        "fill-outline-color": "#ff0000",
         "fill-opacity": 0.7,
         "fill-color": "#ff0000"
       }
@@ -6506,120 +6667,245 @@ function addHydrometLayersToMap(map) {
     });
   }
 
-  // Hill Torrents (Hydrooutlook 2026) - Gilgit High
-  if (!map1.getSource("gilgit_river")) {
-    map1.addSource("gilgit_river", {
-      type: "vector",
-      scheme: "tms",
-      tiles: [
-        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:gilgit_river@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-      ],
+  // Hill Torrents (Hydrooutlook 2026) - Palkhu Low (75mm)
+  if (!map1.getSource("pulkhu_75mm_filter")) {
+    map1.addSource("pulkhu_75mm_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_75mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
-  if (!map1.getLayer("gilgit_river")) {
+  if (!map1.getLayer("pulkhu_75mm_filter")) {
     map1.addLayer({
-      id: "gilgit_river",
+      id: "pulkhu_75mm_filter",
       type: "fill",
-      source: "gilgit_river",
-      "source-layer": "gilgit_river",
+      source: "pulkhu_75mm_filter",
       layout: {
-        visibility: " none"
+        visibility: "none"
       },
       paint: {
-        "fill-outline-color": "#ff0000",
         "fill-opacity": 0.7,
-        "fill-color": "#ff0000"
+        "fill-color": "#2fbf2f"
       }
     });
   }
 
-  const gilgitHighCheckbox = document.getElementById("gilgitHigh");
-  if (gilgitHighCheckbox) {
-    gilgitHighCheckbox.addEventListener("change", function () {
+  const palkhuLowCheckbox = document.getElementById("palkhuLow");
+  if (palkhuLowCheckbox) {
+    palkhuLowCheckbox.addEventListener("change", function () {
       const isVisible = this.checked;
       map1.setLayoutProperty(
-        "gilgit_river",
+        "pulkhu_75mm_filter",
         "visibility",
         isVisible ? "visible" : "none"
       );
     });
   }
 
-  // Hill Torrents (Hydrooutlook 2026) - Jammu Tawi High
-  if (!map1.getSource("jammu_tawi_high")) {
-    map1.addSource("jammu_tawi_high", {
-      type: "vector",
-      scheme: "tms",
-      tiles: [
-        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:jammu%20tawi%209R%20%28300mm%29@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-      ],
+  // Hill Torrents (Hydrooutlook 2026) - Palkhu Medium (150)
+  if (!map1.getSource("pulkhu_150_filter")) {
+    map1.addSource("pulkhu_150_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_150_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
-  if (!map1.getLayer("jammu_tawi_high")) {
+  if (!map1.getLayer("pulkhu_150_filter")) {
     map1.addLayer({
-      id: "jammu_tawi_high",
+      id: "pulkhu_150_filter",
       type: "fill",
-      source: "jammu_tawi_high",
-      "source-layer": "jammu tawi 9R (300mm)",
+      source: "pulkhu_150_filter",
       layout: {
         visibility: "none"
       },
       paint: {
-        "fill-outline-color": "#ff0000",
         "fill-opacity": 0.7,
-        "fill-color": "#ff0000"
+        "fill-color": "#ff8c00"
       }
     });
   }
 
-  const jammuTawiHighCheckbox = document.getElementById("jammuTawiHigh");
-  if (jammuTawiHighCheckbox) {
-    jammuTawiHighCheckbox.addEventListener("change", function () {
+  const palkhuMediumCheckbox = document.getElementById("palkhuMedium");
+  if (palkhuMediumCheckbox) {
+    palkhuMediumCheckbox.addEventListener("change", function () {
       const isVisible = this.checked;
       map1.setLayoutProperty(
-        "jammu_tawi_high",
+        "pulkhu_150_filter",
         "visibility",
         isVisible ? "visible" : "none"
       );
     });
   }
 
-  // Hill Torrents (Hydrooutlook 2026) - Jammu Tawi Medium
-  if (!map1.getSource("jammu_tawi_medium")) {
-    map1.addSource("jammu_tawi_medium", {
-      type: "vector",
-      scheme: "tms",
-      tiles: [  
-        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:Jammu%20tawi%20%28150mm%29@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-      ],
+  // Hill Torrents (Hydrooutlook 2026) - Palkhu High (300)
+  if (!map1.getSource("pulkhu_300_filter")) {
+    map1.addSource("pulkhu_300_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_300_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
-  if (!map1.getLayer("jammu_tawi_medium")) {
+  if (!map1.getLayer("pulkhu_300_filter")) {
     map1.addLayer({
-      id: "jammu_tawi_medium",
+      id: "pulkhu_300_filter",
       type: "fill",
-      source: "jammu_tawi_medium",
-      "source-layer": "Jammu tawi (150mm)",
+      source: "pulkhu_300_filter",
       layout: {
         visibility: "none"
       },
       paint: {
-        "fill-outline-color": "#ffa500",
         "fill-opacity": 0.7,
-        "fill-color": "#ffa500"
+        "fill-color": "#ff0000"
       }
     });
   }
 
-  const jammuTawiMediumCheckbox = document.getElementById("jammuTawiMedium");
-  if (jammuTawiMediumCheckbox) {
-    jammuTawiMediumCheckbox.addEventListener("change", function () {
+  const palkhuHighCheckbox = document.getElementById("palkhuHigh");
+  if (palkhuHighCheckbox) {
+    palkhuHighCheckbox.addEventListener("change", function () {
       const isVisible = this.checked;
       map1.setLayoutProperty(
-        "jammu_tawi_medium",
+        "pulkhu_300_filter",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Baein & Basantar Medium (150mm)
+  if (!map1.getSource("baein_basantar_150mm")) {
+    map1.addSource("baein_basantar_150mm", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Baein%26Basantar_150mm&outputFormat=application/json&srsName=EPSG:4326`,
+    });
+  }
+
+  if (!map1.getLayer("baein_basantar_150mm")) {
+    map1.addLayer({
+      id: "baein_basantar_150mm",
+      type: "fill",
+      source: "baein_basantar_150mm",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#ff8c00"
+      }
+    });
+  }
+
+  const baeinBasantarMediumCheckbox = document.getElementById("baeinBasantarMedium");
+  if (baeinBasantarMediumCheckbox) {
+    baeinBasantarMediumCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "baein_basantar_150mm",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Baein & Basantar High (350mm)
+  if (!map1.getSource("baein_basantar_350mm")) {
+    map1.addSource("baein_basantar_350mm", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Baein%26Basantar_350mm&outputFormat=application/json&srsName=EPSG:4326`,
+    });
+  }
+
+  if (!map1.getLayer("baein_basantar_350mm")) {
+    map1.addLayer({
+      id: "baein_basantar_350mm",
+      type: "fill",
+      source: "baein_basantar_350mm",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#ff0000"
+      }
+    });
+  }
+
+  const baeinBasantarHighCheckbox = document.getElementById("baeinBasantarHigh");
+  if (baeinBasantarHighCheckbox) {
+    baeinBasantarHighCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "baein_basantar_350mm",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Manawar Tawi Low (60mm)
+  if (!map1.getSource("munawar_tawi_60mm_filter")) {
+    map1.addSource("munawar_tawi_60mm_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:munawar_tawi_60mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
+    });
+  }
+
+  if (!map1.getLayer("munawar_tawi_60mm_filter")) {
+    map1.addLayer({
+      id: "munawar_tawi_60mm_filter",
+      type: "fill",
+      source: "munawar_tawi_60mm_filter",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#2fbf2f"
+      }
+    });
+  }
+
+  const manawarTawiLowCheckbox = document.getElementById("manawarTawiLow");
+  if (manawarTawiLowCheckbox) {
+    manawarTawiLowCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "munawar_tawi_60mm_filter",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  // Hill Torrents (Hydrooutlook 2026) - Manawar Tawi Medium (150mm)
+  if (!map1.getSource("munawar_150mm_filter")) {
+    map1.addSource("munawar_150mm_filter", {
+      type: "geojson",
+      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:munawar_150mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
+    });
+  }
+
+  if (!map1.getLayer("munawar_150mm_filter")) {
+    map1.addLayer({
+      id: "munawar_150mm_filter",
+      type: "fill",
+      source: "munawar_150mm_filter",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "fill-opacity": 0.7,
+        "fill-color": "#ff8c00"
+      }
+    });
+  }
+
+  const manawarTawiMediumCheckbox = document.getElementById("manawarTawiMedium");
+  if (manawarTawiMediumCheckbox) {
+    manawarTawiMediumCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "munawar_150mm_filter",
         "visibility",
         isVisible ? "visible" : "none"
       );
@@ -8654,14 +8940,38 @@ function addHydrometLayersToMap(map) {
 
     // Show fluid meter if special Indian dam
     const indianDamData = {
-      'BHAKRA DAM': { percentage: fillPercentage_Bhakra, level: val_Bhakra },
-      'PONG DAM': { percentage: fillPercentage_Pong, level: val_Pong },
-      'THEIN DAM': { percentage: fillPercentage_Thein, level: val_Thein }
+      'BHAKRA DAM': {
+        percentage: fillPercentage_Bhakra,
+        level: val_Bhakra,
+        country: 'India',
+        region: 'Bilaspur, HP',
+        fullCapacity: 1680,
+        fillLastYear: fillPercentage_Bhakra_last_year,
+        fillNormal: fillPercentage_Bhakra_normal
+      },
+      'PONG DAM': {
+        percentage: fillPercentage_Pong,
+        level: val_Pong,
+        country: 'India',
+        region: 'Kangra, HP',
+        fullCapacity: 1390,
+        fillLastYear: fillPercentage_Pong_last_year,
+        fillNormal: fillPercentage_Pong_normal
+      },
+      'THEIN DAM': {
+        percentage: fillPercentage_Thein,
+        level: val_Thein,
+        country: 'India',
+        region: 'Pathankot, PB',
+        fullCapacity: 1730,
+        fillLastYear: fillPercentage_Thein_last_year,
+        fillNormal: fillPercentage_Thein_normal
+      }
     };
     const damName = feature.properties.Name;
     if (indianDamData.hasOwnProperty(damName)) {
       const dam = indianDamData[damName];
-      showDamFluidMeter(damName, dam.percentage, dam.level);
+      showDamFluidMeter(damName, dam.percentage, dam.level, dam);
     }
   });
 
@@ -12693,6 +13003,134 @@ let initialY = 0;
 let xOffset = 0;
 let yOffset = 0;
 let isDraggableSetup = false;
+let isFluidMeterDockObserverSetup = false;
+
+function getMapDockContainer() {
+  return document.getElementById('map1');
+}
+
+function getDockPanelWidth() {
+  const mapContainer = getMapDockContainer();
+  const mapWidth = mapContainer ? mapContainer.clientWidth : window.innerWidth;
+  const maxAllowed = Math.max(180, mapWidth - 8);
+
+  if (window.innerWidth <= 768) {
+    return Math.min(Math.max(180, mapWidth - 16), Math.min(330, maxAllowed));
+  }
+  if (window.innerWidth <= 1100) {
+    return Math.min(Math.max(200, mapWidth - 24), Math.min(360, maxAllowed));
+  }
+  return Math.min(Math.max(220, mapWidth - 20), Math.min(400, maxAllowed));
+}
+
+function getFluidMeterDockMetrics() {
+  const compactView = window.innerWidth <= 1100;
+  const baseTop = compactView ? 12 : 14;
+  const mapContainer = getMapDockContainer();
+  const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
+  const mapHeight = mapContainer ? mapContainer.clientHeight : window.innerHeight;
+  const dockWidth = getDockPanelWidth();
+  const metrics = {
+    top: `${baseTop}px`,
+    right: '16px',
+    width: `${dockWidth}px`,
+    maxHeight: `${Math.max(220, Math.floor(mapHeight - baseTop - 16))}px`
+  };
+
+  const historyPanel = document.getElementById('ffd-history-panel');
+  if (!historyPanel || !historyPanel.classList.contains('open') || compactView) {
+    return metrics;
+  }
+
+  const panelRect = historyPanel.getBoundingClientRect();
+  if (!Number.isFinite(panelRect.top) || !mapRect || !Number.isFinite(mapRect.top)) {
+    return metrics;
+  }
+
+  const gap = 10;
+  const availableHeight = Math.floor(panelRect.top - mapRect.top - baseTop - gap);
+
+  if (availableHeight > 180) {
+    metrics.maxHeight = `${availableHeight}px`;
+  }
+
+  return metrics;
+}
+
+function alignFFDHistoryPanelToFluidMeter() {
+  const historyPanel = document.getElementById('ffd-history-panel');
+  const fluidContainer = document.getElementById('fluidMeterContainer');
+
+  if (!historyPanel || !historyPanel.classList.contains('open')) return;
+
+  const sharedWidth = `${Math.round(getDockPanelWidth())}px`;
+
+  if (!fluidContainer || fluidContainer.style.display !== 'block') {
+    historyPanel.style.width = sharedWidth;
+    historyPanel.style.right = '16px';
+    historyPanel.style.left = 'auto';
+    historyPanel.style.top = 'auto';
+    historyPanel.style.bottom = '16px';
+    return;
+  }
+
+  historyPanel.dataset.dragged = '';
+
+  const fluidRect = fluidContainer.getBoundingClientRect();
+  const mapContainer = getMapDockContainer();
+  const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
+  const measuredRight = mapRect && Number.isFinite(fluidRect.right)
+    ? Math.max(16, Math.round(mapRect.right - fluidRect.right))
+    : 16;
+  const rightOffset = fluidContainer.style.right && fluidContainer.style.right !== 'auto' ? fluidContainer.style.right : `${measuredRight}px`;
+
+  historyPanel.style.width = Number.isFinite(fluidRect.width) && fluidRect.width > 0 ? `${Math.round(fluidRect.width)}px` : sharedWidth;
+  historyPanel.style.right = rightOffset;
+  historyPanel.style.left = 'auto';
+  historyPanel.style.top = 'auto';
+  historyPanel.style.bottom = '16px';
+}
+
+function dockFluidMeter(container) {
+  if (!container) return;
+
+  const metrics = getFluidMeterDockMetrics();
+
+  container.style.position = 'absolute';
+  container.style.left = 'auto';
+  container.style.top = metrics.top;
+  container.style.right = metrics.right;
+  container.style.width = metrics.width;
+  container.style.maxHeight = metrics.maxHeight;
+  container.style.transform = 'none';
+
+  container.setAttribute('data-original-top', container.style.top);
+  container.setAttribute('data-original-right', container.style.right);
+  container.setAttribute('data-original-transform', 'none');
+
+  alignFFDHistoryPanelToFluidMeter();
+}
+
+function setupFluidMeterDockObserver() {
+  if (isFluidMeterDockObserverSetup) return;
+
+  const updateDock = () => {
+    alignFFDHistoryPanelToFluidMeter();
+    const container = document.getElementById('fluidMeterContainer');
+    if (!container || container.style.display !== 'block' || isDragging) return;
+    dockFluidMeter(container);
+  };
+
+  const historyPanel = document.getElementById('ffd-history-panel');
+  if (historyPanel) {
+    const observer = new MutationObserver(updateDock);
+    observer.observe(historyPanel, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  window.addEventListener('resize', updateDock);
+  document.addEventListener('fullscreenchange', updateDock);
+  isFluidMeterDockObserverSetup = true;
+}
 
 // Make the fluid meter container draggable
 function makeDraggable() {
@@ -12703,14 +13141,15 @@ function makeDraggable() {
   container.style.cursor = 'move';
 
   // Store original CSS values for reset
-  const originalTop = container.style.top || '50%';
-  const originalRight = container.style.right || '20px';
-  const originalTransform = container.style.transform || 'translateY(-50%)';
+  const computedStyle = window.getComputedStyle(container);
+  const originalTop = container.style.top || computedStyle.top || '86px';
+  const originalRight = container.style.right || computedStyle.right || '86px';
+  const originalTransform = container.style.transform || computedStyle.transform || 'none';
 
   // Store these as data attributes for later restoration
   container.setAttribute('data-original-top', originalTop);
   container.setAttribute('data-original-right', originalRight);
-  container.setAttribute('data-original-transform', originalTransform);
+  container.setAttribute('data-original-transform', originalTransform === 'none' ? 'none' : originalTransform);
 
   // Mouse events
   container.addEventListener('mousedown', dragStart);
@@ -12813,28 +13252,254 @@ function dragEnd(e) {
 }
 
 // Helper functions with error checking and draggable functionality
-function showDamFluidMeter(damName, percentage, reservoirLevel) {
+function toNumericOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatValue(value, decimals = 2, suffix = '') {
+  const num = toNumericOrNull(value);
+  if (num === null) return 'N/A';
+  return `${num.toFixed(decimals)}${suffix}`;
+}
+
+function formatDeltaValue(value, decimals = 2, suffix = '') {
+  const num = toNumericOrNull(value);
+  if (num === null) return 'N/A';
+  const sign = num > 0 ? '+' : '';
+  return `${sign}${num.toFixed(decimals)}${suffix}`;
+}
+
+function formatSignedPercent(value, decimals = 1) {
+  return formatDeltaValue(value, decimals, '%');
+}
+
+function formatSignedPointDelta(value, decimals = 1) {
+  const num = toNumericOrNull(value);
+  if (num === null) return 'N/A';
+  return `${Math.abs(num).toFixed(decimals)}%`;
+}
+
+function formatSignedFeet(value, decimals = 0) {
+  const num = toNumericOrNull(value);
+  if (num === null) return 'N/A';
+  return `${Math.abs(num).toFixed(decimals)} ft`;
+}
+
+function formatSignedIntValue(value) {
+  const num = toNumericOrNull(value);
+  if (num === null) return 'N/A';
+  const sign = num > 0 ? '+' : '';
+  return `${sign}${Math.round(num)}`;
+}
+
+function escapeHtmlValue(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getToneByValue(value) {
+  const num = toNumericOrNull(value);
+  if (num === null || num === 0) return 'neutral';
+  return num > 0 ? 'up' : 'down';
+}
+
+function getArrowByValue(value) {
+  const num = toNumericOrNull(value);
+  if (num === null || num === 0) return '▶';
+  return num > 0 ? '▲' : '▼';
+}
+
+function getPercentOfCapacity(level, fullCapacity) {
+  const lvl = toNumericOrNull(level);
+  const cap = toNumericOrNull(fullCapacity);
+  if (lvl === null || cap === null || cap <= 0) return null;
+  return (lvl / cap) * 100;
+}
+
+function getRelativeDeltaPercent(currentValue, baselineValue) {
+  const current = toNumericOrNull(currentValue);
+  const baseline = toNumericOrNull(baselineValue);
+  if (current === null || baseline === null || baseline === 0) return null;
+  return ((current - baseline) / baseline) * 100;
+}
+
+function getPanelTimestamp() {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = now.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+  const year = now.getFullYear();
+  const time = now.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day} ${month} ${year} · ${time}`;
+}
+
+function renderDamInsights(damName, percentage, details = {}) {
+  const insightsRoot = document.getElementById('damInsights');
+  const insightsStrip = document.getElementById('damInsightsStrip');
+  const insightsChart = document.getElementById('damInsightsChart');
+  const barsTitle = document.getElementById('damBarsTitle');
+
+  if (!insightsRoot || !insightsStrip || !insightsChart || !barsTitle) {
+    return;
+  }
+
+  insightsRoot.style.display = 'block';
+
+  const country = details.country === 'India' ? 'India' : (details.country === 'Pakistan' ? 'Pakistan' : 'Live');
+  const chips = [];
+  const bars = [];
+
+  const currentFill = toNumericOrNull(percentage);
+  const currentLevel = toNumericOrNull(details.level);
+  const fullCapacity = toNumericOrNull(details.fullCapacity);
+
+  if (country === 'India') {
+    const lastYearFill = toNumericOrNull(details.fillLastYear);
+    const normalFill = toNumericOrNull(details.fillNormal);
+    const deltaLastYear = currentFill !== null && lastYearFill !== null ? currentFill - lastYearFill : null;
+    const deltaNormal = currentFill !== null && normalFill !== null ? currentFill - normalFill : null;
+
+    barsTitle.textContent = 'Fill Comparison';
+
+    chips.push({ code: 'VS LAST YEAR', value: `${getArrowByValue(deltaLastYear)} ${formatSignedPointDelta(deltaLastYear, 1)}`, tone: getToneByValue(deltaLastYear) });
+    chips.push({ code: 'VS 5-YR AVG', value: `${getArrowByValue(deltaNormal)} ${formatSignedPointDelta(deltaNormal, 1)}`, tone: getToneByValue(deltaNormal) });
+
+    bars.push({ label: 'LY', value: lastYearFill, primary: formatValue(lastYearFill, 2, ' %'), secondary: 'Last-year fill', scale: 100, kind: 'compare-1' });
+    bars.push({ label: '5Y', value: normalFill, primary: formatValue(normalFill, 2, ' %'), secondary: '5-year average fill', scale: 100, kind: 'compare-2' });
+  } else if (country === 'Pakistan') {
+    const lastYearFill = toNumericOrNull(details.lastYearLevel);
+    const avg5YearFill = toNumericOrNull(details.avg5YearLevel);
+    const variation5Year = toNumericOrNull(details.variation5Year);
+    const variationArrow = typeof details.variationArrow === 'string' ? details.variationArrow.trim() : '';
+    const variationTrend = typeof details.variationTrend === 'string' ? details.variationTrend.trim().toLowerCase() : '';
+    const resolvedVariationArrow = (variationArrow === '▲' || variationArrow === '▼' || variationArrow === '▶')
+      ? variationArrow
+      : getArrowByValue(variation5Year);
+    const variationToneValue = variationTrend === 'increase' ? 1 : (variationTrend === 'decrease' ? -1 : variation5Year);
+    const variationMagnitude = variation5Year === null ? null : Math.abs(variation5Year);
+    const variationLabel = variationMagnitude === null
+      ? 'N/A'
+      : `${resolvedVariationArrow} ${formatValue(variationMagnitude, 0, '%')}`;
+
+    const deltaLastYearFill = currentFill !== null && lastYearFill !== null ? currentFill - lastYearFill : null;
+    const deltaAvg5Fill = currentFill !== null && avg5YearFill !== null ? currentFill - avg5YearFill : null;
+
+    barsTitle.textContent = 'Storage Fill Comparison';
+
+    chips.push({ code: 'VS LAST YEAR', value: `${getArrowByValue(deltaLastYearFill)} ${formatSignedPointDelta(deltaLastYearFill, 1)}`, tone: getToneByValue(deltaLastYearFill) });
+    chips.push({ code: 'VS 5-YR AVG', value: `${getArrowByValue(deltaAvg5Fill)} ${formatSignedPointDelta(deltaAvg5Fill, 1)}`, tone: getToneByValue(deltaAvg5Fill) });
+    chips.push({ code: 'VARIANCE', value: variationLabel, tone: getToneByValue(variationToneValue) });
+
+    bars.push({
+      label: 'LY',
+      value: lastYearFill,
+      primary: formatValue(lastYearFill, 2, ' %'),
+      secondary: 'Last-year fill',
+      scale: 100,
+      kind: 'compare-1'
+    });
+    bars.push({
+      label: '5Y',
+      value: avg5YearFill,
+      primary: formatValue(avg5YearFill, 2, ' %'),
+      secondary: '5-year average fill',
+      scale: 100,
+      kind: 'compare-2'
+    });
+  } else {
+    barsTitle.textContent = 'Comparison';
+    chips.push({ code: 'NOW', value: `${getArrowByValue(currentFill)} ${formatValue(currentFill, 2, '%')}`, tone: 'neutral' });
+    chips.push({ code: 'LEVEL', value: formatValue(currentLevel, 2, ' ft'), tone: 'neutral' });
+    chips.push({ code: 'CAP', value: formatValue(fullCapacity, 0, ' ft'), tone: 'neutral' });
+    bars.push({ label: 'NOW', value: currentFill, primary: formatValue(currentFill, 2, '%'), secondary: 'Current fill', scale: 100, kind: 'current' });
+  }
+
+  insightsStrip.dataset.chipCount = String(Math.max(chips.length, 1));
+
+  insightsStrip.innerHTML = chips.map((chip) => {
+    const toneClass = chip.tone === 'up' ? 'up' : (chip.tone === 'down' ? 'down' : 'neutral');
+    return `
+      <div class="dam-arrow-chip ${toneClass}">
+        <span class="dam-arrow-chip-code">${escapeHtmlValue(chip.code)}</span>
+        <span class="dam-arrow-chip-value">${escapeHtmlValue(chip.value)}</span>
+      </div>
+    `;
+  }).join('');
+
+  insightsChart.innerHTML = bars.map((bar) => {
+    const numericValue = toNumericOrNull(bar.value);
+    const scale = toNumericOrNull(bar.scale) || 1;
+    const width = numericValue === null ? 0 : Math.min((numericValue / scale) * 100, 100);
+    return `
+      <div class="dam-bar-row">
+        <div class="dam-bar-label">${escapeHtmlValue(bar.label)}</div>
+        <div class="dam-bar-track">
+          <div class="dam-bar-fill dam-bar-${escapeHtmlValue(bar.kind)}" style="width: ${width}%"></div>
+        </div>
+        <div class="dam-bar-values">
+          <div class="dam-bar-primary">${escapeHtmlValue(bar.primary || 'N/A')}</div>
+          <div class="dam-bar-secondary">${escapeHtmlValue(bar.secondary || '')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
   const container = document.getElementById('fluidMeterContainer');
   const title = document.getElementById('meterTitle');
+  const meta = document.getElementById('meterMeta');
+  const liveBadge = document.getElementById('meterLive');
   const meterDiv = document.getElementById('fluid-meter');
   const reservoirValue = document.getElementById('reservoirValue');
+  const reservoirCapacityValue = document.getElementById('reservoirCapacityValue');
+  const reservoirCapacityNote = document.getElementById('reservoirCapacityNote');
+  const reservoirTimestamp = document.getElementById('reservoirTimestamp');
 
   // Check if elements exist before setting properties
-  if (!container || !title || !meterDiv || !reservoirValue) {
+  if (!container || !title || !meta || !liveBadge || !meterDiv || !reservoirValue || !reservoirCapacityValue || !reservoirCapacityNote || !reservoirTimestamp) {
     console.error('Fluid meter HTML elements not found. Make sure you added the HTML container.');
     return;
   }
 
   // Set dam name and reservoir level
   title.textContent = damName;
-  reservoirValue.textContent = reservoirLevel + ' ft';
+  const country = details.country ? String(details.country).toUpperCase() : 'LIVE';
+  const region = details.region ? String(details.region).toUpperCase() : '';
+  meta.textContent = region ? `${country} · ${region}` : country;
+  liveBadge.textContent = 'LIVE';
+
+  const numericLevel = toNumericOrNull(reservoirLevel);
+  reservoirValue.innerHTML = numericLevel === null
+    ? '<span class="reservoir-level-main">N/A</span>'
+    : `<span class="reservoir-level-main">${numericLevel.toFixed(2)}</span><span class="reservoir-level-unit">ft</span>`;
+
+  const capacity = toNumericOrNull(details.fullCapacity);
+  reservoirCapacityValue.innerHTML = capacity === null
+    ? '<span class="capacity-main">N/A</span>'
+    : `<span class="capacity-main">${capacity.toFixed(0)}</span><span class="capacity-unit">ft</span>`;
+  reservoirCapacityNote.textContent = '';
+  reservoirCapacityNote.style.display = 'none';
+  reservoirTimestamp.textContent = '';
+  reservoirTimestamp.style.display = 'none';
 
   // Clear previous meter
   meterDiv.innerHTML = '';
 
-  // Show container and make it draggable
+  // Show container and dock it before enabling drag behavior
   container.style.display = 'block';
-  makeDraggable();
+  setupFluidMeterDockObserver();
+  dockFluidMeter(container);
+
+  renderDamInsights(damName, percentage, {
+    ...details,
+    level: reservoirLevel
+  });
 
   // Create new fluid meter
   try {
@@ -12844,11 +13509,11 @@ function showDamFluidMeter(damName, percentage, reservoirLevel) {
       fillPercentage: percentage,
       options: {
         fontFamily: "Oxygen",
-        fontSize: "27px",
+        fontSize: "22px",
         drawPercentageSign: true,
         drawBubbles: true,
-        size: 180,
-        borderWidth: 4,
+        size: 150,
+        borderWidth: 3,
         backgroundColor: "#262626",
         foregroundColor: "white",
         foregroundFluidLayer: {
@@ -12878,9 +13543,9 @@ function closeFluidMeter() {
     container.style.display = 'none';
 
     // Restore original CSS positioning using stored data attributes
-    const originalTop = container.getAttribute('data-original-top') || '50%';
-    const originalRight = container.getAttribute('data-original-right') || '20px';
-    const originalTransform = container.getAttribute('data-original-transform') || 'translateY(-50%)';
+    const originalTop = container.getAttribute('data-original-top') || '14px';
+    const originalRight = container.getAttribute('data-original-right') || '16px';
+    const originalTransform = container.getAttribute('data-original-transform') || 'none';
 
     container.style.top = originalTop;
     container.style.right = originalRight;

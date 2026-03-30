@@ -1,0 +1,27 @@
+{
+  "run_timestamp_utc": "2026-03-30T04:23:49Z",
+  "selected_bulletin_url": "https://rsms.cwc.gov.in/admin/storage/bulletins/bulletin-27-03-2026-88.pdf",
+  "bulletin_date": "2026-03-27",
+  "source_pdf": "bulletin-27-03-2026-88.pdf",
+  "bhakra": {
+    "current_reservoir_level_m": 487.915,
+    "current_reservoir_level_ft": 1600.7710486,
+    "current_year": 38.48,
+    "last_year": 20.02,
+    "normal_storage": 28.07
+  },
+  "pong_dam": {
+    "current_reservoir_level_m": 406.49,
+    "current_reservoir_level_ft": 1333.6286516,
+    "current_year": 37.34,
+    "last_year": 13.25,
+    "normal_storage": 27.34
+  },
+  "thein_dam": {
+    "current_reservoir_level_m": 514.294,
+    "current_reservoir_level_ft": 1687.31632696,
+    "current_year": 58.02,
+    "last_year": 20.01,
+    "normal_storage": 36.52
+  }
+}

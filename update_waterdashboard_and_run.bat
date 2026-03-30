@@ -37,6 +37,32 @@ if errorlevel 1 (
   )
 )
 
+echo Checking snapshot dependency (selenium)...
+%PYTHON_CMD% -c "import selenium" >nul 2>&1
+if errorlevel 1 (
+  echo selenium not found. Installing...
+  %PYTHON_CMD% -m pip install --user selenium
+  if errorlevel 1 (
+    echo Standard install failed. Retrying with --break-system-packages...
+    %PYTHON_CMD% -m pip install --user --break-system-packages selenium
+  )
+  if errorlevel 1 (
+    echo pip install failed. Trying to bootstrap pip and retry...
+    %PYTHON_CMD% -m ensurepip --upgrade
+    %PYTHON_CMD% -m pip install --user selenium
+  )
+  if errorlevel 1 (
+    echo Warning: Could not install selenium automatically.
+    echo Snapshot updater may fail if no local bulletin cache is available.
+  )
+)
+
+echo Updating Indian dam values from current CWC bulletin snapshot...
+%PYTHON_CMD% "%~dp0current_day_reservoir_snapshot.py"
+if errorlevel 1 (
+  echo Warning: Failed to refresh Indian dam snapshot. Continuing with existing Indian values.
+)
+
 echo Updating ft_and_percentage.js from Daily Water Situation.pdf...
 %PYTHON_CMD% "%~dp0res_storages\storages.py"
 if errorlevel 1 (
