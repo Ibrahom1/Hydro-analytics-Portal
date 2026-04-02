@@ -2766,6 +2766,14 @@ const advisoryImageData = {
 
   ]
 };
+
+// Keep the slideshow modal outside sidebar containers so fixed positioning
+// always covers the full viewport on both desktop and mobile.
+const advisoryModalEl = document.getElementById('slideshowModal');
+if (advisoryModalEl && advisoryModalEl.parentElement !== document.body) {
+  document.body.appendChild(advisoryModalEl);
+}
+
 function launchAdvisorySlideshow(region) {
   activeAdvisoryData = advisoryImageData[region];
   if (!activeAdvisoryData || activeAdvisoryData.length === 0) return;
@@ -2790,11 +2798,14 @@ function refreshSlideDisplay() {
   if (!activeAdvisoryData || activeAdvisoryData.length === 0) return;
   
   const slide = activeAdvisoryData[currentImageIndex];
-  const img = document.getElementById('slideshowImage');
-  const counter = document.getElementById('slideCounter');
-  const title = document.getElementById('slideTitle');
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
+  const modal = document.getElementById('slideshowModal');
+  if (!modal) return;
+  const img = modal.querySelector('#slideshowImage');
+  const counter = modal.querySelector('#slideCounter');
+  const title = modal.querySelector('#slideTitle');
+  const prevBtn = modal.querySelector('#prevBtn');
+  const nextBtn = modal.querySelector('#nextBtn');
+  if (!img || !counter || !title || !prevBtn || !nextBtn) return;
   
   img.src = slide.src;
   counter.textContent = `${currentImageIndex + 1} / ${activeAdvisoryData.length}`;
@@ -2852,8 +2863,12 @@ function stopSlideAutoPlay() {
 }
 
 function updatePlayPauseIcon() {
-  const btn = document.getElementById('playPauseBtn');
+  const modal = document.getElementById('slideshowModal');
+  if (!modal) return;
+  const btn = modal.querySelector('#playPauseBtn');
+  if (!btn) return;
   const icon = btn.querySelector('i');
+  if (!icon) return;
   
   if (autoPlayActive) {
       icon.className = 'fa-solid fa-pause';
