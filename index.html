@@ -2589,14 +2589,20 @@
                 <div id="fluid-meter"></div>
 
                 <div class="reservoir-level">
-                  <div class="reservoir-level-label">Current Level</div>
-                  <div class="reservoir-level-value" id="reservoirValue">0 ft</div>
-                  <div class="capacity-card">
-                    <div class="capacity-label">Total Capacity</div>
-                    <div class="capacity-value" id="reservoirCapacityValue">0 ft</div>
-                    <div class="capacity-note" id="reservoirCapacityNote">Capacity data unavailable</div>
+                  <div class="reservoir-level-label">Reservoir Level (ft)</div>
+                  <div class="reservoir-level-value" id="reservoirValue">
+                    <div class="reservoir-level-grid">
+                      <div class="reservoir-level-row reservoir-level-row-current">
+                        <span class="reservoir-level-number reservoir-level-number-current">0</span>
+                        <span class="reservoir-level-pill reservoir-level-pill-current">Current</span>
+                      </div>
+                      <span class="reservoir-level-divider" aria-hidden="true"></span>
+                      <div class="reservoir-level-row reservoir-level-row-total">
+                        <span class="reservoir-level-number reservoir-level-number-total">0</span>
+                        <span class="reservoir-level-pill reservoir-level-pill-total">Total</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="reservoir-timestamp" id="reservoirTimestamp">Live</div>
                 </div>
               </div>
 

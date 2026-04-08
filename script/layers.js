@@ -5216,6 +5216,7 @@ function addHydrometLayersToMap(map) {
         const panel = document.getElementById('ffd-history-panel');
         const titleEl = document.getElementById('ffd-history-name');
         if (!panel || !titleEl) return;
+        const keepManualPosition = panel.classList.contains('open') && panel.dataset.dragged === 'true';
 
         ffdHistoryName = name || 'Unknown Station';
         titleEl.textContent = `${ffdHistoryName} - History`;
@@ -5224,12 +5225,16 @@ function addHydrometLayersToMap(map) {
         if (dateToggleBtn) {
           dateToggleBtn.setAttribute('aria-expanded', 'false');
         }
-        panel.dataset.dragged = '';
-        panel.style.width = `${Math.round(getDockPanelWidth())}px`;
-        panel.style.right = '16px';
-        panel.style.bottom = '16px';
-        panel.style.left = 'auto';
-        panel.style.top = 'auto';
+
+        if (!keepManualPosition) {
+          panel.dataset.dragged = '';
+          panel.style.width = `${Math.round(getDockPanelWidth())}px`;
+          panel.style.right = '16px';
+          panel.style.bottom = '16px';
+          panel.style.left = 'auto';
+          panel.style.top = 'auto';
+        }
+
         panel.classList.add('open');
 
         const fluidContainer = document.getElementById('fluidMeterContainer');
@@ -5239,7 +5244,9 @@ function addHydrometLayersToMap(map) {
           }
         }
 
-        alignFFDHistoryPanelToFluidMeter();
+        if (!keepManualPosition) {
+          alignFFDHistoryPanelToFluidMeter();
+        }
 
         await loadFFDHistoryData();
       };
@@ -13077,6 +13084,7 @@ function alignFFDHistoryPanelToFluidMeter() {
   const fluidContainer = document.getElementById('fluidMeterContainer');
 
   if (!historyPanel || !historyPanel.classList.contains('open')) return;
+  if (historyPanel.classList.contains('dragging') || historyPanel.dataset.dragged === 'true') return;
 
   const sharedWidth = `${Math.round(getDockPanelWidth())}px`;
 
@@ -13088,8 +13096,6 @@ function alignFFDHistoryPanelToFluidMeter() {
     historyPanel.style.bottom = '16px';
     return;
   }
-
-  historyPanel.dataset.dragged = '';
 
   const fluidRect = fluidContainer.getBoundingClientRect();
   const mapContainer = getMapDockContainer();
@@ -13365,13 +13371,41 @@ function renderDamInsights(damName, percentage, details = {}) {
 
   insightsRoot.style.display = 'block';
 
+  // Legacy strip/title are hidden; metric cards are rendered in damInsightsChart.
+  insightsStrip.style.display = 'none';
+  insightsStrip.innerHTML = '';
+  barsTitle.style.display = 'none';
+  barsTitle.textContent = '';
+
   const country = details.country === 'India' ? 'India' : (details.country === 'Pakistan' ? 'Pakistan' : 'Live');
-  const chips = [];
-  const bars = [];
+  const cards = [];
 
   const currentFill = toNumericOrNull(percentage);
-  const currentLevel = toNumericOrNull(details.level);
   const fullCapacity = toNumericOrNull(details.fullCapacity);
+
+  const getChangeLabel = (deltaValue) => {
+    const delta = toNumericOrNull(deltaValue);
+    if (delta === null) {
+      return { arrow: '', value: 'N/A', tone: 'neutral' };
+    }
+    const arrow = delta > 0 ? '▲' : (delta < 0 ? '▼' : '▶');
+    return {
+      arrow,
+      value: `${Math.abs(delta).toFixed(1)}%`,
+      tone: delta > 0 ? 'up' : (delta < 0 ? 'down' : 'neutral')
+    };
+  };
+
+  const addMetricCard = (title, filledValue, deltaValue) => {
+    const change = getChangeLabel(deltaValue);
+    cards.push({
+      title,
+      filled: formatValue(filledValue, 2, '%'),
+      changeArrow: change.arrow,
+      changeValue: change.value,
+      changeTone: change.tone
+    });
+  };
 
   if (country === 'India') {
     const lastYearFill = toNumericOrNull(details.fillLastYear);
@@ -13379,90 +13413,41 @@ function renderDamInsights(damName, percentage, details = {}) {
     const deltaLastYear = currentFill !== null && lastYearFill !== null ? currentFill - lastYearFill : null;
     const deltaNormal = currentFill !== null && normalFill !== null ? currentFill - normalFill : null;
 
-    barsTitle.textContent = 'Fill Comparison';
-
-    chips.push({ code: 'VS LAST YEAR', value: `${getArrowByValue(deltaLastYear)} ${formatSignedPointDelta(deltaLastYear, 1)}`, tone: getToneByValue(deltaLastYear) });
-    chips.push({ code: 'VS 5-YR AVG', value: `${getArrowByValue(deltaNormal)} ${formatSignedPointDelta(deltaNormal, 1)}`, tone: getToneByValue(deltaNormal) });
-
-    bars.push({ label: 'LY', value: lastYearFill, primary: formatValue(lastYearFill, 2, ' %'), secondary: 'Last-year fill', scale: 100, kind: 'compare-1' });
-    bars.push({ label: '5Y', value: normalFill, primary: formatValue(normalFill, 2, ' %'), secondary: '5-year average fill', scale: 100, kind: 'compare-2' });
+    addMetricCard('Last Year', lastYearFill, deltaLastYear);
+    addMetricCard('5-Year Avg', normalFill, deltaNormal);
   } else if (country === 'Pakistan') {
     const lastYearFill = toNumericOrNull(details.lastYearLevel);
     const avg5YearFill = toNumericOrNull(details.avg5YearLevel);
-    const variation5Year = toNumericOrNull(details.variation5Year);
-    const variationArrow = typeof details.variationArrow === 'string' ? details.variationArrow.trim() : '';
-    const variationTrend = typeof details.variationTrend === 'string' ? details.variationTrend.trim().toLowerCase() : '';
-    const resolvedVariationArrow = (variationArrow === '▲' || variationArrow === '▼' || variationArrow === '▶')
-      ? variationArrow
-      : getArrowByValue(variation5Year);
-    const variationToneValue = variationTrend === 'increase' ? 1 : (variationTrend === 'decrease' ? -1 : variation5Year);
-    const variationMagnitude = variation5Year === null ? null : Math.abs(variation5Year);
-    const variationLabel = variationMagnitude === null
-      ? 'N/A'
-      : `${resolvedVariationArrow} ${formatValue(variationMagnitude, 0, '%')}`;
-
     const deltaLastYearFill = currentFill !== null && lastYearFill !== null ? currentFill - lastYearFill : null;
     const deltaAvg5Fill = currentFill !== null && avg5YearFill !== null ? currentFill - avg5YearFill : null;
 
-    barsTitle.textContent = 'Storage Fill Comparison';
-
-    chips.push({ code: 'VS LAST YEAR', value: `${getArrowByValue(deltaLastYearFill)} ${formatSignedPointDelta(deltaLastYearFill, 1)}`, tone: getToneByValue(deltaLastYearFill) });
-    chips.push({ code: 'VS 5-YR AVG', value: `${getArrowByValue(deltaAvg5Fill)} ${formatSignedPointDelta(deltaAvg5Fill, 1)}`, tone: getToneByValue(deltaAvg5Fill) });
-    chips.push({ code: 'VARIANCE', value: variationLabel, tone: getToneByValue(variationToneValue) });
-
-    bars.push({
-      label: 'LY',
-      value: lastYearFill,
-      primary: formatValue(lastYearFill, 2, ' %'),
-      secondary: 'Last-year fill',
-      scale: 100,
-      kind: 'compare-1'
-    });
-    bars.push({
-      label: '5Y',
-      value: avg5YearFill,
-      primary: formatValue(avg5YearFill, 2, ' %'),
-      secondary: '5-year average fill',
-      scale: 100,
-      kind: 'compare-2'
-    });
+    addMetricCard('Last Year', lastYearFill, deltaLastYearFill);
+    addMetricCard('5-Year Avg', avg5YearFill, deltaAvg5Fill);
   } else {
-    barsTitle.textContent = 'Comparison';
-    chips.push({ code: 'NOW', value: `${getArrowByValue(currentFill)} ${formatValue(currentFill, 2, '%')}`, tone: 'neutral' });
-    chips.push({ code: 'LEVEL', value: formatValue(currentLevel, 2, ' ft'), tone: 'neutral' });
-    chips.push({ code: 'CAP', value: formatValue(fullCapacity, 0, ' ft'), tone: 'neutral' });
-    bars.push({ label: 'NOW', value: currentFill, primary: formatValue(currentFill, 2, '%'), secondary: 'Current fill', scale: 100, kind: 'current' });
+    addMetricCard('Current Fill', currentFill, 0);
+    addMetricCard('Capacity', fullCapacity, null);
   }
 
-  insightsStrip.dataset.chipCount = String(Math.max(chips.length, 1));
-
-  insightsStrip.innerHTML = chips.map((chip) => {
-    const toneClass = chip.tone === 'up' ? 'up' : (chip.tone === 'down' ? 'down' : 'neutral');
-    return `
-      <div class="dam-arrow-chip ${toneClass}">
-        <span class="dam-arrow-chip-code">${escapeHtmlValue(chip.code)}</span>
-        <span class="dam-arrow-chip-value">${escapeHtmlValue(chip.value)}</span>
-      </div>
-    `;
-  }).join('');
-
-  insightsChart.innerHTML = bars.map((bar) => {
-    const numericValue = toNumericOrNull(bar.value);
-    const scale = toNumericOrNull(bar.scale) || 1;
-    const width = numericValue === null ? 0 : Math.min((numericValue / scale) * 100, 100);
-    return `
-      <div class="dam-bar-row">
-        <div class="dam-bar-label">${escapeHtmlValue(bar.label)}</div>
-        <div class="dam-bar-track">
-          <div class="dam-bar-fill dam-bar-${escapeHtmlValue(bar.kind)}" style="width: ${width}%"></div>
+  insightsChart.innerHTML = `
+    <div class="dam-metric-cards">
+      ${cards.map((card) => `
+        <div class="dam-metric-card">
+          <div class="dam-metric-title">${escapeHtmlValue(card.title)}</div>
+          <div class="dam-metric-row">
+            <span class="dam-metric-label">% Filled</span>
+            <span class="dam-metric-value dam-metric-value-filled">${escapeHtmlValue(card.filled)}</span>
+          </div>
+          <div class="dam-metric-row">
+            <span class="dam-metric-label">% Change</span>
+            <span class="dam-metric-value dam-metric-value-change ${escapeHtmlValue(card.changeTone)}">
+              <span class="dam-change-arrow">${escapeHtmlValue(card.changeArrow)}</span>
+              <span class="dam-change-text">${escapeHtmlValue(card.changeValue)}</span>
+            </span>
+          </div>
         </div>
-        <div class="dam-bar-values">
-          <div class="dam-bar-primary">${escapeHtmlValue(bar.primary || 'N/A')}</div>
-          <div class="dam-bar-secondary">${escapeHtmlValue(bar.secondary || '')}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
+      `).join('')}
+    </div>
+  `;
 }
 
 function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
@@ -13472,12 +13457,9 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
   const liveBadge = document.getElementById('meterLive');
   const meterDiv = document.getElementById('fluid-meter');
   const reservoirValue = document.getElementById('reservoirValue');
-  const reservoirCapacityValue = document.getElementById('reservoirCapacityValue');
-  const reservoirCapacityNote = document.getElementById('reservoirCapacityNote');
-  const reservoirTimestamp = document.getElementById('reservoirTimestamp');
 
   // Check if elements exist before setting properties
-  if (!container || !title || !meta || !liveBadge || !meterDiv || !reservoirValue || !reservoirCapacityValue || !reservoirCapacityNote || !reservoirTimestamp) {
+  if (!container || !title || !meta || !liveBadge || !meterDiv || !reservoirValue) {
     console.error('Fluid meter HTML elements not found. Make sure you added the HTML container.');
     return;
   }
@@ -13490,18 +13472,23 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
   liveBadge.textContent = 'LIVE';
 
   const numericLevel = toNumericOrNull(reservoirLevel);
-  reservoirValue.innerHTML = numericLevel === null
-    ? '<span class="reservoir-level-main">N/A</span>'
-    : `<span class="reservoir-level-main">${numericLevel.toFixed(2)}</span><span class="reservoir-level-unit">ft</span>`;
-
   const capacity = toNumericOrNull(details.fullCapacity);
-  reservoirCapacityValue.innerHTML = capacity === null
-    ? '<span class="capacity-main">N/A</span>'
-    : `<span class="capacity-main">${capacity.toFixed(0)}</span><span class="capacity-unit">ft</span>`;
-  reservoirCapacityNote.textContent = '';
-  reservoirCapacityNote.style.display = 'none';
-  reservoirTimestamp.textContent = '';
-  reservoirTimestamp.style.display = 'none';
+
+  const currentText = numericLevel === null ? 'N/A' : numericLevel.toFixed(0);
+  const totalText = capacity === null ? 'N/A' : capacity.toFixed(0);
+  reservoirValue.innerHTML = `
+    <div class="reservoir-level-grid">
+      <div class="reservoir-level-row reservoir-level-row-current">
+        <span class="reservoir-level-number reservoir-level-number-current">${escapeHtmlValue(currentText)}</span>
+        <span class="reservoir-level-pill reservoir-level-pill-current">Current</span>
+      </div>
+      <span class="reservoir-level-divider" aria-hidden="true"></span>
+      <div class="reservoir-level-row reservoir-level-row-total">
+        <span class="reservoir-level-number reservoir-level-number-total">${escapeHtmlValue(totalText)}</span>
+        <span class="reservoir-level-pill reservoir-level-pill-total">Total</span>
+      </div>
+    </div>
+  `;
 
   // Clear previous meter
   meterDiv.innerHTML = '';

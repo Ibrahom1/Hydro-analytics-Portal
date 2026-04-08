@@ -1,27 +1,27 @@
 {
-  "run_timestamp_utc": "2026-04-02T08:51:56Z",
-  "selected_bulletin_url": "https://rsms.cwc.gov.in/admin/storage/bulletins/bulletin-27-03-2026-88.pdf",
-  "bulletin_date": "2026-03-27",
-  "source_pdf": "bulletin-27-03-2026-88.pdf",
+  "run_timestamp_utc": "2026-04-08T05:07:43Z",
+  "selected_bulletin_url": "https://rsms.cwc.gov.in/admin/storage/bulletins/bulletin-02-04-2026-90.pdf",
+  "bulletin_date": "2026-04-02",
+  "source_pdf": "bulletin-02-04-2026-90.pdf",
   "bhakra": {
-    "current_reservoir_level_m": 487.915,
-    "current_reservoir_level_ft": 1600.7710486,
-    "current_year": 38.48,
-    "last_year": 20.02,
-    "normal_storage": 28.07
+    "current_reservoir_level_m": 487.296,
+    "current_reservoir_level_ft": 1598.74020864,
+    "current_year": 37.61,
+    "last_year": 19.07,
+    "normal_storage": 26.79
   },
   "pong_dam": {
-    "current_reservoir_level_m": 406.49,
-    "current_reservoir_level_ft": 1333.6286516,
-    "current_year": 37.34,
-    "last_year": 13.25,
-    "normal_storage": 27.34
+    "current_reservoir_level_m": 406.53,
+    "current_reservoir_level_ft": 1333.7598851999999,
+    "current_year": 37.46,
+    "last_year": 12.98,
+    "normal_storage": 27.17
   },
   "thein_dam": {
-    "current_reservoir_level_m": 514.294,
-    "current_reservoir_level_ft": 1687.31632696,
-    "current_year": 58.02,
-    "last_year": 20.01,
-    "normal_storage": 36.52
+    "current_reservoir_level_m": 514.518,
+    "current_reservoir_level_ft": 1688.05123512,
+    "current_year": 59.13,
+    "last_year": 17.58,
+    "normal_storage": 37.76
   }
 }
