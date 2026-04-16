@@ -3286,7 +3286,8 @@ const map1Layers = [
   "lilfex", "uihfex", "uilfex", "chfex", "clfex", "klfex", "jhfex", "jmfex",
   "3_Swat_River_50yr_Flood_Extent", "1_Swat_River_5yr_Flood_Extent", "Muzafferabad_arc",
   "Jamshoro flooding", "rhfex", "rmfex", "shfex", "smfex", "urban_sindh", "indian",
-  "Future", "Ready_for_Construction", "Ongoing", "Under_construction", "STREAM_412_5_9"
+  "Future", "Ready_for_Construction", "Ongoing", "Under_construction", "STREAM_412_5_9",
+  "impact_line_layer", "impact_fill_layer", "impact_fill_outline_layer", "impact_point_layer"
 ];
 
 ///Map
@@ -3343,6 +3344,784 @@ let pendingCheckboxRestore = false;
 let pendingStyleIsSatellite = false;
 let pendingBasemapConfig = null;
 let pendingLightPreset = 'day';
+
+const IMPACT_METRIC_KEYS = [
+  'schools',
+  'railway_stations',
+  'settlements',
+  'hospitals',
+  'bridges',
+  'airports',
+  'population'
+];
+
+const IMPACT_METRIC_LABELS = {
+  schools: 'Schools',
+  railway_stations: 'Railway stations',
+  population: 'Total population affected',
+  hospitals: 'Hospitals',
+  bridges: 'Bridges',
+  airports: 'Airports',
+  settlements: 'Settlements'
+};
+
+const IMPACT_METRIC_GIFS = {
+  schools: 'media/UI/impact_gif/school.gif',
+  railway_stations: 'media/UI/impact_gif/railway.gif',
+  population: 'media/UI/impact_gif/population.gif',
+  hospitals: 'media/UI/impact_gif/hospital.gif',
+  bridges: 'media/UI/impact_gif/bridge.gif',
+  airports: 'media/UI/impact_gif/airport.gif',
+  settlements: 'media/UI/impact_gif/settlement.gif'
+};
+
+const IMPACT_SOURCES = {
+  line: 'impact_line_source',
+  fill: 'impact_fill_source',
+  point: 'impact_point_source'
+};
+
+const IMPACT_LAYERS = {
+  line: 'impact_line_layer',
+  fill: 'impact_fill_layer',
+  fillOutline: 'impact_fill_outline_layer',
+  point: 'impact_point_layer'
+};
+
+let impactRowsById = new Map();
+let impactGeojsonCache = null;
+let impactTotals = null;
+let impactSelectedDate = '';
+let impactPopupInstance = null;
+let impactPanelOpen = false;
+let impactControlsInitialized = false;
+let impactLayerEventsBound = false;
+
+function getImpactUiRefs() {
+  return {
+    openBtn: document.getElementById('impact-open-btn'),
+    modal: document.getElementById('impact-date-modal'),
+    closeBtn: document.getElementById('impact-modal-close'),
+    cancelBtn: document.getElementById('impact-cancel-btn'),
+    loadBtn: document.getElementById('impact-load-btn'),
+    dateInput: document.getElementById('impact-date-input'),
+    status: document.getElementById('impact-modal-status'),
+    summaryPanel: document.getElementById('impact-summary-panel'),
+    summaryDate: document.getElementById('impact-summary-date'),
+    summaryGrid: document.getElementById('impact-summary-grid'),
+    summaryClose: document.getElementById('impact-summary-close')
+  };
+}
+
+function formatImpactNumber(value) {
+  return Number(value || 0).toLocaleString('en-US');
+}
+
+function formatImpactDisplayDate(dateValue) {
+  if (!dateValue) return '-';
+
+  const date = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return String(dateValue);
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  return `${day} ${month}, ${year}`;
+}
+
+function escapeImpactHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function parseImpactMetric(value) {
+  const parsed = Number.parseInt(String(value ?? '').replace(/,/g, ''), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeImpactColor(rawColor) {
+  const normalized = String(rawColor ?? '').trim();
+  if (!normalized) return '#ef4444';
+
+  if (/^#[0-9A-Fa-f]{3}$/.test(normalized) || /^#[0-9A-Fa-f]{6}$/.test(normalized)) {
+    return normalized;
+  }
+
+  const colorMap = {
+    red: '#ef4444',
+    green: '#22c55e',
+    blue: '#3b82f6',
+    yellow: '#f59e0b',
+    orange: '#f97316',
+    purple: '#a855f7',
+    pink: '#ec4899',
+    brown: '#92400e',
+    teal: '#14b8a6',
+    cyan: '#06b6d4',
+    gray: '#64748b',
+    grey: '#64748b'
+  };
+
+  return colorMap[normalized.toLowerCase()] || '#ef4444';
+}
+
+function setImpactModalStatus(message, type = 'info') {
+  const { status } = getImpactUiRefs();
+  if (!status) return;
+
+  status.textContent = message || '';
+  status.classList.remove('error', 'success');
+  if (type === 'error') status.classList.add('error');
+  if (type === 'success') status.classList.add('success');
+}
+
+function setImpactModalOpen(isOpen) {
+  const { modal } = getImpactUiRefs();
+  if (!modal) return;
+
+  modal.classList.toggle('open', Boolean(isOpen));
+  modal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+}
+
+function ensureImpactDefaultDate() {
+  const { dateInput } = getImpactUiRefs();
+  if (!dateInput || dateInput.value) return;
+
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  dateInput.value = `${now.getFullYear()}-${month}-${day}`;
+}
+
+function openImpactModal() {
+  ensureImpactDefaultDate();
+  setImpactModalStatus('');
+  setImpactModalOpen(true);
+}
+
+function closeImpactModal() {
+  setImpactModalOpen(false);
+}
+
+function closeImpactSummaryPanel() {
+  const { summaryPanel } = getImpactUiRefs();
+  if (!summaryPanel) return;
+  summaryPanel.classList.remove('open');
+  impactPanelOpen = false;
+}
+
+function clearImpactSummaryPanel(message = 'No impact exposure loaded.') {
+  const { summaryDate, summaryGrid } = getImpactUiRefs();
+  if (summaryDate) {
+    summaryDate.textContent = '-';
+  }
+  if (summaryGrid) {
+    summaryGrid.innerHTML = `<div class="impact-summary-empty">${escapeImpactHtml(message)}</div>`;
+  }
+  closeImpactSummaryPanel();
+}
+
+function renderImpactSummaryPanel(totals, dateValue) {
+  const { summaryPanel, summaryDate, summaryGrid } = getImpactUiRefs();
+  if (!summaryPanel || !summaryDate || !summaryGrid) return;
+
+  summaryDate.textContent = formatImpactDisplayDate(dateValue);
+  const cards = IMPACT_METRIC_KEYS.map((key) => {
+    const label = IMPACT_METRIC_LABELS[key] || key;
+    const iconPath = IMPACT_METRIC_GIFS[key] || '';
+    const keyClass = `key-${key.replace(/_/g, '-')}`;
+    return `
+      <div class="impact-summary-card ${escapeImpactHtml(keyClass)}">
+        <div class="impact-summary-card-head">
+          <span class="impact-summary-card-icon" aria-hidden="true">
+            <img src="${escapeImpactHtml(iconPath)}" alt="" />
+          </span>
+          <div class="impact-summary-card-label">${escapeImpactHtml(label)}</div>
+        </div>
+        <div class="impact-summary-card-value">${formatImpactNumber(totals[key] || 0)}</div>
+      </div>
+    `;
+  }).join('');
+
+  summaryGrid.innerHTML = cards;
+  summaryPanel.classList.add('open');
+  impactPanelOpen = true;
+}
+
+function setImpactLoadButtonState(isLoading) {
+  const { loadBtn } = getImpactUiRefs();
+  if (!loadBtn) return;
+
+  loadBtn.disabled = Boolean(isLoading);
+  loadBtn.textContent = isLoading ? 'Loading...' : 'Load Impact';
+}
+
+function extractImpactRows(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.rows)) return payload.rows;
+  return [];
+}
+
+function normalizeImpactRows(payload) {
+  const rows = extractImpactRows(payload);
+  return rows
+    .map((row) => {
+      const rawId = row?.id ?? row?.ID ?? row?.objectid ?? row?.OBJECTID;
+      if (rawId === undefined || rawId === null || rawId === '') return null;
+      const id = String(rawId).trim();
+      if (!id) return null;
+
+      const normalized = {
+        id,
+        color: normalizeImpactColor(row?.color),
+        schools: parseImpactMetric(row?.schools),
+        railway_stations: parseImpactMetric(row?.railway_stations),
+        population: parseImpactMetric(row?.population),
+        hospitals: parseImpactMetric(row?.hospitals),
+        bridges: parseImpactMetric(row?.bridges),
+        airports: parseImpactMetric(row?.airports),
+        settlements: parseImpactMetric(row?.settlements)
+      };
+
+      return normalized;
+    })
+    .filter(Boolean);
+}
+
+function normalizeImpactFeatureCollection(payload) {
+  if (payload?.type === 'FeatureCollection' && Array.isArray(payload.features)) {
+    return payload;
+  }
+  if (payload?.data?.type === 'FeatureCollection' && Array.isArray(payload.data.features)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload?.features)) {
+    return { type: 'FeatureCollection', features: payload.features };
+  }
+  return { type: 'FeatureCollection', features: [] };
+}
+
+function getImpactJoinId(properties) {
+  const idValue = properties?.id ?? properties?.objectid;
+  if (idValue === undefined || idValue === null || idValue === '') return '';
+  return String(idValue).trim();
+}
+
+function joinImpactRowsToFeatures(featureCollection, rowMap) {
+  const features = Array.isArray(featureCollection?.features) ? featureCollection.features : [];
+
+  const joinedFeatures = features
+    .map((feature) => {
+      const props = feature?.properties || {};
+      const joinId = getImpactJoinId(props);
+      if (!joinId) return null;
+
+      const row = rowMap.get(joinId);
+      if (!row) return null;
+
+      return {
+        ...feature,
+        properties: {
+          ...props,
+          impact_id: joinId,
+          impact_color: row.color,
+          impact_schools: row.schools,
+          impact_railway_stations: row.railway_stations,
+          impact_population: row.population,
+          impact_hospitals: row.hospitals,
+          impact_bridges: row.bridges,
+          impact_airports: row.airports,
+          impact_settlements: row.settlements
+        }
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    type: 'FeatureCollection',
+    features: joinedFeatures
+  };
+}
+
+function splitImpactFeatureCollection(featureCollection) {
+  const result = {
+    lines: { type: 'FeatureCollection', features: [] },
+    fills: { type: 'FeatureCollection', features: [] },
+    points: { type: 'FeatureCollection', features: [] }
+  };
+
+  const features = Array.isArray(featureCollection?.features) ? featureCollection.features : [];
+
+  features.forEach((feature) => {
+    const geomType = feature?.geometry?.type;
+    if (!geomType) return;
+
+    if (geomType === 'LineString' || geomType === 'MultiLineString') {
+      result.lines.features.push(feature);
+      return;
+    }
+
+    if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+      result.fills.features.push(feature);
+      return;
+    }
+
+    if (geomType === 'Point' || geomType === 'MultiPoint') {
+      result.points.features.push(feature);
+    }
+  });
+
+  return result;
+}
+
+function collectImpactCoordinates(node, bucket) {
+  if (!Array.isArray(node)) return;
+
+  if (
+    node.length >= 2 &&
+    typeof node[0] === 'number' &&
+    Number.isFinite(node[0]) &&
+    typeof node[1] === 'number' &&
+    Number.isFinite(node[1])
+  ) {
+    bucket.push([node[0], node[1]]);
+    return;
+  }
+
+  node.forEach((child) => collectImpactCoordinates(child, bucket));
+}
+
+function zoomToImpactFeature(feature) {
+  const geometry = feature?.geometry;
+  if (!geometry) return;
+
+  if (geometry.type === 'Point' && Array.isArray(geometry.coordinates)) {
+    map1.flyTo({
+      center: geometry.coordinates,
+      zoom: Math.max(map1.getZoom(), 10),
+      duration: 900
+    });
+    return;
+  }
+
+  const points = [];
+  collectImpactCoordinates(geometry.coordinates, points);
+  if (!points.length) return;
+
+  const bounds = points.reduce((acc, point) => acc.extend(point), new mapboxgl.LngLatBounds(points[0], points[0]));
+  map1.fitBounds(bounds, {
+    padding: { top: 80, right: 80, bottom: 80, left: 80 },
+    maxZoom: 11,
+    duration: 900
+  });
+}
+
+function buildImpactPopupHtml(properties) {
+  const metricRows = IMPACT_METRIC_KEYS
+    .map((key) => {
+      const label = IMPACT_METRIC_LABELS[key] || key;
+      const value = parseImpactMetric(properties?.[`impact_${key}`]);
+      const iconPath = IMPACT_METRIC_GIFS[key] || '';
+      return `
+        <div class="impact-popup-row">
+          <span class="impact-popup-label-wrap">
+            <img src="${escapeImpactHtml(iconPath)}" alt="" class="impact-popup-icon" />
+            <span class="impact-popup-label">${escapeImpactHtml(label)}</span>
+          </span>
+          <span class="impact-popup-value">${formatImpactNumber(value)}</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="impact-popup-container">
+      <div class="impact-popup-header">
+        <div>
+          <div class="impact-popup-title">Impact details</div>
+          <div class="impact-popup-subtitle">Exposure indicators</div>
+        </div>
+      </div>
+      <div class="impact-popup-body">
+        ${metricRows}
+      </div>
+    </div>
+    <style>
+      .impact-popup-container {
+        width: 320px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 2px solid #6366f1;
+        background: #ffffff;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.26);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .impact-popup-header {
+        background: linear-gradient(140deg, #eef2ff, #e0ecff);
+        padding: 12px 14px;
+        border-bottom: 1px solid #c7d2fe;
+      }
+      .impact-popup-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .impact-popup-subtitle {
+        margin-top: 3px;
+        font-size: 12px;
+        color: #334155;
+      }
+      .impact-popup-body {
+        padding: 12px 14px 14px;
+        display: grid;
+        gap: 6px;
+      }
+      .impact-popup-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid #dbe4f0;
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 6px 8px;
+      }
+      .impact-popup-label-wrap {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .impact-popup-icon {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+      }
+      .impact-popup-label {
+        font-size: 12px;
+        color: #334155;
+        font-weight: 600;
+      }
+      .impact-popup-value {
+        font-size: 14px;
+        color: #0f172a;
+        font-weight: 700;
+      }
+      .mapboxgl-popup-close-button {
+        display: none !important;
+      }
+      .mapboxgl-popup-content {
+        padding: 0 !important;
+        border-radius: 10px !important;
+      }
+    </style>
+  `;
+}
+
+function openImpactPopup(feature, lngLat) {
+  if (!feature) return;
+
+  if (impactPopupInstance) {
+    impactPopupInstance.remove();
+  }
+
+  impactPopupInstance = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: true,
+    maxWidth: '320px'
+  })
+    .setLngLat(lngLat)
+    .setHTML(buildImpactPopupHtml(feature.properties || {}))
+    .addTo(map1);
+}
+
+function onImpactFeatureClick(e) {
+  const feature = e?.features?.[0];
+  if (!feature) return;
+
+  zoomToImpactFeature(feature);
+  openImpactPopup(feature, e.lngLat);
+}
+
+function onImpactFeatureMouseEnter() {
+  if (map1 && map1.getCanvas()) {
+    map1.getCanvas().style.cursor = 'pointer';
+  }
+}
+
+function onImpactFeatureMouseLeave() {
+  if (map1 && map1.getCanvas()) {
+    map1.getCanvas().style.cursor = '';
+  }
+}
+
+function removeImpactLayerEvents() {
+  if (!impactLayerEventsBound) return;
+
+  Object.values(IMPACT_LAYERS).forEach((layerId) => {
+    if (map1.getLayer(layerId)) {
+      map1.off('click', layerId, onImpactFeatureClick);
+      map1.off('mouseenter', layerId, onImpactFeatureMouseEnter);
+      map1.off('mouseleave', layerId, onImpactFeatureMouseLeave);
+    }
+  });
+
+  impactLayerEventsBound = false;
+}
+
+function bindImpactLayerEvents() {
+  removeImpactLayerEvents();
+
+  Object.values(IMPACT_LAYERS).forEach((layerId) => {
+    if (map1.getLayer(layerId)) {
+      map1.on('click', layerId, onImpactFeatureClick);
+      map1.on('mouseenter', layerId, onImpactFeatureMouseEnter);
+      map1.on('mouseleave', layerId, onImpactFeatureMouseLeave);
+    }
+  });
+
+  impactLayerEventsBound = true;
+}
+
+function removeImpactVisuals(keepCache = false) {
+  removeImpactLayerEvents();
+
+  Object.values(IMPACT_LAYERS).forEach((layerId) => {
+    if (map1.getLayer(layerId)) {
+      map1.removeLayer(layerId);
+    }
+  });
+
+  Object.values(IMPACT_SOURCES).forEach((sourceId) => {
+    if (map1.getSource(sourceId)) {
+      map1.removeSource(sourceId);
+    }
+  });
+
+  if (impactPopupInstance) {
+    impactPopupInstance.remove();
+    impactPopupInstance = null;
+  }
+
+  if (!keepCache) {
+    impactGeojsonCache = null;
+    impactRowsById = new Map();
+    impactTotals = null;
+    impactSelectedDate = '';
+  }
+}
+
+function upsertImpactSource(sourceId, data) {
+  if (map1.getSource(sourceId)) {
+    map1.getSource(sourceId).setData(data);
+    return;
+  }
+  map1.addSource(sourceId, {
+    type: 'geojson',
+    data
+  });
+}
+
+function renderImpactFeatures(featureCollection) {
+  removeImpactVisuals(true);
+
+  const split = splitImpactFeatureCollection(featureCollection);
+  impactGeojsonCache = featureCollection;
+
+  if (split.lines.features.length) {
+    upsertImpactSource(IMPACT_SOURCES.line, split.lines);
+    map1.addLayer({
+      id: IMPACT_LAYERS.line,
+      type: 'line',
+      source: IMPACT_SOURCES.line,
+      paint: {
+        'line-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
+        'line-width': 4,
+        'line-opacity': 0.9
+      }
+    });
+  }
+
+  if (split.fills.features.length) {
+    upsertImpactSource(IMPACT_SOURCES.fill, split.fills);
+    map1.addLayer({
+      id: IMPACT_LAYERS.fill,
+      type: 'fill',
+      source: IMPACT_SOURCES.fill,
+      paint: {
+        'fill-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
+        'fill-opacity': 0.35
+      }
+    });
+    map1.addLayer({
+      id: IMPACT_LAYERS.fillOutline,
+      type: 'line',
+      source: IMPACT_SOURCES.fill,
+      paint: {
+        'line-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
+        'line-width': 2,
+        'line-opacity': 0.95
+      }
+    });
+  }
+
+  if (split.points.features.length) {
+    upsertImpactSource(IMPACT_SOURCES.point, split.points);
+    map1.addLayer({
+      id: IMPACT_LAYERS.point,
+      type: 'circle',
+      source: IMPACT_SOURCES.point,
+      paint: {
+        'circle-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
+        'circle-radius': 6,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.5,
+        'circle-opacity': 0.95
+      }
+    });
+  }
+
+  bindImpactLayerEvents();
+}
+
+function calculateImpactTotals(rows) {
+  const totals = {
+    schools: 0,
+    railway_stations: 0,
+    population: 0,
+    hospitals: 0,
+    bridges: 0,
+    airports: 0,
+    settlements: 0
+  };
+
+  rows.forEach((row) => {
+    IMPACT_METRIC_KEYS.forEach((key) => {
+      totals[key] += parseImpactMetric(row[key]);
+    });
+  });
+
+  return totals;
+}
+
+async function loadImpactForDate(dateValue) {
+  if (!dateValue) {
+    setImpactModalStatus('Please select a date first.', 'error');
+    return;
+  }
+
+  setImpactLoadButtonState(true);
+  setImpactModalStatus('Loading impact rows...', 'info');
+
+  try {
+    const impactResponse = await fetch(`http://172.18.1.45:5009/api/impact?date=${encodeURIComponent(dateValue)}`, {
+      cache: 'no-store'
+    });
+    if (!impactResponse.ok) {
+      throw new Error(`Impact API request failed (${impactResponse.status})`);
+    }
+
+    const impactPayload = await impactResponse.json();
+    const normalizedRows = normalizeImpactRows(impactPayload);
+    impactRowsById = new Map(normalizedRows.map((row) => [row.id, row]));
+
+    if (!normalizedRows.length) {
+      removeImpactVisuals(false);
+      clearImpactSummaryPanel('No impact rows found for selected date.');
+      setImpactModalStatus('No data available for selected date.', 'error');
+      return;
+    }
+
+    setImpactModalStatus('Loading impact geometry...', 'info');
+
+    const ids = Array.from(impactRowsById.keys());
+    const geometryResponse = await fetch(`http://172.18.1.45:5009/api/gis/gloric?ids=${encodeURIComponent(ids.join(','))}`, {
+      cache: 'no-store'
+    });
+    if (!geometryResponse.ok) {
+      throw new Error(`Geometry API request failed (${geometryResponse.status})`);
+    }
+
+    const geometryPayload = await geometryResponse.json();
+    const sourceFeatureCollection = normalizeImpactFeatureCollection(geometryPayload);
+    const joinedFeatureCollection = joinImpactRowsToFeatures(sourceFeatureCollection, impactRowsById);
+
+    if (!joinedFeatureCollection.features.length) {
+      removeImpactVisuals(false);
+      clearImpactSummaryPanel('No matching impact features were returned.');
+      setImpactModalStatus('No matching map features for selected date.', 'error');
+      return;
+    }
+
+    impactSelectedDate = dateValue;
+    impactTotals = calculateImpactTotals(normalizedRows);
+    renderImpactFeatures(joinedFeatureCollection);
+    renderImpactSummaryPanel(impactTotals, impactSelectedDate);
+
+    setImpactModalStatus(
+      `Loaded ${joinedFeatureCollection.features.length} features for ${impactSelectedDate}.`,
+      'success'
+    );
+    closeImpactModal();
+  } catch (error) {
+    console.error('Impact workflow failed:', error);
+    removeImpactVisuals(false);
+    clearImpactSummaryPanel('Unable to load impact data.');
+    setImpactModalStatus(error?.message || 'Failed to load impact data.', 'error');
+  } finally {
+    setImpactLoadButtonState(false);
+  }
+}
+
+function restoreImpactOnStyleLoad() {
+  if (!impactGeojsonCache || !Array.isArray(impactGeojsonCache.features) || !impactGeojsonCache.features.length) {
+    return;
+  }
+
+  renderImpactFeatures(impactGeojsonCache);
+  if (impactPanelOpen && impactTotals) {
+    renderImpactSummaryPanel(impactTotals, impactSelectedDate);
+  }
+}
+
+function initImpactControls() {
+  if (impactControlsInitialized) return;
+
+  const refs = getImpactUiRefs();
+  if (!refs.openBtn || !refs.modal || !refs.loadBtn || !refs.dateInput) return;
+
+  impactControlsInitialized = true;
+  ensureImpactDefaultDate();
+  clearImpactSummaryPanel();
+
+  refs.openBtn.addEventListener('click', openImpactModal);
+  refs.closeBtn?.addEventListener('click', closeImpactModal);
+  refs.cancelBtn?.addEventListener('click', closeImpactModal);
+  refs.summaryClose?.addEventListener('click', closeImpactSummaryPanel);
+
+  refs.modal.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.dataset.impactClose === 'true') {
+      closeImpactModal();
+    }
+  });
+
+  refs.loadBtn.addEventListener('click', () => {
+    loadImpactForDate(refs.dateInput.value);
+  });
+
+  refs.dateInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      loadImpactForDate(refs.dateInput.value);
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initImpactControls);
 
 function getKarachiHour() {
   try {
@@ -11833,6 +12612,7 @@ function runStyleLoadPipeline() {
 
   refreshKarachiLightPreset(map1);
   applyPendingBasemapConfig(map1);
+  restoreImpactOnStyleLoad();
 
   pendingStyleIsSatellite = false;
 }
@@ -11891,6 +12671,7 @@ class MapboxStyleSwitcherControl {
         if (source.type === 'geojson' ||
           (source.tiles && source.tiles.some(tile => tile.includes('geoserver'))) ||
           sourceId.includes('ffd') || sourceId.includes('glofas') ||
+          sourceId.includes('impact') ||
           sourceId.includes('Swat') || sourceId.includes('Panjgora') ||
           sourceId.includes('Future') || sourceId.includes('Ready_for_Construction') ||
           sourceId.includes('Ongoing') || sourceId.includes('Under_construction') ||
@@ -11902,6 +12683,7 @@ class MapboxStyleSwitcherControl {
       // Get all layers that use custom sources
       style.layers.forEach(layer => {
         if (customSources[layer.source] || layer.id.includes('ffd') || layer.id.includes('glofas') ||
+          layer.id.includes('impact') ||
           layer.id.includes('Future') || layer.id.includes('Ready_for_Construction') ||
           layer.id.includes('Ongoing') || layer.id.includes('Under_construction') ||
           layer.id.includes('Dams_Water_Bodies')) {

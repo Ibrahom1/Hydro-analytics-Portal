@@ -984,6 +984,412 @@ body {
   }
 }
 
+/* Impact modal */
+.impact-modal {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10020;
+}
+
+.impact-modal.open {
+  display: flex;
+}
+
+.impact-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.impact-modal-card {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+  box-shadow: 0 22px 40px rgba(2, 6, 23, 0.55);
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+.impact-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.impact-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.impact-modal-title-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.impact-modal-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.impact-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.impact-modal-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.impact-modal-close {
+  background: transparent;
+  border: 0;
+  color: #e2e8f0;
+  font-size: 20px;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.impact-modal-close:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.impact-modal-body {
+  padding: 14px;
+}
+
+.impact-modal-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #bfdbfe;
+  margin-bottom: 8px;
+}
+
+.impact-modal-date {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  padding: 8px 10px;
+  font-size: 13px;
+  color-scheme: light;
+}
+
+.impact-modal-date::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.impact-modal-status {
+  min-height: 18px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #93c5fd;
+}
+
+.impact-modal-status.error {
+  color: #fca5a5;
+}
+
+.impact-modal-status.success {
+  color: #86efac;
+}
+
+.impact-modal-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.impact-modal-btn {
+  flex: 1;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.impact-modal-btn:hover {
+  background: #1d4ed8;
+}
+
+.impact-modal-btn.ghost {
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.55);
+  color: #e2e8f0;
+}
+
+.impact-modal-btn.ghost:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+/* Impact right summary panel */
+.impact-summary-panel {
+  position: absolute;
+  top: 55px;
+  right: 96px;
+  left: auto;
+  width: min(470px, calc(100vw - 140px));
+  max-height: calc(100% - 125px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(37, 37, 37, 0.94);
+  color: #e2e8f0;
+  box-shadow: 0 22px 36px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  transform: translateX(120%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.28s ease, opacity 0.2s ease, visibility 0s linear 0.2s;
+  z-index: 10010;
+}
+
+.impact-summary-panel.open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 0.28s ease, opacity 0.2s ease;
+}
+
+.impact-summary-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(120deg, #665fd8 0%, #857ee6 100%);
+}
+
+.impact-summary-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f4f5ff;
+  line-height: 1;
+}
+
+.impact-summary-date {
+  margin-top: 5px;
+  font-size: 17px;
+  color: #f0f2ff;
+  font-weight: 600;
+}
+
+.impact-summary-header > div {
+  text-align: center;
+}
+
+.impact-summary-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: #eef2ff;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.impact-summary-close:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.impact-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  overflow: auto;
+  max-height: calc(100% - 145px);
+}
+
+.impact-summary-card {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 112px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.impact-summary-card.key-population {
+  grid-column: 1 / -1;
+}
+
+.impact-summary-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.impact-summary-card-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.impact-summary-card-icon img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.impact-summary-card-label {
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0.03em;
+  color: #3d4656;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.impact-summary-card.key-railway-stations .impact-summary-card-label {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.impact-summary-card.key-population .impact-summary-card-label {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.impact-summary-card-value {
+  font-size: 44px;
+  font-weight: 700;
+  color: #121929;
+  line-height: 1;
+  width: 100%;
+  text-align: center;
+}
+
+.impact-summary-card.key-schools {
+  background: #dbe5f1;
+}
+
+.impact-summary-card.key-railway-stations {
+  background: #e5e3de;
+}
+
+.impact-summary-card.key-population {
+  background: #dce3ee;
+}
+
+.impact-summary-card.key-hospitals {
+  background: #f3e4e8;
+}
+
+.impact-summary-card.key-bridges {
+  background: #d8ece5;
+}
+
+.impact-summary-card.key-airports {
+  background: #efdfeb;
+}
+
+.impact-summary-card.key-settlements {
+  background: #f7e7cf;
+}
+
+.impact-summary-card.key-population .impact-summary-card-value {
+  color: #3e3f95;
+}
+
+.impact-summary-card.key-hospitals .impact-summary-card-value,
+.impact-summary-card.key-airports .impact-summary-card-value {
+  color: #7e2437;
+}
+
+.impact-summary-card.key-bridges .impact-summary-card-value {
+  color: #1f6d5c;
+}
+
+.impact-summary-empty {
+  grid-column: 1 / -1;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 16px;
+  color: #e2e8f0;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .impact-summary-panel {
+    width: min(390px, calc(100vw - 24px));
+    top: 55px;
+    right: 72px;
+    max-height: calc(100% - 70px);
+  }
+
+  .impact-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .impact-summary-title {
+    font-size: 22px;
+  }
+
+  .impact-summary-date {
+    font-size: 16px;
+  }
+
+  .impact-summary-card-label {
+    font-size: 14px;
+  }
+
+  .impact-summary-card-value {
+    font-size: 38px;
+  }
+}
+
 /* Button styles */
 .map-overlay button {
     display: block;

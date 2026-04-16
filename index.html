@@ -2410,6 +2410,23 @@
             </div>
           </button>
         </div> -->
+
+        <!-- Impact Button -->
+        <div class="rounded-md overflow-hidden border border-white">
+          <button
+            id="impact-open-btn"
+            type="button"
+            class="w-full px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white font-medium flex items-center rounded-md transition-colors sidebar-section-btn glass-tile"
+            title="Impact">
+            <div class="flex items-center gap-2">
+              <span class="sidebar-icon" aria-hidden="true">
+                <img src="media/UI/sidebaricons/injury.gif" alt="" class="sidebar-icon-img" />
+              </span>
+              <span class="sidebar-label">Impact</span>
+            </div>
+          </button>
+        </div>
+
         <!-- Advisories Section -->
         <div class="max-w-4xl mx-auto">
           <div class="rounded-md overflow-hidden border border-white">
@@ -2659,6 +2676,47 @@
                 <canvas id="ffd-history-canvas-full"></canvas>
               </div>
             </div>
+
+            <!-- Impact Date Picker Modal -->
+            <div id="impact-date-modal" class="impact-modal" aria-hidden="true">
+              <div class="impact-modal-backdrop" data-impact-close="true"></div>
+              <div class="impact-modal-card" role="dialog" aria-modal="true" aria-labelledby="impact-modal-title">
+                <div class="impact-modal-header">
+                  <div class="impact-modal-title-wrap">
+                    <div class="impact-modal-title-icon" aria-hidden="true">
+                      <img src="media/UI/sidebaricons/injury.gif" alt="" class="impact-modal-icon" />
+                    </div>
+                    <div>
+                      <h3 id="impact-modal-title" class="impact-modal-title">Impact Layer</h3>
+                      <p class="impact-modal-subtitle">Select date to load exposure features</p>
+                    </div>
+                  </div>
+                  <button id="impact-modal-close" type="button" class="impact-modal-close" title="Close">×</button>
+                </div>
+                <div class="impact-modal-body">
+                  <label for="impact-date-input" class="impact-modal-label">Date</label>
+                  <input id="impact-date-input" type="date" class="impact-modal-date" />
+                  <div id="impact-modal-status" class="impact-modal-status" aria-live="polite"></div>
+                </div>
+                <div class="impact-modal-actions">
+                  <button id="impact-load-btn" type="button" class="impact-modal-btn">Load Impact</button>
+                  <button id="impact-cancel-btn" type="button" class="impact-modal-btn ghost">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Impact Exposure Summary Panel -->
+            <div id="impact-summary-panel" class="impact-summary-panel" aria-live="polite">
+              <div class="impact-summary-header">
+                <div>
+                  <div class="impact-summary-title">Total impact summary</div>
+                  <div id="impact-summary-date" class="impact-summary-date">-</div>
+                </div>
+                <button id="impact-summary-close" type="button" class="impact-summary-close" title="Close">×</button>
+              </div>
+              <div id="impact-summary-grid" class="impact-summary-grid"></div>
+            </div>
+
             <!-- IFRAME (initially hidden, styled like map1) -->
             <iframe id="dashboardFrame" class="w-full h-full hidden" style="position: relative; border: 0;"
               src="https://lookerstudio.google.com/embed/reporting/77819a68-5bd9-40bd-89b8-34d3ed6d410d/page/p_4ic6qd1wtd"
