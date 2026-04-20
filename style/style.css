@@ -1296,11 +1296,6 @@ body {
   white-space: nowrap;
 }
 
-.impact-summary-card.key-population .impact-summary-card-label {
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-
 .impact-summary-card-value {
   font-size: 44px;
   font-weight: 700;

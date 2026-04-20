@@ -3358,7 +3358,7 @@ const IMPACT_METRIC_KEYS = [
 const IMPACT_METRIC_LABELS = {
   schools: 'Schools',
   railway_stations: 'Railway stations',
-  population: 'Total population affected',
+  population: 'Total population exposed',
   hospitals: 'Hospitals',
   bridges: 'Bridges',
   airports: 'Airports',
@@ -3388,10 +3388,40 @@ const IMPACT_LAYERS = {
   point: 'impact_point_layer'
 };
 
+const IMPACT_HIGHLIGHT_STYLE = {
+  selectedOutlineColor: '#111827',
+  lineWidthDefault: 4,
+  lineWidthSelected: 7,
+  lineWidthPulseBoost: 2,
+  lineOpacityDefault: 0.9,
+  lineOpacitySelected: 0.82,
+  lineOpacityPulseBoost: 0.18,
+  fillOpacityDefault: 0.35,
+  fillOpacitySelected: 0.62,
+  fillOpacityPulseBoost: 0.18,
+  fillOutlineWidthDefault: 2,
+  fillOutlineWidthSelected: 4,
+  fillOutlineWidthPulseBoost: 1.4,
+  pointRadiusDefault: 6,
+  pointRadiusSelected: 10,
+  pointRadiusPulseBoost: 2,
+  pointStrokeWidthDefault: 1.5,
+  pointStrokeWidthSelected: 3,
+  pointStrokeWidthPulseBoost: 1,
+  pointOpacityDefault: 0.95,
+  pointOpacitySelected: 0.78,
+  pointOpacityPulseBoost: 0.22,
+  breatheDurationMs: 1000,
+  breatheTickMs: 80
+};
+
 let impactRowsById = new Map();
 let impactGeojsonCache = null;
 let impactTotals = null;
 let impactSelectedDate = '';
+let impactSelectedFeatureId = '';
+let impactBreatheTimer = null;
+let impactBreatheStartedAt = 0;
 let impactPopupInstance = null;
 let impactPanelOpen = false;
 let impactControlsInitialized = false;
@@ -3742,7 +3772,7 @@ function buildImpactPopupHtml(properties) {
     <div class="impact-popup-container">
       <div class="impact-popup-header">
         <div>
-          <div class="impact-popup-title">Impact details</div>
+          <div class="impact-popup-title">Exposure details</div>
           <div class="impact-popup-subtitle">Exposure indicators</div>
         </div>
       </div>
@@ -3784,7 +3814,7 @@ function buildImpactPopupHtml(properties) {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        border: 1px solid #dbe4f0;
+        border: 1px soli d #dbe4f0;
         border-radius: 8px;
         background: #f8fafc;
         padding: 6px 8px;
@@ -3835,11 +3865,105 @@ function openImpactPopup(feature, lngLat) {
     .setLngLat(lngLat)
     .setHTML(buildImpactPopupHtml(feature.properties || {}))
     .addTo(map1);
+
+  impactPopupInstance.on('close', () => {
+    stopImpactSelectionBreathe();
+    if (impactSelectedFeatureId) {
+      setImpactFeatureBreathe(impactSelectedFeatureId, 0);
+    }
+  });
+
+  if (impactSelectedFeatureId) {
+    startImpactSelectionBreathe();
+  }
+}
+
+function getImpactFeatureId(feature) {
+  const rawId = feature?.id ?? feature?.properties?.impact_id;
+  if (rawId === undefined || rawId === null || rawId === '') return '';
+  return String(rawId).trim();
+}
+
+function applyImpactFeatureState(featureId, selected) {
+  if (!featureId) return;
+
+  Object.values(IMPACT_SOURCES).forEach((sourceId) => {
+    if (!map1.getSource(sourceId)) return;
+    map1.setFeatureState(
+      { source: sourceId, id: featureId },
+      { selected: Boolean(selected) }
+    );
+  });
+}
+
+function setImpactFeatureBreathe(featureId, breatheValue) {
+  if (!featureId) return;
+
+  const normalized = Math.max(0, Math.min(1, Number(breatheValue) || 0));
+  Object.values(IMPACT_SOURCES).forEach((sourceId) => {
+    if (!map1.getSource(sourceId)) return;
+    map1.setFeatureState(
+      { source: sourceId, id: featureId },
+      { breathe: normalized }
+    );
+  });
+}
+
+function getImpactBreatheValue(nowMs = Date.now()) {
+  const duration = Math.max(200, Number(IMPACT_HIGHLIGHT_STYLE.breatheDurationMs) || 1000);
+  const phase = ((nowMs - impactBreatheStartedAt) % duration) / duration;
+  return (Math.sin((phase * Math.PI * 2) - (Math.PI / 2)) + 1) / 2;
+}
+
+function stopImpactSelectionBreathe() {
+  if (impactBreatheTimer) {
+    clearInterval(impactBreatheTimer);
+    impactBreatheTimer = null;
+  }
+}
+
+function startImpactSelectionBreathe() {
+  if (!impactSelectedFeatureId) return;
+
+  stopImpactSelectionBreathe();
+  impactBreatheStartedAt = Date.now();
+  setImpactFeatureBreathe(impactSelectedFeatureId, 0);
+
+  const tickMs = Math.max(50, Number(IMPACT_HIGHLIGHT_STYLE.breatheTickMs) || 80);
+  impactBreatheTimer = setInterval(() => {
+    if (!impactSelectedFeatureId) {
+      stopImpactSelectionBreathe();
+      return;
+    }
+    setImpactFeatureBreathe(impactSelectedFeatureId, getImpactBreatheValue(Date.now()));
+  }, tickMs);
+}
+
+function setImpactSelectedFeature(featureId) {
+  const nextId = String(featureId ?? '').trim();
+
+  if (impactSelectedFeatureId && impactSelectedFeatureId !== nextId) {
+    applyImpactFeatureState(impactSelectedFeatureId, false);
+    setImpactFeatureBreathe(impactSelectedFeatureId, 0);
+  }
+
+  impactSelectedFeatureId = nextId;
+
+  if (impactSelectedFeatureId) {
+    applyImpactFeatureState(impactSelectedFeatureId, true);
+    setImpactFeatureBreathe(impactSelectedFeatureId, 0);
+    return;
+  }
+
+  stopImpactSelectionBreathe();
 }
 
 function onImpactFeatureClick(e) {
   const feature = e?.features?.[0];
   if (!feature) return;
+
+  const featureId = getImpactFeatureId(feature);
+  setImpactSelectedFeature(featureId);
 
   zoomToImpactFeature(feature);
   openImpactPopup(feature, e.lngLat);
@@ -3886,6 +4010,7 @@ function bindImpactLayerEvents() {
 }
 
 function removeImpactVisuals(keepCache = false) {
+  stopImpactSelectionBreathe();
   removeImpactLayerEvents();
 
   Object.values(IMPACT_LAYERS).forEach((layerId) => {
@@ -3910,6 +4035,7 @@ function removeImpactVisuals(keepCache = false) {
     impactRowsById = new Map();
     impactTotals = null;
     impactSelectedDate = '';
+    impactSelectedFeatureId = '';
   }
 }
 
@@ -3920,7 +4046,8 @@ function upsertImpactSource(sourceId, data) {
   }
   map1.addSource(sourceId, {
     type: 'geojson',
-    data
+    data,
+    promoteId: 'impact_id'
   });
 }
 
@@ -3938,8 +4065,34 @@ function renderImpactFeatures(featureCollection) {
       source: IMPACT_SOURCES.line,
       paint: {
         'line-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
-        'line-width': 4,
-        'line-opacity': 0.9
+        'line-width': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.lineWidthSelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.lineWidthPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.lineWidthDefault
+        ],
+        'line-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.lineOpacitySelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.lineOpacityPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.lineOpacityDefault
+        ]
       }
     });
   }
@@ -3952,7 +4105,20 @@ function renderImpactFeatures(featureCollection) {
       source: IMPACT_SOURCES.fill,
       paint: {
         'fill-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
-        'fill-opacity': 0.35
+        'fill-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.fillOpacitySelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.fillOpacityPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.fillOpacityDefault
+        ]
       }
     });
     map1.addLayer({
@@ -3960,8 +4126,26 @@ function renderImpactFeatures(featureCollection) {
       type: 'line',
       source: IMPACT_SOURCES.fill,
       paint: {
-        'line-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
-        'line-width': 2,
+        'line-color': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          IMPACT_HIGHLIGHT_STYLE.selectedOutlineColor,
+          ['coalesce', ['get', 'impact_color'], '#ef4444']
+        ],
+        'line-width': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.fillOutlineWidthSelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.fillOutlineWidthPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.fillOutlineWidthDefault
+        ],
         'line-opacity': 0.95
       }
     });
@@ -3975,15 +4159,66 @@ function renderImpactFeatures(featureCollection) {
       source: IMPACT_SOURCES.point,
       paint: {
         'circle-color': ['coalesce', ['get', 'impact_color'], '#ef4444'],
-        'circle-radius': 6,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 1.5,
-        'circle-opacity': 0.95
+        'circle-radius': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.pointRadiusSelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.pointRadiusPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.pointRadiusDefault
+        ],
+        'circle-stroke-color': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          IMPACT_HIGHLIGHT_STYLE.selectedOutlineColor,
+          '#ffffff'
+        ],
+        'circle-stroke-width': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.pointStrokeWidthSelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.pointStrokeWidthPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.pointStrokeWidthDefault
+        ],
+        'circle-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          [
+            '+',
+            IMPACT_HIGHLIGHT_STYLE.pointOpacitySelected,
+            [
+              '*',
+              ['coalesce', ['feature-state', 'breathe'], 0],
+              IMPACT_HIGHLIGHT_STYLE.pointOpacityPulseBoost
+            ]
+          ],
+          IMPACT_HIGHLIGHT_STYLE.pointOpacityDefault
+        ]
       }
     });
   }
 
   bindImpactLayerEvents();
+
+  if (impactSelectedFeatureId) {
+    setImpactSelectedFeature(impactSelectedFeatureId);
+    if (impactPopupInstance) {
+      startImpactSelectionBreathe();
+    }
+  }
 }
 
 function calculateImpactTotals(rows) {
@@ -4057,6 +4292,7 @@ async function loadImpactForDate(dateValue) {
 
     impactSelectedDate = dateValue;
     impactTotals = calculateImpactTotals(normalizedRows);
+    setImpactSelectedFeature('');
     renderImpactFeatures(joinedFeatureCollection);
     renderImpactSummaryPanel(impactTotals, impactSelectedDate);
 
