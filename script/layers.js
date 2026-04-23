@@ -7298,17 +7298,13 @@ function addHydrometLayersToMap(map) {
 
   //DG khan HT extent
   map1.addSource("DG khan HT", {
-    type: "vector",
-    scheme: "tms",
-    tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:DG khan HT@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-    ],
+    type: "geojson",
+    data: "http://172.18.1.87:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson",
   });
   map1.addLayer({
     id: "DG khan HT",
     type: "fill",
     source: "DG khan HT",
-    "source-layer": "DG khan HT",
     layout: {
       visibility: "none",
     },
@@ -7361,17 +7357,13 @@ function addHydrometLayersToMap(map) {
 
   //Hyderabad arc extent
   map1.addSource("Hyderabad_arc", {
-    type: "vector",
-    scheme: "tms",
-    tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Hyderabad_arc@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-    ],
+    type: "geojson",
+    data: "http://172.18.1.87:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson",
   });
   map1.addLayer({
     id: "Hyderabad_arc",
     type: "fill",
     source: "Hyderabad_arc",
-    "source-layer": "Hyderabad_arc",
     layout: {
       visibility: "none",
     },
@@ -7381,7 +7373,7 @@ function addHydrometLayersToMap(map) {
       "fill-color": "red",
     },
   });
-  document.getElementById("hyder").addEventListener("change", function () {
+  document.getElementById("hyder").addEventListener("change", function () { 
     const isVisible = this.checked;
     map1.setLayoutProperty(
       "Hyderabad_arc",
@@ -7392,17 +7384,13 @@ function addHydrometLayersToMap(map) {
 
   //jhal arc extent
   map1.addSource("jhal_magsi_arc_Complete", {
-    type: "vector",
-    scheme: "tms",
-    tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:jhal_magsi_arc_Complete@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-    ],
+    type: "geojson",
+    data: "http://172.18.1.87:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson",
   });
   map1.addLayer({
     id: "jhal_magsi_arc_Complete",
     type: "fill",
     source: "jhal_magsi_arc_Complete",
-    "source-layer": "jhal_magsi_arc_Complete",
     layout: {
       visibility: "none",
     },
@@ -7412,7 +7400,7 @@ function addHydrometLayersToMap(map) {
       "fill-color": "red",
     },
   });
-  document.getElementById("jhall").addEventListener("change", function () {
+  document.getElementById("jhall").addEventListener("change", function () { 
     const isVisible = this.checked;
     map1.setLayoutProperty(
       "jhal_magsi_arc_Complete",
@@ -7425,6 +7413,7 @@ function addHydrometLayersToMap(map) {
 
   // map1.addSource("jhal_magsi_arc_full", {
   //   type: "vector",
+
   //   scheme: "tms",
   //   tiles: [
   //     `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:jhal_magsi_arc_full@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
