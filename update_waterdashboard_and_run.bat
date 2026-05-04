@@ -1,78 +1,108 @@
 @echo off
 setlocal
 
-set "PYTHON_CMD=python"
+set "REPO_ROOT=%~dp0"
+set "BOOTSTRAP_PYTHON=python"
+set "VENV_DIR=%REPO_ROOT%.venv"
+set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
+set "VENV_ACTIVATE=%VENV_DIR%\Scripts\activate.bat"
+set "DASHBOARD_RUNNER=%REPO_ROOT%.run_hydro_dashboard_backend.cmd"
+set "GIS_RUNNER=%REPO_ROOT%.run_hydro_gis_uploader.cmd"
+
 where py >nul 2>&1
 if not errorlevel 1 (
-  set "PYTHON_CMD=py -3"
+  set "BOOTSTRAP_PYTHON=py -3"
 )
 
-echo Updating waterdashboard...
-git -C "waterdashboard" pull
+echo Updating waterdashboard repository if Git is available...
+where git >nul 2>&1
 if errorlevel 1 (
-  echo Git pull failed.
-  pause
-  exit /b 1
+  echo Git not found. Skipping waterdashboard git pull.
+) else (
+  git -C "%REPO_ROOT%waterdashboard" pull
+  if errorlevel 1 (
+    echo Warning: Git pull failed. Continuing with local files.
+  )
 )
 
-echo Checking PDF parser dependency (pdfplumber)...
-%PYTHON_CMD% -c "import pdfplumber" >nul 2>&1
-if errorlevel 1 (
-  echo pdfplumber not found. Installing...
-  %PYTHON_CMD% -m pip install --user pdfplumber
+if not exist "%VENV_PYTHON%" (
+  echo Creating project virtual environment at "%VENV_DIR%"...
+  %BOOTSTRAP_PYTHON% -m venv "%VENV_DIR%"
   if errorlevel 1 (
-    echo Standard install failed. Retrying with --break-system-packages...
-    %PYTHON_CMD% -m pip install --user --break-system-packages pdfplumber
+    echo Failed to create virtual environment.
+    echo Please confirm Python is installed and available as py -3 or python.
+    pause
+    exit /b 1
   )
+
+  echo Bootstrapping and upgrading pip...
+  "%VENV_PYTHON%" -m ensurepip --upgrade >nul 2>&1
+  "%VENV_PYTHON%" -m pip install --upgrade pip
   if errorlevel 1 (
-    echo pip install failed. Trying to bootstrap pip and retry...
-    %PYTHON_CMD% -m ensurepip --upgrade
-    %PYTHON_CMD% -m pip install --user pdfplumber
-  )
-  if errorlevel 1 (
-    echo Could not install pdfplumber automatically.
-    echo Please run: %PYTHON_CMD% -m pip install --user pdfplumber
+    echo Failed to upgrade pip inside the virtual environment.
     pause
     exit /b 1
   )
 )
 
-echo Checking snapshot dependency (selenium)...
-%PYTHON_CMD% -c "import selenium" >nul 2>&1
+echo Installing Python dependencies...
+"%VENV_PYTHON%" -m pip install ^
+  -r "%REPO_ROOT%waterdashboard\backend\requirements.txt" ^
+  -r "%REPO_ROOT%gis_uploader_backend\requirements.txt" ^
+  pandas pdfplumber selenium
 if errorlevel 1 (
-  echo selenium not found. Installing...
-  %PYTHON_CMD% -m pip install --user selenium
-  if errorlevel 1 (
-    echo Standard install failed. Retrying with --break-system-packages...
-    %PYTHON_CMD% -m pip install --user --break-system-packages selenium
-  )
-  if errorlevel 1 (
-    echo pip install failed. Trying to bootstrap pip and retry...
-    %PYTHON_CMD% -m ensurepip --upgrade
-    %PYTHON_CMD% -m pip install --user selenium
-  )
-  if errorlevel 1 (
-    echo Warning: Could not install selenium automatically.
-    echo Snapshot updater may fail if no local bulletin cache is available.
-  )
+  echo Dependency installation failed.
+  pause
+  exit /b 1
 )
 
 echo Updating Indian dam values from current CWC bulletin snapshot...
-%PYTHON_CMD% "%~dp0current_day_reservoir_snapshot.py"
+"%VENV_PYTHON%" "%REPO_ROOT%current_day_reservoir_snapshot.py"
 if errorlevel 1 (
   echo Warning: Failed to refresh Indian dam snapshot. Continuing with existing Indian values.
 )
 
 echo Updating ft_and_percentage.js from Daily Water Situation.pdf...
-%PYTHON_CMD% "%~dp0res_storages\storages.py"
+"%VENV_PYTHON%" "%REPO_ROOT%res_storages\storages.py"
 if errorlevel 1 (
   echo Failed to update dam values from PDF.
   pause
   exit /b 1
 )
 
-echo Starting waterdashboard backend...
-cd /d "%~dp0waterdashboard\backend"
-%PYTHON_CMD% app.py
+if not exist "%REPO_ROOT%waterdashboard\backend\app.py" (
+  echo Failed to find Hydro Dashboard backend at "%REPO_ROOT%waterdashboard\backend\app.py".
+  echo The dashboard API app.py belongs inside waterdashboard\backend, not the project root.
+  pause
+  exit /b 1
+)
+
+echo Starting Hydro Dashboard Backend on http://localhost:5000 ...
+(
+  echo @echo off
+  echo call "%VENV_ACTIVATE%"
+  echo set "PORT=5000"
+  echo cd /d "%REPO_ROOT%waterdashboard\backend"
+  echo python app.py
+  echo pause
+) > "%DASHBOARD_RUNNER%"
+start "Hydro Dashboard Backend" "%DASHBOARD_RUNNER%"
+
+echo Starting Hydro GIS Uploader API on http://localhost:8001 ...
+(
+  echo @echo off
+  echo call "%VENV_ACTIVATE%"
+  echo cd /d "%REPO_ROOT%"
+  echo python -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port 8001
+  echo pause
+) > "%GIS_RUNNER%"
+start "Hydro GIS Uploader API" "%GIS_RUNNER%"
+
+echo.
+echo Backends started in separate windows:
+echo   Hydro Dashboard Backend  - http://localhost:5000/api/health
+echo   Hydro GIS Uploader API   - http://localhost:8001/api/gis/health
+echo.
+pause
 
 endlocal

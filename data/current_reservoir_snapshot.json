@@ -1,7 +1,7 @@
 {
-  "run_timestamp_utc": "2026-04-21T05:43:44Z",
-  "selected_bulletin_url": "https://rsms.cwc.gov.in/admin/storage/bulletins/bulletin-09-04-2026-91.pdf",
-  "bulletin_date": "2026-04-09",
+  "run_timestamp_utc": "2026-05-04T05:57:32Z",
+  "selected_bulletin_url": "local://bulletin-09-04-2026-91.pdf",
+  "bulletin_date": "2026-09-04",
   "source_pdf": "bulletin-09-04-2026-91.pdf",
   "bhakra": {
     "current_reservoir_level_m": 487.098,

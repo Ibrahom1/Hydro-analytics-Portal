@@ -665,7 +665,14 @@ def update_js_file(
 
 	tmp_path = js_path.with_suffix(js_path.suffix + ".tmp")
 	tmp_path.write_text(content, encoding="utf-8")
-	tmp_path.replace(js_path)
+	try:
+		tmp_path.replace(js_path)
+	except PermissionError:
+		js_path.write_text(content, encoding="utf-8")
+		try:
+			tmp_path.unlink()
+		except OSError:
+			pass
 
 
 def main() -> int:
@@ -794,9 +801,10 @@ def main() -> int:
 
 	print("[INFO] Computed historical storage fill percentages and variation:")
 	for dam in DAM_KEYS:
+		console_arrow = "up" if variation5_year_trend[dam] == "increase" else "down"
 		print(
 			f"  {dam}: Last Year={last_year_percentages[dam]}%, "
-			f"Avg5Years={avg5_year_percentages[dam]}%, Variation={variation5_year[dam]} {variation5_year_arrow[dam]}"
+			f"Avg5Years={avg5_year_percentages[dam]}%, Variation={variation5_year[dam]} {console_arrow}"
 		)
 
 	indian_snapshot_values = load_indian_snapshot_values(snapshot_json_path)

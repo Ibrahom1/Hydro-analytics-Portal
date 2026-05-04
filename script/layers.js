@@ -5,6 +5,269 @@ const mamHimael = "172.18.1.147";
 const ibrahim  = "172.18.1.110";
 const mapDiv = document.getElementById("map1");
 
+// DEW Exposure
+let exposuresLoadPromise = null;
+const exposureDistricts = new Set();
+const DEW_EXPOSURE_API_URL = "http://172.18.1.108:8000/get-exposures/";
+
+function setExposureDropdownMessage(msg) {
+  const el = document.getElementById('dew-exposure-status');
+  if (el) el.textContent = msg;
+}
+
+function getDewMap() {
+  return typeof map1 !== 'undefined' ? map1 : null;
+}
+
+async function fetchDewJson(path = "") {
+  const response = await fetch(`${DEW_EXPOSURE_API_URL}${path}`);
+  if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+  return await response.json();
+}
+
+function normalizeExposureList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.exposures)) return payload.exposures;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+}
+
+function normalizeExposureFeatureCollection(payload) {
+  if (payload?.type === 'FeatureCollection' && Array.isArray(payload.features)) {
+    return payload;
+  }
+  if (payload?.data?.type === 'FeatureCollection' && Array.isArray(payload.data.features)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload?.features)) {
+    return { type: 'FeatureCollection', features: payload.features };
+  }
+  return { type: 'FeatureCollection', features: [] };
+}
+
+function waitForDewMapStyle(map) {
+  if (!map) return Promise.reject(new Error('Map is not available.'));
+  if (map.isStyleLoaded()) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      map.off('styledata', onReady);
+      map.off('idle', onReady);
+      reject(new Error('Map style was not ready in time.'));
+    }, 8000);
+
+    const onReady = () => {
+      if (!map.isStyleLoaded()) return;
+      clearTimeout(timeoutId);
+      map.off('styledata', onReady);
+      map.off('idle', onReady);
+      resolve();
+    };
+
+    map.on('styledata', onReady);
+    map.on('idle', onReady);
+  });
+}
+
+function bindExposureControls() {
+  const dropdown = document.getElementById('exposure-dropdown');
+  if (!dropdown || dropdown._dewBound) return;
+  dropdown._dewBound = true;
+  dropdown.addEventListener('change', (e) => {
+    if (e.target.value) fetchExposureDetails(e.target.value);
+  });
+}
+
+function toggleDewExposurePanel() {
+  const panel = document.getElementById('dew-exposure-panel');
+  if (!panel) {
+    console.warn("[DEW Exposures] Panel element not found.");
+    return;
+  }
+
+  const isVisible = panel.style.display !== 'none';
+  panel.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) fetchExposures();
+}
+
+function closeDewExposurePanel() {
+  const panel = document.getElementById('dew-exposure-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+const fetchExposuresLegacy = async () => {
+  const exposureDropdown = document.getElementById("exposure-dropdown");
+  if (!exposureDropdown) return;
+  if (exposuresLoadPromiseLegacy) return exposuresLoadPromiseLegacy;
+
+  setExposureDropdownMessage("Loading exposures...");
+  bindExposureControls();
+
+  exposuresLoadPromise = (async () => {
+    try {
+      const exposures = normalizeExposureList(await fetchDewJson());
+      const fragment = document.createDocumentFragment();
+      fragment.appendChild(new Option("Select an exposure", ""));
+
+      if (!exposures.length) {
+        fragment.appendChild(new Option("No exposures available", ""));
+        exposureDropdown.replaceChildren(fragment);
+        setExposureDropdownMessage("No exposures available");
+        return;
+      }
+
+      for (const exposure of exposures) {
+        const id = exposure?.id ?? exposure?.exposure_id ?? exposure?.ID;
+        const remarks = exposure?.remarks ?? exposure?.name ?? exposure?.title;
+        if (id === undefined || id === null || id === "") {
+          console.warn("[DEW Exposures] Skipping exposure without id.", { remarks });
+          continue;
+        }
+        fragment.appendChild(new Option(`${id} - ${remarks || "No remarks"}`, String(id)));
+      }
+
+      exposureDropdown.replaceChildren(fragment);
+      setExposureDropdownMessage("");
+    } catch (error) {
+      exposuresLoadPromise = null;
+      console.warn(`[DEW Exposures] Service unavailable. ${error?.message || "Request failed."}`);
+      setExposureDropdownMessage("Exposure service unavailable");
+    }
+  })();
+
+  return exposuresLoadPromise;
+};
+
+function collectDewCoordinates(node, bucket) {
+  if (!Array.isArray(node)) return;
+
+  if (
+    node.length >= 2 &&
+    typeof node[0] === 'number' &&
+    Number.isFinite(node[0]) &&
+    typeof node[1] === 'number' &&
+    Number.isFinite(node[1])
+  ) {
+    bucket.push([node[0], node[1]]);
+    return;
+  }
+
+  node.forEach((child) => collectDewCoordinates(child, bucket));
+}
+
+function zoomToDewFeatures(map, features) {
+  const points = [];
+  features.forEach((feature) => collectDewCoordinates(feature?.geometry?.coordinates, points));
+  if (!points.length) return;
+
+  const bounds = points.reduce((acc, point) => acc.extend(point), new mapboxgl.LngLatBounds(points[0], points[0]));
+  map.fitBounds(bounds, {
+    padding: { top: 80, right: 80, bottom: 80, left: 80 },
+    maxZoom: 11,
+    duration: 900
+  });
+}
+
+const fetchExposureDetails = async (exposureId) => {
+  const dewMap = getDewMap();
+
+  try {
+    await waitForDewMapStyle(dewMap);
+    setExposureDropdownMessage("Loading exposure details...");
+
+    const featureCollection = normalizeExposureFeatureCollection(
+      await fetchDewJson(`?exposure_id=${encodeURIComponent(exposureId)}`)
+    );
+    const { features } = featureCollection;
+    if (!Array.isArray(features)) throw new Error('Invalid GeoJSON format: missing "features".');
+    if (!features.length) throw new Error("No exposure features returned.");
+
+    const layerId = "dewpolygon";
+
+    if (dewMap.getSource(layerId)) {
+      dewMap.getSource(layerId).setData(featureCollection);
+    } else {
+      dewMap.addSource(layerId, {
+        type: "geojson",
+        data: featureCollection,
+      });
+    }
+
+    if (!dewMap.getLayer(`${layerId}_fill`)) {
+      dewMap.addLayer({
+        id: `${layerId}_fill`,
+        type: "fill",
+        source: layerId,
+        layout: { visibility: "visible" },
+        paint: {
+          "fill-color": "#FF0000",
+          "fill-opacity": 0.3,
+          "fill-outline-color": "#FF0000",
+        },
+      });
+    }
+
+    if (!dewMap.getLayer(`${layerId}_outline`)) {
+      dewMap.addLayer({
+        id: `${layerId}_outline`,
+        type: "line",
+        source: layerId,
+        layout: { visibility: "visible" },
+        paint: {
+          "line-color": "#FF0000",
+          "line-opacity": 1,
+          "line-width": 1.5,
+        },
+      });
+    }
+
+    dewMap.setLayoutProperty(`${layerId}_fill`, "visibility", "visible");
+    dewMap.setLayoutProperty(`${layerId}_outline`, "visibility", "visible");
+
+    exposureDistricts.clear();
+    for (const feature of features) {
+      if (feature.properties?.exposure_feature_assessment) {
+        for (const province of Object.values(feature.properties.exposure_feature_assessment)) {
+          if (!province || typeof province !== "object") continue;
+          for (const district of Object.keys(province)) {
+            exposureDistricts.add(district);
+          }
+        }
+      }
+    }
+
+    if (dewMap.getLayer("district_boundary_fill") && exposureDistricts.size) {
+      dewMap.setFilter("district_boundary_fill", ["in", "name", ...exposureDistricts]);
+    } else if (dewMap.getLayer("DistrictBoundaryHighlight") && exposureDistricts.size) {
+      dewMap.setFilter("DistrictBoundaryHighlight", ["in", "name", ...exposureDistricts]);
+    }
+
+    zoomToDewFeatures(dewMap, features);
+    setExposureDropdownMessage("");
+  } catch (error) {
+    console.error("Error fetching exposure details:", error);
+    setExposureDropdownMessage("Error loading exposure details");
+  }
+};
+
+function initDewExposureControls() {
+  setExposureDropdownMessage("Open to load exposures");
+  bindExposureControls();
+
+  const dropdown = document.getElementById("exposure-dropdown");
+  if (!dropdown || dropdown._dewLazyLoadBound) return;
+  dropdown._dewLazyLoadBound = true;
+  dropdown.addEventListener("focus", fetchExposures);
+  dropdown.addEventListener("mousedown", fetchExposures);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initDewExposureControls);
+} else {
+  initDewExposureControls();
+}
+
 function updateLayerToggleRowHighlight(checkbox) {
   if (!checkbox) return;
   const rowLabel = checkbox.closest('label');
@@ -96,6 +359,132 @@ function updateBlinkLayersButtonVisibility() {
   const districtCheckbox = document.getElementById('dstBoundary');
   const shouldShow = Boolean(tehsilCheckbox?.checked || districtCheckbox?.checked);
   btn.style.display = shouldShow ? 'flex' : 'none';
+}
+
+// Reusable popup creator for feature layers
+function createFeaturePopup(feature, layerType, accentColor, displayAttributes) {
+  const formatProp = (label, value) => {
+    return `<div class="discharge-item"><span class="discharge-label">${label}:</span><span class="discharge-value">${value || 'N/A'}</span></div>`;
+  };
+
+  let headerName = 'Unknown ' + layerType;
+  let mainAttr = displayAttributes[0] || 'name';
+  if (feature.properties && feature.properties[mainAttr]) {
+    headerName = feature.properties[mainAttr];
+  }
+
+  let contentRows = '';
+  contentRows += formatProp('Location', `${feature.geometry?.coordinates?.[1]?.toFixed(5) || 'N/A'}, ${feature.geometry?.coordinates?.[0]?.toFixed(5) || 'N/A'}`);
+  contentRows += formatProp(layerType, headerName);
+
+  for (let i = 0; i < displayAttributes.length; i++) {
+    const attr = displayAttributes[i];
+    if (feature.properties && feature.properties[attr]) {
+      contentRows += formatProp(attr.charAt(0).toUpperCase() + attr.slice(1).replace('_', ' '), feature.properties[attr]);
+    }
+  }
+
+  const popupHTML = `
+    <div class="ffd-popup-container">
+      <div class="popup-header" style="border-left: 4px solid ${accentColor};">
+        <div class="station-info">
+          <h3 class="station-name">${headerName}</h3>
+          <div class="status-badge" style="background-color: ${accentColor};">
+            <i class="fas fa-map-marker-alt"></i>
+            ${layerType}
+          </div>
+        </div>
+      </div>
+      <div class="popup-content">
+        <div class="discharge-section">
+          <div class="discharge-grid">
+            ${contentRows}
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .ffd-popup-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        width: 280px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+        border: 2px solid ${accentColor};
+        position: relative;
+      }
+      .popup-header {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-bottom: 2px solid #f3e5f5;
+      }
+      .station-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .station-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+        line-height: 1.2;
+        flex: 1;
+      }
+      .status-badge {
+        color: white;
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        white-space: nowrap;
+      }
+      .popup-content {
+        padding: 8px 12px 12px;
+      }
+      .discharge-section {
+        margin-bottom: 8px;
+      }
+      .discharge-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .discharge-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px solid #f3e5f5;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      }
+      .discharge-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #495057;
+      }
+      .discharge-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: #212529;
+      }
+      .mapboxgl-popup-close-button { display: none !important; }
+      .mapboxgl-popup-content { padding: 0 !important; border-radius: 8px !important; }
+      .mapboxgl-popup-tip { border-top-color: #ffffff !important; }
+    </style>
+  `;
+
+  return popupHTML;
 }
 
 function handleTslBoundary(checkbox) {
@@ -296,6 +685,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeBtn = document.getElementById('sidebar-close');
   if (!sidebar || !toggleBtn) return;
 
+  const syncSidebarHeight = () => {
+    const bottomGap = 16;
+    const minHeight = 260;
+    const sidebarTop = sidebar.getBoundingClientRect().top;
+    const availableHeight = window.innerHeight - sidebarTop - bottomGap;
+    sidebar.style.maxHeight = `${Math.max(minHeight, availableHeight)}px`;
+  };
+
   const setClosed = (closed) => {
     sidebar.classList.toggle('is-closed', closed);
     toggleBtn.setAttribute('aria-expanded', String(!closed));
@@ -304,9 +701,13 @@ document.addEventListener('DOMContentLoaded', () => {
       closeBtn.style.display = closed ? 'none' : 'inline-flex';
     }
     toggleBtn.classList.toggle('is-hidden', !closed);
+    syncSidebarHeight();
   };
 
+  syncSidebarHeight();
   setClosed(false);
+  window.addEventListener('resize', syncSidebarHeight);
+  window.addEventListener('load', syncSidebarHeight);
 
   toggleBtn.addEventListener('click', () => {
     const nextState = !sidebar.classList.contains('is-closed');
@@ -2906,7 +3307,7 @@ document.getElementById('slideshowModal').addEventListener('click', function(e) 
 });
 // Global GeoServer IP variables
 const mustafa = "172.18.1.55"; // Swat, Panjgora, etc.
-const ahad = "172.18.1.87"; // AJK, Jhal, hyd layers, etc.
+const ahad = "172.18.1.85"; // AJK, Jhal, hyd layers, etc.
 let isPlaying = false;
 let playInterval;
 let currentDay = 1;
@@ -3278,7 +3679,8 @@ const map1Layers = [
   // Terrain/Raster layers
   "Terrain_Jhal_Depth", "Terrain_hyd", "Depth_Max_Terrain_DEM_AJK1",
   // Other important layers that were missing
-  "glofas", "ffd_point", "ffd_label", "DI_Khan_HT", "DG khan HT", "Pir_Panjal_HT",
+  "glofas", "gmrc_wapda_stations", "pmd_stations", "damaged_pmd_stations",
+  "ffd_point", "ffd_label", "DI_Khan_HT", "DG khan HT", "Pir_Panjal_HT",
   "Mardan_inundation_filter",
   "kech_panjgur_50mm_filter", "kech_panjgur_100mm_filter",
   "munawar_tawi_60mm_filter", "munawar_150mm_filter",
@@ -5569,8 +5971,13 @@ function addHydrometLayersToMap(map) {
         }
       });
 
+      const resolveHydroApiBase = (port) => {
+        const host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
+        return `http://${host}:${port}`;
+      };
+
       const ffdHistoryConfig = {
-        apiBase: 'http://localhost:5000',
+        apiBase: resolveHydroApiBase(5000),
         defaultDays: 7,
         minDate: '2025-06-15'
       };
@@ -6979,6 +7386,262 @@ function addHydrometLayersToMap(map) {
     map1.getCanvas().style.cursor = '';
   })
 
+  const escapeGlofPopupValue = (value) => {
+    if (value === undefined || value === null || value === '') return 'N/A';
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char]));
+  };
+
+  const createGlofValueRows = (values) => values
+    .map(escapeGlofPopupValue)
+    .map(value => `
+      <div class="discharge-item glof-value-only">
+        <span class="discharge-value">${value}</span>
+      </div>
+    `)
+    .join("");
+
+  const createGlofLabeledRow = (label, value) => `
+    <div class="discharge-item">
+      <span class="discharge-label">${label}:</span>
+      <span class="discharge-value">${escapeGlofPopupValue(value)}</span>
+    </div>
+  `;
+
+  const createGlofPopupContent = ({ title, badgeText, accentColor, iconClass, bodyHtml }) => `
+    <div class="ffd-popup-container">
+      <div class="popup-header" style="border-left: 4px solid ${accentColor};">
+        <div class="station-info">
+          <h3 class="station-name">${escapeGlofPopupValue(title)}</h3>
+          <div class="status-badge" style="background-color: ${accentColor};">
+            <i class="${iconClass || 'fas fa-map-marker-alt'}"></i>
+            ${escapeGlofPopupValue(badgeText)}
+          </div>
+        </div>
+      </div>
+      <div class="popup-content">
+        <div class="discharge-section">
+          <div class="discharge-grid">
+            ${bodyHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .ffd-popup-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        width: 280px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.12),
+          0 2px 8px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        border: 2px solid #2196f3;
+        position: relative;
+      }
+      .popup-header {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-bottom: 2px solid #e3f2fd;
+      }
+      .station-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .station-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+        line-height: 1.2;
+        flex: 1;
+      }
+      .status-badge {
+        color: white;
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        white-space: nowrap;
+      }
+      .popup-content {
+        padding: 8px 12px 12px;
+      }
+      .discharge-section {
+        margin-bottom: 8px;
+      }
+      .discharge-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .discharge-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px solid #e3f2fd;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+      .discharge-item.glof-value-only {
+        justify-content: flex-start;
+      }
+      .discharge-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #495057;
+      }
+      .discharge-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: #212529;
+      }
+      .mapboxgl-popup-close-button {
+        display: none !important;
+      }
+      .mapboxgl-popup-content {
+        padding: 0 !important;
+        border-radius: 8px !important;
+      }
+      .mapboxgl-popup-tip {
+        border-top-color: #ffffff !important;
+      }
+    </style>
+  `;
+
+  const addGlofPointLayer = ({ sourceId, layerId, geoserverLayer, color, checkboxId, popupHtml }) => {
+    if (!map1.getSource(sourceId)) {
+      map1.addSource(sourceId, {
+        type: "geojson",
+        data: `http://${ahad}:8080/geoserver/GLOF/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${encodeURIComponent(geoserverLayer)}&outputFormat=application/json&srsName=EPSG:4326`
+      });
+    }
+
+    if (!map1.getLayer(layerId)) {
+      map1.addLayer({
+        id: layerId,
+        type: "circle",
+        source: sourceId,
+        layout: {
+          visibility: "none",
+        },
+        paint: {
+          "circle-color": color,
+          "circle-radius": 6,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5
+        }
+      });
+    }
+
+    const checkbox = document.getElementById(checkboxId);
+    if (checkbox && !checkbox._glofPointLayerBound) {
+      checkbox.addEventListener("change", function () {
+        if (map1.getLayer(layerId)) {
+          map1.setLayoutProperty(layerId, "visibility", this.checked ? "visible" : "none");
+        }
+      });
+      checkbox._glofPointLayerBound = true;
+    }
+
+    if (!map1[`_${layerId}PopupBound`]) {
+      map1.on("click", layerId, function (e) {
+        const feature = e.features && e.features[0];
+        if (!feature) return;
+
+        new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: true,
+          maxWidth: '300px',
+          className: 'ffd-enhanced-popup'
+        })
+          .setLngLat(e.lngLat)
+          .setHTML(popupHtml(feature.properties || {}))
+          .addTo(map1);
+      });
+
+      map1.on("mouseenter", layerId, () => {
+        map1.getCanvas().style.cursor = "pointer";
+      });
+
+      map1.on("mouseleave", layerId, () => {
+        map1.getCanvas().style.cursor = "";
+      });
+
+      map1[`_${layerId}PopupBound`] = true;
+    }
+  };
+
+  addGlofPointLayer({
+    sourceId: "gmrc_wapda_stations",
+    layerId: "gmrc_wapda_stations",
+    geoserverLayer: "GLOF:GMRC_Points",
+    color: "#2563eb",
+    checkboxId: "gmrcWapda",
+    popupHtml: (props) => createGlofPopupContent({
+      title: props.Name || "GMRC Wapda",
+      badgeText: "GMRC Wapda",
+      accentColor: "#2563eb",
+      iconClass: "fas fa-satellite-dish",
+      bodyHtml: createGlofLabeledRow("station name", props.Name)
+    })
+  });
+
+  addGlofPointLayer({
+    sourceId: "pmd_stations",
+    layerId: "pmd_stations",
+    geoserverLayer: "GLOF:stations",
+    color: "#16a34a",
+    checkboxId: "pmdStations",
+    popupHtml: (props) => createGlofPopupContent({
+      title: props.StationNam || "PMD Station",
+      badgeText: props.Status || "PMD",
+      accentColor: "#16a34a",
+      iconClass: "fas fa-cloud-sun-rain",
+      bodyHtml: createGlofValueRows([
+        props.StationNam,
+        props.Status
+      ])
+    })
+  });
+
+  addGlofPointLayer({
+    sourceId: "damaged_pmd_stations",
+    layerId: "damaged_pmd_stations",
+    geoserverLayer: "GLOF:Damage_Stations",
+    color: "#dc2626",
+    checkboxId: "damagedPmdStations",
+    popupHtml: (props) => createGlofPopupContent({
+      title: props.StationNam || "Damaged PMD Station",
+      badgeText: "Damaged PMD",
+      accentColor: "#dc2626",
+      iconClass: "fas fa-triangle-exclamation",
+      bodyHtml: createGlofValueRows([
+        props.StationNam,
+        props.Installati,
+        props.Column1,
+        props.Column2,
+        props.Column_3
+      ])
+    })
+  });
+
   ///Extremely High flood extent
   map1.addSource("Extremly_high", {
     type: "geojson",
@@ -7265,41 +7928,39 @@ function addHydrometLayersToMap(map) {
 
 
   //DI khan HT extent
-  map1.addSource("DI_Khan_HT", {
-    type: "vector",
-    scheme: "tms",
-    tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:DI_Khan_HT@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
-    ],
-  });
-  map1.addLayer({
-    id: "DI_Khan_HT",
-    type: "fill",
-    source: "DI_Khan_HT",
-    "source-layer": "DI_Khan_HT",
-    layout: {
-      visibility: "none",
-    },
-    paint: {
-      "fill-outline-color": "red",
-      "fill-opacity": 0.5,
-      "fill-color": "red",
-    },
-  });
-  document.getElementById("di_ht").addEventListener("change", function () {
-    const isVisible = this.checked;
-    map1.setLayoutProperty(
-      "DI_Khan_HT",
-      "visibility",
-      isVisible ? "visible" : "none"
-    );
-  });
+map1.addSource("DI_Khan_HT", {
+  type: "geojson",
+  data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADI_Khan_HT&outputFormat=application%2Fjson",
+});
 
+map1.addLayer({
+  id: "DI_Khan_HT",
+  type: "fill",
+  source: "DI_Khan_HT",
+  layout: {
+    visibility: "none",
+  },
+  paint: {
+    "fill-outline-color": "red",
+    "fill-opacity": 0.5,
+    "fill-color": "red",
+  },
+});
+
+document.getElementById("di_ht").addEventListener("change", function () {
+  const isVisible = this.checked;
+
+  map1.setLayoutProperty(
+    "DI_Khan_HT",
+    "visibility",
+    isVisible ? "visible" : "none"
+  );
+});
 
   //DG khan HT extent
   map1.addSource("DG khan HT", {
     type: "geojson",
-    data: "http://172.18.1.87:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson",
+    data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson",
   });
   map1.addLayer({
     id: "DG khan HT",
@@ -7358,7 +8019,7 @@ function addHydrometLayersToMap(map) {
   //Hyderabad arc extent
   map1.addSource("Hyderabad_arc", {
     type: "geojson",
-    data: "http://172.18.1.87:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson",
+    data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson",
   });
   map1.addLayer({
     id: "Hyderabad_arc",
@@ -7385,7 +8046,7 @@ function addHydrometLayersToMap(map) {
   //jhal arc extent
   map1.addSource("jhal_magsi_arc_Complete", {
     type: "geojson",
-    data: "http://172.18.1.87:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson",
+    data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson",
   });
   map1.addLayer({
     id: "jhal_magsi_arc_Complete",
@@ -7988,6 +8649,7 @@ function addHydrometLayersToMap(map) {
     source: "limfex",
     "source-layer": "lower_indus_medium_outlook_2026",
     layout: {
+
       visibility: "none", // initially hidden
     },
     paint: {
@@ -8567,6 +9229,56 @@ function addHydrometLayersToMap(map) {
       isVisible ? "visible" : "none"
     );
   });
+
+  const addHydroAnalyticsGeoJsonLayer = (layerId, geoserverLayerName, beforeId) => {
+    if (!map1.getSource(layerId)) {
+      map1.addSource(layerId, {
+        type: 'geojson',
+        data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3A${geoserverLayerName}&outputFormat=application%2Fjson`
+      });
+    }
+
+    if (!map1.getLayer(layerId)) {
+      map1.addLayer({
+        id: layerId,
+        type: 'fill',
+        source: layerId,
+        layout: { visibility: 'none' },
+        paint: {
+          'fill-outline-color': '#ff0000',
+          'fill-opacity': 0.55,
+          'fill-color': '#ff0000'
+        }
+      }, map1.getLayer(beforeId) ? beforeId : undefined);
+    }
+  };
+
+  addHydroAnalyticsGeoJsonLayer('Gilgit_HT', 'Gilgit', 'Muzafferabad_arc');
+  addHydroAnalyticsGeoJsonLayer('Hunza_HT', 'Hunza', 'Muzafferabad_arc');
+
+  const gilgitHtCheckbox = document.getElementById("gilgitHt");
+  if (gilgitHtCheckbox) {
+    gilgitHtCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "Gilgit_HT",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
+
+  const hunzaHtCheckbox = document.getElementById("hunzaHt");
+  if (hunzaHtCheckbox) {
+    hunzaHtCheckbox.addEventListener("change", function () {
+      const isVisible = this.checked;
+      map1.setLayoutProperty(
+        "Hunza_HT",
+        "visibility",
+        isVisible ? "visible" : "none"
+      );
+    });
+  }
 
 
   //Jhal magzi RASTER TIFF
@@ -11524,6 +12236,247 @@ function addHydrometLayersToMap(map) {
   });
 
 
+  // Settlements layer
+  map1.addSource("settlements", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:settlements@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "settlements",
+    type: "circle",
+    source: "settlements",
+    "source-layer": "settlements",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "circle-color": "#FF9800",
+      "circle-radius": 6,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-width": 2,
+    },
+  });
+  document.getElementById("settlements").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty("settlements", "visibility", isVisible ? "visible" : "none");
+  });
+
+  // Settlements layer click popup
+  map1.on("click", "settlements", function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["settlements"] });
+    if (!features.length) return;
+    const feature = features[0];
+    const popupHTML = createFeaturePopup(feature, 'Settlement', '#FF9800', ['name']);
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '300px', className: 'ffd-enhanced-popup' })
+      .setLngLat(e.lngLat).setHTML(popupHTML).addTo(map1);
+  });
+  map1.on('mouseenter', 'settlements', () => { map1.getCanvas().style.cursor = 'pointer'; });
+  map1.on('mouseleave', 'settlements', () => { map1.getCanvas().style.cursor = ''; });
+
+  // Schools layer
+  map1.addSource("schools", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:schools@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "schools",
+    type: "circle",
+    source: "schools",
+    "source-layer": "schools",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "circle-color": "#2196F3",
+      "circle-radius": 6,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-width": 2,
+    },
+  });
+  document.getElementById("schools").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty("schools", "visibility", isVisible ? "visible" : "none");
+  });
+
+  // Schools layer click popup
+  map1.on("click", "schools", function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["schools"] });
+    if (!features.length) return;
+    const feature = features[0];
+    const popupHTML = createFeaturePopup(feature, 'School', '#2196F3', ['name']);
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '300px', className: 'ffd-enhanced-popup' })
+      .setLngLat(e.lngLat).setHTML(popupHTML).addTo(map1);
+  });
+  map1.on('mouseenter', 'schools', () => { map1.getCanvas().style.cursor = 'pointer'; });
+  map1.on('mouseleave', 'schools', () => { map1.getCanvas().style.cursor = ''; });
+
+  // Railway Stations layer
+  map1.addSource("railway_stations", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:railway_stations@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "railway_stations",
+    type: "circle",
+    source: "railway_stations",
+    "source-layer": "railway_stations",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "circle-color": "#9C27B0",
+      "circle-radius": 6,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-width": 2,
+    },
+  });
+  document.getElementById("railwayStations").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty("railway_stations", "visibility", isVisible ? "visible" : "none");
+  });
+
+  // Railway Stations layer click popup
+  map1.on("click", "railway_stations", function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["railway_stations"] });
+    if (!features.length) return;
+    const feature = features[0];
+    const popupHTML = createFeaturePopup(feature, 'Railway Station', '#9C27B0', ['name', 'tehsil']);
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '300px', className: 'ffd-enhanced-popup' })
+      .setLngLat(e.lngLat).setHTML(popupHTML).addTo(map1);
+  });
+  map1.on('mouseenter', 'railway_stations', () => { map1.getCanvas().style.cursor = 'pointer'; });
+  map1.on('mouseleave', 'railway_stations', () => { map1.getCanvas().style.cursor = ''; });
+
+  // Airports layer
+  map1.addSource("airports", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:airports@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "airports",
+    type: "circle",
+    source: "airports",
+    "source-layer": "airports",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "circle-color": "#4CAF50",
+      "circle-radius": 6,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-width": 2,
+    },
+  });
+  document.getElementById("airports").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty("airports", "visibility", isVisible ? "visible" : "none");
+  });
+
+  // Airports layer click popup
+  map1.on("click", "airports", function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["airports"] });
+    if (!features.length) return;
+    const feature = features[0];
+    const popupHTML = createFeaturePopup(feature, 'Airport', '#4CAF50', ['name']);
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '300px', className: 'ffd-enhanced-popup' })
+      .setLngLat(e.lngLat).setHTML(popupHTML).addTo(map1);
+  });
+  map1.on('mouseenter', 'airports', () => { map1.getCanvas().style.cursor = 'pointer'; });
+  map1.on('mouseleave', 'airports', () => { map1.getCanvas().style.cursor = ''; });
+
+  // Bridges layer
+  map1.addSource("BridgesL", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:BridgesL@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "BridgesL",
+    type: "circle",
+    source: "BridgesL",
+    "source-layer": "BridgesL",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "circle-color": "#F44336",
+      "circle-radius": 6,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-width": 2,
+    },
+  });
+  document.getElementById("bridges").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty("BridgesL", "visibility", isVisible ? "visible" : "none");
+  });
+
+  // Bridges layer click popup
+  map1.on("click", "BridgesL", function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["BridgesL"] });
+    if (!features.length) return;
+    const feature = features[0];
+    const popupHTML = createFeaturePopup(feature, 'Bridge', '#F44336', ['name']);
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '300px', className: 'ffd-enhanced-popup' })
+      .setLngLat(e.lngLat).setHTML(popupHTML).addTo(map1);
+  });
+  map1.on('mouseenter', 'BridgesL', () => { map1.getCanvas().style.cursor = 'pointer'; });
+  map1.on('mouseleave', 'BridgesL', () => { map1.getCanvas().style.cursor = ''; });
+
+  // Health Facilities (Hospitals) layer
+  map1.addSource("health_facilities", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:health_facilities@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "health_facilities",
+    type: "circle",
+    source: "health_facilities",
+    "source-layer": "health_facilities",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "circle-color": "#00BCD4",
+      "circle-radius": 6,
+      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-width": 2,
+    },
+  });
+  document.getElementById("healthFacilities").addEventListener("change", function () {
+    const isVisible = this.checked;
+    map1.setLayoutProperty("health_facilities", "visibility", isVisible ? "visible" : "none");
+  });
+
+  // Health Facilities (Hospitals) layer click popup
+  map1.on("click", "health_facilities", function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["health_facilities"] });
+    if (!features.length) return;
+    const feature = features[0];
+    const popupHTML = createFeaturePopup(feature, 'Hospital', '#00BCD4', ['hf_name', 'hf_type']);
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '300px', className: 'ffd-enhanced-popup' })
+      .setLngLat(e.lngLat).setHTML(popupHTML).addTo(map1);
+  });
+  map1.on('mouseenter', 'health_facilities', () => { map1.getCanvas().style.cursor = 'pointer'; });
+  map1.on('mouseleave', 'health_facilities', () => { map1.getCanvas().style.cursor = ''; });
+
+
 
 
 
@@ -13957,6 +14910,9 @@ function getMap1VisibilityStates() {
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
     { checkboxId: 'india', layers: ['indian'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },
+    { checkboxId: 'gmrcWapda', layers: ['gmrc_wapda_stations'] },
+    { checkboxId: 'pmdStations', layers: ['pmd_stations'] },
+    { checkboxId: 'damagedPmdStations', layers: ['damaged_pmd_stations'] },
     { checkboxId: 'Barrages', layers: ['Barrages'] },
     { checkboxId: 'watershed', layers: ['Combined', 'Combined_label'] },
     { checkboxId: 'minorRivers', layers: ['minor_rivers_outline', 'minor_rivers_label'] },
@@ -14903,4 +15859,204 @@ function FluidMeter() {
       fillPercentage = clamp(percentage, 0, 100);
     }
   }
+}
+
+// ─── DEW Exposure ─────────────────────────────────────────────────────────────
+let exposuresLoadPromiseLegacy = null;
+const exposureDistrictsLegacy = new Set();
+const DEW_EXPOSURE_API_URL_LEGACY = "http://172.18.1.108:8000/get-exposures/";
+
+function setExposureDropdownMessage(msg) {
+  const el = document.getElementById('dew-exposure-status');
+  if (el) el.textContent = msg;
+}
+
+function getDewMap() {
+  return typeof map1 !== 'undefined' ? map1 : null;
+}
+
+function normalizeExposureList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.exposures)) return payload.exposures;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+}
+
+function normalizeExposureFeatureCollection(payload) {
+  if (payload?.type === 'FeatureCollection' && Array.isArray(payload.features)) {
+    return payload;
+  }
+  if (payload?.data?.type === 'FeatureCollection' && Array.isArray(payload.data.features)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload?.features)) {
+    return { type: 'FeatureCollection', features: payload.features };
+  }
+  return { type: 'FeatureCollection', features: [] };
+}
+
+function waitForDewMapStyle(map) {
+  if (!map) return Promise.reject(new Error('Map is not available.'));
+  if (map.isStyleLoaded()) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      map.off('styledata', onReady);
+      map.off('idle', onReady);
+      reject(new Error('Map style was not ready in time.'));
+    }, 8000);
+
+    const onReady = () => {
+      if (!map.isStyleLoaded()) return;
+      clearTimeout(timeoutId);
+      map.off('styledata', onReady);
+      map.off('idle', onReady);
+      resolve();
+    };
+
+    map.on('styledata', onReady);
+    map.on('idle', onReady);
+  });
+}
+
+function bindExposureControls() {
+  const dropdown = document.getElementById('exposure-dropdown');
+  if (!dropdown || dropdown._dewBound) return;
+  dropdown._dewBound = true;
+  dropdown.addEventListener('change', (e) => {
+    if (e.target.value) fetchExposureDetails(e.target.value);
+  });
+}
+
+function toggleDewExposurePanel() {
+  const panel = document.getElementById('dew-exposure-panel');
+  if (!panel) return;
+  const isVisible = panel.style.display !== 'none';
+  panel.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) fetchExposuresLegacy();
+}
+
+function closeDewExposurePanel() {
+  const panel = document.getElementById('dew-exposure-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+const fetchExposures = async () => {
+  const exposureDropdown = document.getElementById("exposure-dropdown");
+  if (!exposureDropdown) return;
+  if (exposuresLoadPromise) return exposuresLoadPromise;
+
+  setExposureDropdownMessage("Loading exposures...");
+  bindExposureControls();
+
+  exposuresLoadPromiseLegacy = (async () => {
+    try {
+      const response = await fetch(DEW_EXPOSURE_API_URL_LEGACY);
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      const exposures = normalizeExposureList(await response.json());
+      const fragment = document.createDocumentFragment();
+      fragment.appendChild(new Option("Select an exposure", ""));
+
+      if (!exposures.length) {
+        fragment.appendChild(new Option("No exposures available", ""));
+        exposureDropdown.replaceChildren(fragment);
+        setExposureDropdownMessage("No exposures available");
+        return;
+      }
+
+      for (const exposure of exposures) {
+        const id = exposure?.id ?? exposure?.exposure_id ?? exposure?.ID;
+        if (id === undefined || id === null || id === "") continue;
+        const remarks = exposure?.remarks ?? exposure?.name ?? exposure?.title ?? "No remarks";
+        fragment.appendChild(new Option(`${id} - ${remarks}`, String(id)));
+      }
+      exposureDropdown.replaceChildren(fragment);
+      setExposureDropdownMessage(`Loaded ${exposureDropdown.options.length - 1} exposures`);
+    } catch (error) {
+      exposuresLoadPromiseLegacy = null;
+      console.warn(`[DEW Exposures] Service unavailable. ${error?.message || "Request failed."}`);
+      setExposureDropdownMessage("Exposure service unavailable");
+    }
+  })();
+
+  return exposuresLoadPromiseLegacy;
+};
+
+const fetchExposureDetailsLegacy = async (exposureId) => {
+  const url = `${DEW_EXPOSURE_API_URL_LEGACY}?exposure_id=${encodeURIComponent(exposureId)}`;
+  const dewMap = getDewMap();
+
+  try {
+    await waitForDewMapStyle(dewMap);
+    setExposureDropdownMessage("Loading exposure details...");
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const featureCollection = normalizeExposureFeatureCollection(await response.json());
+    const { features } = featureCollection;
+    if (!features.length) throw new Error("No exposure features returned.");
+
+    const layerId = "dewpolygon";
+
+    if (dewMap.getSource(layerId)) {
+      dewMap.getSource(layerId).setData(featureCollection);
+    } else {
+      dewMap.addSource(layerId, { type: "geojson", data: featureCollection });
+    }
+
+    if (!dewMap.getLayer(`${layerId}_fill`)) {
+      dewMap.addLayer({
+        id: `${layerId}_fill`, type: "fill", source: layerId,
+        layout: { visibility: "visible" },
+        paint: { "fill-color": "#FF0000", "fill-opacity": 0.3, "fill-outline-color": "#FF0000" }
+      });
+    }
+    if (!dewMap.getLayer(`${layerId}_outline`)) {
+      dewMap.addLayer({
+        id: `${layerId}_outline`, type: "line", source: layerId,
+        layout: { visibility: "visible" },
+        paint: { "line-color": "#FF0000", "line-opacity": 1, "line-width": 1.5 }
+      });
+    }
+
+    dewMap.setLayoutProperty(`${layerId}_fill`, "visibility", "visible");
+    dewMap.setLayoutProperty(`${layerId}_outline`, "visibility", "visible");
+
+    exposureDistricts.clear();
+    for (const feature of features) {
+      if (feature.properties?.exposure_feature_assessment) {
+        for (const province of Object.values(feature.properties.exposure_feature_assessment)) {
+          if (!province || typeof province !== "object") continue;
+          for (const district of Object.keys(province)) {
+            exposureDistricts.add(district);
+          }
+        }
+      }
+    }
+
+    if (dewMap.getLayer("DistrictBoundaryHighlight") && exposureDistricts.size) {
+      dewMap.setFilter("DistrictBoundaryHighlight", ["in", "name", ...exposureDistricts]);
+    }
+
+    setExposureDropdownMessage(`Loaded ${features.length} exposure feature${features.length === 1 ? "" : "s"}`);
+  } catch (error) {
+    console.error("Error fetching exposure details:", error);
+    setExposureDropdownMessage("Error loading exposure details");
+  }
+};
+
+function initDewExposureControls() {
+  bindExposureControls();
+  const dropdown = document.getElementById("exposure-dropdown");
+  if (!dropdown || dropdown._dewLazyLoadBound) return;
+  dropdown._dewLazyLoadBound = true;
+  dropdown.addEventListener("focus", fetchExposuresLegacy);
+  dropdown.addEventListener("mousedown", fetchExposuresLegacy);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initDewExposureControls);
+} else {
+  initDewExposureControls();
 }

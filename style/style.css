@@ -40,6 +40,9 @@
   padding: 14px 14px 18px;
   color: #f8fafc;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   border: 1px solid var(--glass-border);
   border-radius: 22px;
   background: linear-gradient(155deg, rgba(9, 20, 35, 0.68) 0%, rgba(15, 32, 55, 0.62) 45%, rgba(10, 18, 30, 0.78) 100%);
@@ -2359,6 +2362,305 @@ body {
 
 .custom-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+.gis-uploader-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.gis-uploader-modal.hidden {
+  display: none;
+}
+
+.gis-uploader-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.gis-uploader-panel {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+}
+
+.gis-uploader-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.gis-uploader-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.gis-uploader-header p {
+  margin: 4px 0 0;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 13px;
+}
+
+.gis-uploader-close {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gis-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 16px 20px 0;
+}
+
+.gis-mode-tabs button,
+.gis-uploader-footer button {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: rgba(51, 65, 85, 0.78);
+  color: #f8fafc;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gis-mode-tabs button {
+  padding: 11px 12px;
+}
+
+.gis-mode-tabs button.is-selected {
+  background: linear-gradient(135deg, #0e7490, #2563eb);
+  border-color: rgba(125, 211, 252, 0.55);
+}
+
+.gis-upload-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px 20px 20px;
+}
+
+.gis-field {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gis-field input,
+.gis-placement-header input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.gis-field input[type="file"] {
+  cursor: pointer;
+}
+
+.gis-helper {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 12px;
+}
+
+.gis-placement {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.gis-placement-header {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(180px, 260px);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gis-placement-list {
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.gis-placement-row {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gis-placement-row:hover,
+.gis-placement-row.is-selected {
+  background: rgba(14, 165, 233, 0.22);
+}
+
+.gis-placement-name {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gis-placement-path {
+  color: rgba(203, 213, 225, 0.68);
+  font-size: 11px;
+}
+
+.gis-uploaded-manager {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.gis-uploaded-manager-header {
+  padding: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gis-uploaded-manager-list {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.gis-uploaded-manager-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.gis-uploaded-manager-name {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gis-uploaded-manager-meta,
+.gis-uploaded-empty {
+  color: rgba(203, 213, 225, 0.68);
+  font-size: 11px;
+}
+
+.gis-uploaded-delete {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.55);
+  color: #fecaca;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gis-uploaded-delete:hover {
+  background: rgba(185, 28, 28, 0.72);
+  color: #ffffff;
+}
+
+.gis-uploaded-delete:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.gis-uploader-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gis-uploader-footer button {
+  padding: 11px 16px;
+  background: linear-gradient(135deg, #0891b2, #1d4ed8);
+}
+
+.gis-uploader-footer button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.gis-status {
+  min-height: 18px;
+  color: rgba(226, 232, 240, 0.75);
+  font-size: 12px;
+}
+
+.gis-status[data-tone="success"] {
+  color: #86efac;
+}
+
+.gis-status[data-tone="error"] {
+  color: #fca5a5;
+}
+
+.gis-uploaded-layer-row {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .gis-uploader-modal {
+    padding: 10px;
+  }
+
+  .gis-mode-tabs,
+  .gis-placement-header,
+  .gis-uploader-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .gis-uploader-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 
