@@ -566,24 +566,9 @@ def _find_latest_local_pdf(directory: Path) -> Path:
 
 
 def _download_latest_bulletin() -> Path:
-    fetch_error: Optional[Exception] = None
-    try:
-        pdf_links = _fetch_pdf_links_from_page(CWC_URL)
-    except Exception as error:
-        fetch_error = error
-        pdf_links = []
-
+    pdf_links = _fetch_pdf_links_from_page(CWC_URL)
     if not pdf_links:
-        try:
-            pdf_links = _fetch_pdf_links_with_selenium(CWC_URL)
-        except Exception as selenium_error:
-            if fetch_error is not None:
-                raise SnapshotValidationError(
-                    "Failed to fetch PDF links from CWC page "
-                    f"({fetch_error}); Selenium fallback also failed ({selenium_error})."
-                ) from selenium_error
-            raise
-
+        pdf_links = _fetch_pdf_links_with_selenium(CWC_URL)
     _, selected_pdf_url = _choose_latest_bulletin(pdf_links)
 
     selected_filename = Path(urlparse(selected_pdf_url).path).name
