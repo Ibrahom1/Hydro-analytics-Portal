@@ -1,7 +1,8 @@
-"""Fetch current bulletin data and expose required dam metrics as variables."""
+"""Fetch CWC bulletin data and expose required dam metrics as variables."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import ssl
@@ -132,6 +133,23 @@ def _extract_date_from_any_text(text: str) -> Optional[date]:
         return date(int(year_text), int(month_text), int(day_text))
     except ValueError:
         return None
+
+
+def _coerce_bulletin_date(raw_value: object) -> Optional[date]:
+    if isinstance(raw_value, datetime):
+        return raw_value.date()
+    if isinstance(raw_value, date):
+        return raw_value
+
+    text_value = str(raw_value)
+    extracted_date = _extract_date_from_text(text_value) or _extract_date_from_any_text(text_value)
+    if extracted_date is not None:
+        return extracted_date
+
+    parsed_date = pd.to_datetime(text_value, dayfirst=True, errors="coerce")
+    if pd.isna(parsed_date):
+        return None
+    return parsed_date.date()
 
 
 def _choose_latest_bulletin(pdf_links: Sequence[Tuple[str, str]]) -> Tuple[str, str]:
@@ -482,9 +500,9 @@ def _extract_metadata(
     if "date" in aliases:
         non_null_dates = data_frame[aliases["date"]].dropna()
         if not non_null_dates.empty:
-            parsed_date = pd.to_datetime(non_null_dates.iloc[0], errors="coerce")
-            if not pd.isna(parsed_date):
-                bulletin_date = parsed_date.date().isoformat()
+            parsed_date = _coerce_bulletin_date(non_null_dates.iloc[0])
+            if parsed_date is not None:
+                bulletin_date = parsed_date.isoformat()
 
     source_pdf: Optional[str] = None
     if "source_pdf" in aliases:
@@ -513,36 +531,72 @@ def _write_json_output(payload: Mapping[str, object], output_path: Path) -> None
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _extract_bulletin_date_from_pdf(pdf_path: Path) -> Optional[date]:
+    try:
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            for page in pdf.pages[:3]:
+                text = page.extract_text() or ""
+                extracted_date = _extract_date_from_text(text) or _extract_date_from_any_text(text)
+                if extracted_date is not None:
+                    return extracted_date
+    except Exception:
+        return None
+
+    return None
+
+
 def _find_latest_local_pdf(directory: Path) -> Path:
     pdf_files = [path for path in directory.glob("*.pdf") if path.is_file()]
     if not pdf_files:
         raise SnapshotValidationError(
             "Could not fetch bulletin links and no local PDF files are available."
         )
+
+    dated_pdf_files: List[Tuple[date, Path]] = []
+    for pdf_path in pdf_files:
+        extracted_date = _extract_date_from_any_text(pdf_path.name) or _extract_bulletin_date_from_pdf(pdf_path)
+        if extracted_date is not None:
+            dated_pdf_files.append((extracted_date, pdf_path))
+
+    if dated_pdf_files:
+        dated_pdf_files.sort(key=lambda item: (item[0], item[1].name), reverse=True)
+        return dated_pdf_files[0][1]
+
     return max(pdf_files, key=lambda path: path.stat().st_mtime)
 
 
-def main() -> None:
-    selected_pdf_url: str
+def _download_latest_bulletin() -> Path:
+    fetch_error: Optional[Exception] = None
     try:
         pdf_links = _fetch_pdf_links_from_page(CWC_URL)
-        if not pdf_links:
+    except Exception as error:
+        fetch_error = error
+        pdf_links = []
+
+    if not pdf_links:
+        try:
             pdf_links = _fetch_pdf_links_with_selenium(CWC_URL)
-        _, selected_pdf_url = _choose_latest_bulletin(pdf_links)
+        except Exception as selenium_error:
+            if fetch_error is not None:
+                raise SnapshotValidationError(
+                    "Failed to fetch PDF links from CWC page "
+                    f"({fetch_error}); Selenium fallback also failed ({selenium_error})."
+                ) from selenium_error
+            raise
 
-        selected_filename = Path(urlparse(selected_pdf_url).path).name
-        if not selected_filename:
-            raise SnapshotValidationError(
-                f"Could not derive PDF filename from URL: {selected_pdf_url}"
-            )
+    _, selected_pdf_url = _choose_latest_bulletin(pdf_links)
 
-        local_pdf_path = WEEKLY_BULLETINS_PATH / selected_filename
-        local_pdf_path = _download_pdf_if_needed(selected_pdf_url, local_pdf_path)
-    except Exception as fetch_error:
-        local_pdf_path = _find_latest_local_pdf(WEEKLY_BULLETINS_PATH)
-        selected_pdf_url = f"local://{local_pdf_path.name}"
-        print(f"Warning: Falling back to local bulletin due to fetch error: {fetch_error}")
+    selected_filename = Path(urlparse(selected_pdf_url).path).name
+    if not selected_filename:
+        raise SnapshotValidationError(
+            f"Could not derive PDF filename from URL: {selected_pdf_url}"
+        )
 
+    return _download_pdf_if_needed(selected_pdf_url, WEEKLY_BULLETINS_PATH / selected_filename)
+
+
+def _write_snapshot_from_pdf(local_pdf_path: Path) -> None:
+    selected_pdf_url = f"local://{local_pdf_path.name}"
     extracted_frame = _process_single_pdf(
         pdf_path=str(local_pdf_path),
         reservoirs=REQUIRED_RESERVOIRS,
@@ -568,6 +622,32 @@ def main() -> None:
 
     print(f"Snapshot saved to: {OUTPUT_JSON_PATH}")
     print("Variables populated: bhakra, pong_dam, thein_dam and their flat field variables.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Download CWC weekly bulletins or parse the latest local bulletin snapshot."
+    )
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--local-only",
+        action="store_true",
+        help="Parse the latest local PDF in weekly_bulletins without contacting CWC. This is the default.",
+    )
+    mode_group.add_argument(
+        "--download-latest",
+        action="store_true",
+        help="Download the latest CWC PDF into weekly_bulletins and exit without writing snapshot JSON.",
+    )
+    args = parser.parse_args()
+
+    if args.download_latest:
+        downloaded_pdf = _download_latest_bulletin()
+        print(f"Latest CWC bulletin available at: {downloaded_pdf}")
+        return
+
+    local_pdf_path = _find_latest_local_pdf(WEEKLY_BULLETINS_PATH)
+    _write_snapshot_from_pdf(local_pdf_path)
 
 
 if __name__ == "__main__":

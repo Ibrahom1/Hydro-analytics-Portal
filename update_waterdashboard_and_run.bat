@@ -14,14 +14,19 @@ if not errorlevel 1 (
   set "BOOTSTRAP_PYTHON=py -3"
 )
 
-echo Updating waterdashboard repository if Git is available...
+echo Updating repositories if Git is available...
 where git >nul 2>&1
 if errorlevel 1 (
-  echo Git not found. Skipping waterdashboard git pull.
+  echo Git not found. Skipping repository updates.
 ) else (
+  git -C "%REPO_ROOT%." pull --ff-only
+  if errorlevel 1 (
+    echo Warning: Root repository pull failed. Continuing with local files.
+  )
+
   git -C "%REPO_ROOT%waterdashboard" pull
   if errorlevel 1 (
-    echo Warning: Git pull failed. Continuing with local files.
+    echo Warning: waterdashboard repository pull failed. Continuing with local files.
   )
 )
 
@@ -57,7 +62,7 @@ if errorlevel 1 (
 )
 
 echo Updating Indian dam values from current CWC bulletin snapshot...
-"%VENV_PYTHON%" "%REPO_ROOT%current_day_reservoir_snapshot.py"
+"%VENV_PYTHON%" "%REPO_ROOT%current_day_reservoir_snapshot.py" --local-only
 if errorlevel 1 (
   echo Warning: Failed to refresh Indian dam snapshot. Continuing with existing Indian values.
 )
