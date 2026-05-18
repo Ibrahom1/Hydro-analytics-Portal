@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+import shutil
 import time
 import zipfile
 from datetime import datetime, timezone
@@ -120,6 +121,77 @@ def geoserver_request(
             detail=f"GeoServer {method} {path} failed with {response.status_code}: {detail}",
         )
     return response
+
+
+def geoserver_delete_if_exists(path: str, label: str) -> Dict[str, Any]:
+    response = requests.delete(
+        geoserver_rest_url(path),
+        auth=(GEOSERVER_USER, GEOSERVER_PASSWORD),
+        timeout=GEOSERVER_TIMEOUT,
+    )
+    if response.status_code in (200, 202, 204):
+        return {"target": label, "deleted": True, "status": response.status_code}
+    if response.status_code == 404:
+        return {"target": label, "deleted": False, "status": 404, "missing": True}
+
+    detail = response.text[:700] if response.text else response.reason
+    raise HTTPException(
+        status_code=502,
+        detail=f"GeoServer DELETE {path} failed with {response.status_code}: {detail}",
+    )
+
+
+def cleanup_local_upload(layer: Dict[str, Any]) -> None:
+    layer_name = sanitize_name(layer.get("layer_name") or layer.get("id") or "")
+    if not layer_name:
+        return
+
+    if layer.get("kind") == "raster":
+        shutil.rmtree(UPLOAD_DIR / "raster" / layer_name, ignore_errors=True)
+        return
+
+    if layer.get("kind") == "vector":
+        vector_zip = UPLOAD_DIR / "vector" / f"{layer_name}.zip"
+        try:
+            vector_zip.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def delete_geoserver_published_layer(layer: Dict[str, Any]) -> Dict[str, Any]:
+    layer_name = sanitize_name(layer.get("layer_name") or layer.get("id") or "")
+    layer_kind = layer.get("kind")
+    if not layer_name:
+        raise HTTPException(status_code=400, detail="Uploaded layer is missing its GeoServer layer name.")
+
+    cleanup: Dict[str, Any] = {"geoserver": []}
+    if layer_kind == "raster":
+        cleanup["geoserver"].append(
+            geoserver_delete_if_exists(
+                f"workspaces/{GEOSERVER_WORKSPACE}/coveragestores/{layer_name}?recurse=true&purge=all",
+                f"coverage store {GEOSERVER_WORKSPACE}:{layer_name}",
+            )
+        )
+        style_name = sanitize_name(layer.get("style_name") or f"{layer_name}_style")
+        if style_name:
+            cleanup["geoserver"].append(
+                geoserver_delete_if_exists(
+                    f"workspaces/{GEOSERVER_WORKSPACE}/styles/{style_name}?purge=true",
+                    f"style {GEOSERVER_WORKSPACE}:{style_name}",
+                )
+            )
+    elif layer_kind == "vector":
+        cleanup["geoserver"].append(
+            geoserver_delete_if_exists(
+                f"workspaces/{GEOSERVER_WORKSPACE}/datastores/{layer_name}?recurse=true&purge=all",
+                f"datastore {GEOSERVER_WORKSPACE}:{layer_name}",
+            )
+        )
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported uploaded layer kind: {layer_kind}")
+
+    cleanup_local_upload(layer)
+    return cleanup
 
 
 def ensure_workspace() -> None:
@@ -302,8 +374,9 @@ def delete_layer(layer_id: str) -> Dict[str, Any]:
     if not layer:
         raise HTTPException(status_code=404, detail="Uploaded layer toggler not found.")
 
+    cleanup = delete_geoserver_published_layer(layer)
     save_registry([item for item in layers if item.get("id") != layer_id])
-    return {"deleted": True, "layer": layer}
+    return {"deleted": True, "layer": layer, "cleanup": cleanup}
 
 
 @app.get("/api/gis/layers/{layer_id}/geojson")

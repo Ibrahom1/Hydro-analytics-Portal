@@ -5979,7 +5979,7 @@ function addHydrometLayersToMap(map) {
       const ffdHistoryConfig = {
         apiBase: resolveHydroApiBase(5000),
         defaultDays: 7,
-        minDate: '2025-06-15'
+        minDate: '2014-01-01'
       };
 
       let ffdHistoryChart = null;
@@ -5987,6 +5987,14 @@ function addHydrometLayersToMap(map) {
       let ffdHistoryName = null;
       let ffdHistoryLastSeries = null;
       let ffdHistoryFallbackYear = null;
+      let ffdHistoryCurrentProps = null;
+      let ffdHistoryCompareMode = 'none';
+
+      const ffdHistoryCompareLabels = {
+        none: 'No comparison',
+        month: 'Previous month',
+        year: 'Previous year'
+      };
 
       const getTodayStr = () => {
         const now = new Date();
@@ -6097,20 +6105,23 @@ function addHydrometLayersToMap(map) {
       const getFFDHistoryTickMode = (labels) => {
         const parsedDates = (labels || []).map(label => parseFFDHistoryTimestamp(label, ffdHistoryFallbackYear)).filter(Boolean);
         if (parsedDates.length < 2) {
-          return { includeTimeInTick: true };
+          return { includeTimeInTick: true, includeYearInTick: true };
         }
 
         const minTs = Math.min(...parsedDates.map(dt => dt.getTime()));
         const maxTs = Math.max(...parsedDates.map(dt => dt.getTime()));
         const totalHours = (maxTs - minTs) / (1000 * 60 * 60);
+        const years = new Set(parsedDates.map(dt => dt.getFullYear()));
 
         return {
-          includeTimeInTick: totalHours <= 48
+          includeTimeInTick: totalHours <= 48,
+          includeYearInTick: years.size > 1 || totalHours > (24 * 330)
         };
       };
 
       const formatFFDHistoryDateTime = (rawLabel, options = {}) => {
         const includeTimeInTick = options.includeTimeInTick !== false;
+        const includeYearInTick = options.includeYearInTick === true;
         const parsedParts = parseFFDHistoryTimestampParts(rawLabel, ffdHistoryFallbackYear);
         if (!parsedParts || !parsedParts.date) {
           return {
@@ -6124,10 +6135,12 @@ function addHydrometLayersToMap(map) {
 
         const day = parsed.getDate();
         const month = parsed.toLocaleString('en-US', { month: 'short' });
+        const year = parsed.getFullYear();
         const time = formatFFDHistoryTime(parsed);
+        const dateTick = includeYearInTick ? `${day} ${month} ${String(year).slice(-2)}` : `${day} ${month}`;
         return {
-          tick: includeTimeInTick ? [`${day} ${month}`, time] : `${day} ${month}`,
-          tooltip: `${day} ${month}, ${time}${timezone}`
+          tick: includeTimeInTick ? [dateTick, time] : dateTick,
+          tooltip: `${day} ${month} ${year}, ${time}${timezone}`
         };
       };
 
@@ -6149,7 +6162,8 @@ function addHydrometLayersToMap(map) {
         series.forEach((point) => {
           const rawLabel = point && point.x ? String(point.x) : 'Unknown';
           const parsed = parseFFDHistoryTimestampParts(rawLabel, rollingYear);
-          if (!parsed || typeof point?.y !== 'number') return;
+          const numericValue = Number(point?.y);
+          if (!parsed || !Number.isFinite(numericValue)) return;
 
           let candidate = parsed.date;
           if (!parsed.hasExplicitYear && previous && candidate.getTime() < previous.getTime()) {
@@ -6168,7 +6182,7 @@ function addHydrometLayersToMap(map) {
           if (Number.isNaN(candidate.getTime())) return;
 
           resolved.push({
-            y: point.y,
+            y: numericValue,
             date: candidate,
             timezone: parsed.timezone || 'PKT',
             label: `${candidate.toISOString()}|${parsed.timezone || 'PKT'}`
@@ -6186,7 +6200,446 @@ function addHydrometLayersToMap(map) {
         }
       };
 
-      const renderFFDHistoryChart = (canvasId, labels, inflowData, outflowData, isFullscreen = false) => {
+      const escapeFFDHistoryHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+
+      const parseFFDHistoryNumber = (value) => {
+        if (value === null || value === undefined || value === '' || value === 'n/a' || value === 'N/A') {
+          return null;
+        }
+        const numeric = Number(String(value).replace(/,/g, ''));
+        return Number.isFinite(numeric) ? numeric : null;
+      };
+
+      const formatFFDHistoryNumber = (value, decimals = 0) => {
+        if (!Number.isFinite(value)) return '--';
+        return Number(value).toLocaleString(undefined, {
+          maximumFractionDigits: decimals,
+          minimumFractionDigits: decimals
+        });
+      };
+
+      const formatFFDHistoryValue = (value, decimals = 0) => {
+        if (!Number.isFinite(value)) return '--';
+        return `${formatFFDHistoryNumber(value, decimals)} cusecs`;
+      };
+
+      const parseFFDHistoryDateInput = (value, endOfDay = false) => {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        const date = endOfDay
+          ? new Date(year, month, day, 23, 59, 59, 999)
+          : new Date(year, month, day, 0, 0, 0, 0);
+        return Number.isNaN(date.getTime()) ? null : date;
+      };
+
+      const formatFFDHistoryDateInput = (dateObj) => {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '';
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const formatFFDHistoryShortDate = (dateObj, includeTime = false) => {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '--';
+        const day = dateObj.getDate();
+        const month = dateObj.toLocaleString('en-US', { month: 'short' });
+        const dateText = `${day} ${month} ${dateObj.getFullYear()}`;
+        return includeTime ? `${dateText}, ${formatFFDHistoryTime(dateObj)}` : dateText;
+      };
+
+      const formatFFDHistoryCardDate = (dateObj) => {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'Date unavailable';
+        const day = dateObj.getDate();
+        const month = dateObj.toLocaleString('en-US', { month: 'long' });
+        return `${day}-${month}-${dateObj.getFullYear()}`;
+      };
+
+      const getFFDHistoryComparisonLabel = (mode = ffdHistoryCompareMode) => (
+        ffdHistoryCompareLabels[mode] || ffdHistoryCompareLabels.month
+      );
+
+      const getFFDHistoryCardDate = (point, fallbackRange = null) => {
+        if (point?.date instanceof Date && !Number.isNaN(point.date.getTime())) {
+          return point.date;
+        }
+        if (fallbackRange?.end instanceof Date && !Number.isNaN(fallbackRange.end.getTime())) {
+          return fallbackRange.end;
+        }
+        return null;
+      };
+
+      const getFFDHistoryStats = (points) => {
+        const ordered = (Array.isArray(points) ? points : [])
+          .filter(point => Number.isFinite(point?.y))
+          .sort((a, b) => a.date - b.date);
+
+        if (!ordered.length) {
+          return {
+            count: 0,
+            latest: null,
+            latestPoint: null,
+            max: null,
+            maxPoint: null,
+            min: null,
+            mean: null
+          };
+        }
+
+        let sum = 0;
+        let maxPoint = ordered[0];
+        let minPoint = ordered[0];
+        ordered.forEach((point) => {
+          sum += point.y;
+          if (point.y > maxPoint.y) maxPoint = point;
+          if (point.y < minPoint.y) minPoint = point;
+        });
+
+        const latestPoint = ordered[ordered.length - 1];
+        return {
+          count: ordered.length,
+          latest: latestPoint.y,
+          latestPoint,
+          max: maxPoint.y,
+          maxPoint,
+          min: minPoint.y,
+          mean: sum / ordered.length
+        };
+      };
+
+      const formatFFDHistoryPointMeta = (point) => {
+        if (!point || !point.date) return 'No timestamp';
+        return formatFFDHistoryShortDate(point.date, true);
+      };
+
+      const formatFFDHistoryDelta = (currentValue, compareValue) => {
+        if (!Number.isFinite(currentValue) || !Number.isFinite(compareValue)) return '';
+        const diff = currentValue - compareValue;
+        if (compareValue === 0) {
+          return `${diff >= 0 ? '+' : '-'}${formatFFDHistoryNumber(Math.abs(diff))}`;
+        }
+        const pct = (diff / Math.abs(compareValue)) * 100;
+        return `${pct >= 0 ? '+' : '-'}${Math.abs(pct).toFixed(1)}%`;
+      };
+
+      const setFFDHistorySummaryMessage = (message) => {
+        const summaryEl = document.getElementById('ffd-history-summary');
+        if (summaryEl) {
+          summaryEl.innerHTML = `<div class="ffd-history-empty">${escapeFFDHistoryHTML(message)}</div>`;
+        }
+      };
+
+      const updateFFDHistoryCompareButtons = () => {
+        document.querySelectorAll('[data-ffd-compare]').forEach((button) => {
+          const mode = button.getAttribute('data-ffd-compare');
+          button.classList.toggle('active', mode === ffdHistoryCompareMode);
+        });
+      };
+
+      const getFFDHistorySelectedRange = () => {
+        const startInput = document.getElementById('ffd-history-start');
+        const endInput = document.getElementById('ffd-history-end');
+        const startVal = startInput ? startInput.value : '';
+        const endVal = endInput ? endInput.value : '';
+        if (!startVal || !endVal) return null;
+        const start = parseFFDHistoryDateInput(startVal);
+        const end = parseFFDHistoryDateInput(endVal, true);
+        if (!start || !end) return null;
+        return { start, end, startVal, endVal };
+      };
+
+      const getFFDHistoryRangeFromPoints = (points, selectedRange = null) => {
+        if (selectedRange && selectedRange.start && selectedRange.end) {
+          return { start: selectedRange.start, end: selectedRange.end };
+        }
+
+        const timestamps = (Array.isArray(points) ? points : [])
+          .map(point => point?.date instanceof Date ? point.date.getTime() : NaN)
+          .filter(Number.isFinite);
+
+        if (!timestamps.length) return null;
+        return {
+          start: new Date(Math.min(...timestamps)),
+          end: new Date(Math.max(...timestamps))
+        };
+      };
+
+      const shiftFFDHistoryDate = (dateObj, mode) => {
+        if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return null;
+        const shifted = new Date(dateObj.getTime());
+        if (mode === 'year') {
+          shifted.setFullYear(shifted.getFullYear() - 1);
+          return shifted;
+        }
+        if (mode === 'month') {
+          const originalDay = shifted.getDate();
+          shifted.setDate(1);
+          shifted.setMonth(shifted.getMonth() - 1);
+          const maxDay = new Date(shifted.getFullYear(), shifted.getMonth() + 1, 0).getDate();
+          shifted.setDate(Math.min(originalDay, maxDay));
+          return shifted;
+        }
+        return null;
+      };
+
+      const getFFDHistoryComparisonRange = (currentRange, mode) => {
+        if (!currentRange || mode === 'none') return null;
+        const start = shiftFFDHistoryDate(currentRange.start, mode);
+        const end = shiftFFDHistoryDate(currentRange.end, mode);
+        if (!start || !end) return null;
+        return { start, end };
+      };
+
+      const filterFFDHistoryPointsByRange = (points, range) => {
+        if (!range?.start || !range?.end) return Array.isArray(points) ? points : [];
+        return (Array.isArray(points) ? points : []).filter((point) => (
+          point?.date instanceof Date &&
+          point.date.getTime() >= range.start.getTime() &&
+          point.date.getTime() <= range.end.getTime()
+        ));
+      };
+
+      const fetchFFDHistorySeries = async ({ name, days = null, range = null }) => {
+        const fallbackYear = range?.end
+          ? range.end.getFullYear()
+          : new Date().getFullYear();
+
+        let url = `${ffdHistoryConfig.apiBase}/api/history?name=${encodeURIComponent(name)}`;
+        if (range?.start && range?.end) {
+          url += `&start_date=${encodeURIComponent(formatFFDHistoryDateInput(range.start))}&end_date=${encodeURIComponent(formatFFDHistoryDateInput(range.end))}`;
+        } else {
+          url += `&days=${days || ffdHistoryConfig.defaultDays}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('history status');
+        }
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error('history payload');
+        }
+
+        const inflow = Array.isArray(data.inflow) ? data.inflow : [];
+        const outflow = Array.isArray(data.outflow) ? data.outflow : [];
+        return {
+          raw: data,
+          fallbackYear,
+          inflow: resolveFFDHistorySeriesPoints(inflow, fallbackYear),
+          outflow: resolveFFDHistorySeriesPoints(outflow, fallbackYear)
+        };
+      };
+
+      const getFFDHistoryDisplayKey = (dateObj) => {
+        const roundedMs = Math.round(dateObj.getTime() / 60000) * 60000;
+        return `ts:${roundedMs}`;
+      };
+
+      const buildFFDHistoryChartBundle = ({
+        currentInflow = [],
+        currentOutflow = [],
+        comparisonInflow = [],
+        comparisonOutflow = [],
+        currentRange = null,
+        comparisonRange = null,
+        comparisonMode = ffdHistoryCompareMode,
+        comparisonError = null
+      }) => {
+        const metaByKey = new Map();
+
+        const addLabelMeta = (dateObj, timezone = 'PKT') => {
+          if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return null;
+          const key = getFFDHistoryDisplayKey(dateObj);
+          if (!metaByKey.has(key)) {
+            const roundedDate = new Date(Number(key.slice(3)));
+            metaByKey.set(key, {
+              key,
+              date: roundedDate,
+              label: `${roundedDate.toISOString()}|${timezone || 'PKT'}`
+            });
+          }
+          return key;
+        };
+
+        const alignComparisonDate = (dateObj) => {
+          if (!currentRange || !comparisonRange || !(dateObj instanceof Date)) return dateObj;
+          return new Date(currentRange.start.getTime() + (dateObj.getTime() - comparisonRange.start.getTime()));
+        };
+
+        const registerPoints = (points, isComparison = false) => {
+          points.forEach((point) => {
+            const displayDate = isComparison ? alignComparisonDate(point.date) : point.date;
+            addLabelMeta(displayDate, point.timezone);
+          });
+        };
+
+        registerPoints(currentInflow);
+        registerPoints(currentOutflow);
+        registerPoints(comparisonInflow, true);
+        registerPoints(comparisonOutflow, true);
+
+        const orderedMeta = Array.from(metaByKey.values()).sort((a, b) => {
+          if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
+          return a.label.localeCompare(b.label);
+        });
+        const labels = orderedMeta.map(item => item.label);
+        const indexMap = new Map(orderedMeta.map((item, index) => [item.key, index]));
+
+        const createSeriesArray = () => new Array(labels.length).fill(null);
+        const createTooltipArray = () => new Array(labels.length).fill('');
+        const inflowData = createSeriesArray();
+        const outflowData = createSeriesArray();
+        const comparisonInflowData = createSeriesArray();
+        const comparisonOutflowData = createSeriesArray();
+        const comparisonInflowTooltips = createTooltipArray();
+        const comparisonOutflowTooltips = createTooltipArray();
+
+        const placePoint = (target, point, displayDate) => {
+          const key = addLabelMeta(displayDate, point.timezone);
+          const idx = indexMap.get(key);
+          if (idx !== undefined) target[idx] = point.y;
+          return idx;
+        };
+
+        currentInflow.forEach(point => placePoint(inflowData, point, point.date));
+        currentOutflow.forEach(point => placePoint(outflowData, point, point.date));
+        comparisonInflow.forEach((point) => {
+          const idx = placePoint(comparisonInflowData, point, alignComparisonDate(point.date));
+          if (idx !== undefined) comparisonInflowTooltips[idx] = `actual ${formatFFDHistoryPointMeta(point)}`;
+        });
+        comparisonOutflow.forEach((point) => {
+          const idx = placePoint(comparisonOutflowData, point, alignComparisonDate(point.date));
+          if (idx !== undefined) comparisonOutflowTooltips[idx] = `actual ${formatFFDHistoryPointMeta(point)}`;
+        });
+
+        const hasComparisonData = comparisonMode !== 'none' && (comparisonInflow.length > 0 || comparisonOutflow.length > 0);
+
+        return {
+          labels,
+          inflowData,
+          outflowData,
+          comparisonInflowData,
+          comparisonOutflowData,
+          comparisonInflowTooltips,
+          comparisonOutflowTooltips,
+          currentInflow,
+          currentOutflow,
+          comparisonInflow,
+          comparisonOutflow,
+          currentRange,
+          comparisonRange,
+          comparisonMode,
+          comparisonLabel: getFFDHistoryComparisonLabel(comparisonMode),
+          comparisonError,
+          hasComparisonData
+        };
+      };
+
+      const renderFFDHistorySummary = (bundle) => {
+        const summaryEl = document.getElementById('ffd-history-summary');
+        if (!summaryEl) return;
+
+        const currentInflowStats = getFFDHistoryStats(bundle.currentInflow);
+        const currentOutflowStats = getFFDHistoryStats(bundle.currentOutflow);
+        const comparisonInflowStats = getFFDHistoryStats(bundle.comparisonInflow);
+        const comparisonOutflowStats = getFFDHistoryStats(bundle.comparisonOutflow);
+        const liveInflow = parseFFDHistoryNumber(ffdHistoryCurrentProps?.inflow_discharge);
+        const liveOutflow = parseFFDHistoryNumber(ffdHistoryCurrentProps?.outflow_discharge);
+
+        const currentInflow = Number.isFinite(liveInflow) ? liveInflow : currentInflowStats.latest;
+        const currentOutflow = Number.isFinite(liveOutflow) ? liveOutflow : currentOutflowStats.latest;
+        const hasComparison = bundle.comparisonMode !== 'none';
+        const currentInflowDate = formatFFDHistoryCardDate(getFFDHistoryCardDate(currentInflowStats.latestPoint, bundle.currentRange));
+        const currentOutflowDate = formatFFDHistoryCardDate(getFFDHistoryCardDate(currentOutflowStats.latestPoint, bundle.currentRange));
+        const comparisonInflowDate = formatFFDHistoryCardDate(getFFDHistoryCardDate(comparisonInflowStats.latestPoint, bundle.comparisonRange));
+        const comparisonOutflowDate = formatFFDHistoryCardDate(getFFDHistoryCardDate(comparisonOutflowStats.latestPoint, bundle.comparisonRange));
+        const inflowDelta = hasComparison
+          ? formatFFDHistoryDelta(currentInflow, comparisonInflowStats.latest)
+          : '';
+        const outflowDelta = hasComparison
+          ? formatFFDHistoryDelta(currentOutflow, comparisonOutflowStats.latest)
+          : '';
+        const emptyComparisonMeta = bundle.comparisonError
+          ? 'Comparison unavailable'
+          : 'No comparison data';
+        const inflowComparisonMeta = comparisonInflowStats.count
+          ? (inflowDelta ? `Now ${inflowDelta}` : 'Same as now')
+          : emptyComparisonMeta;
+        const outflowComparisonMeta = comparisonOutflowStats.count
+          ? (outflowDelta ? `Now ${outflowDelta}` : 'Same as now')
+          : emptyComparisonMeta;
+
+        const cards = hasComparison ? [
+          {
+            label: `Inflow ${currentInflowDate}`,
+            value: formatFFDHistoryValue(currentInflow),
+            meta: '',
+            tone: 'inflow'
+          },
+          {
+            label: `Inflow ${comparisonInflowDate}`,
+            value: formatFFDHistoryValue(comparisonInflowStats.latest),
+            meta: inflowComparisonMeta,
+            tone: 'compare-inflow'
+          },
+          {
+            label: `Outflow ${currentOutflowDate}`,
+            value: formatFFDHistoryValue(currentOutflow),
+            meta: '',
+            tone: 'outflow'
+          },
+          {
+            label: `Outflow ${comparisonOutflowDate}`,
+            value: formatFFDHistoryValue(comparisonOutflowStats.latest),
+            meta: outflowComparisonMeta,
+            tone: 'compare-outflow'
+          }
+        ] : [
+          {
+            label: `Inflow ${currentInflowDate}`,
+            value: formatFFDHistoryValue(currentInflow),
+            meta: '',
+            tone: 'inflow'
+          },
+          {
+            label: `Outflow ${currentOutflowDate}`,
+            value: formatFFDHistoryValue(currentOutflow),
+            meta: '',
+            tone: 'outflow'
+          },
+          {
+            label: 'Mean Inflow',
+            value: formatFFDHistoryValue(currentInflowStats.mean),
+            meta: `${formatFFDHistoryNumber(currentInflowStats.count)} records`,
+            tone: 'mean'
+          },
+          {
+            label: 'Mean Outflow',
+            value: formatFFDHistoryValue(currentOutflowStats.mean),
+            meta: `${formatFFDHistoryNumber(currentOutflowStats.count)} records`,
+            tone: 'mean'
+          }
+        ];
+
+        summaryEl.innerHTML = cards.map(card => `
+          <div class="ffd-history-card ${card.tone}">
+            <span>${escapeFFDHistoryHTML(card.label)}</span>
+            <strong>${escapeFFDHistoryHTML(card.value)}</strong>
+            ${card.meta ? `<small>${escapeFFDHistoryHTML(card.meta)}</small>` : ''}
+          </div>
+        `).join('');
+      };
+
+      const renderFFDHistoryChart = (canvasId, bundle, isFullscreen = false) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas || !window.Chart) {
           return;
@@ -6202,34 +6655,75 @@ function addHydrometLayersToMap(map) {
           }
         }
 
+        const labels = bundle?.labels || [];
+        const comparisonLabel = bundle?.comparisonLabel || getFFDHistoryComparisonLabel();
+        const datasets = [
+          {
+            label: 'Inflow',
+            data: bundle?.inflowData || [],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+            fill: false,
+            tension: 0.35,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 3 : 2.5
+          },
+          {
+            label: 'Outflow',
+            data: bundle?.outflowData || [],
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52, 211, 153, 0.18)',
+            fill: true,
+            tension: 0.35,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 3 : 2.5
+          }
+        ];
+
+        if (bundle?.hasComparisonData) {
+          datasets.push(
+            {
+              label: `Inflow - ${comparisonLabel}`,
+              data: bundle.comparisonInflowData || [],
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.08)',
+              fill: false,
+              tension: 0.35,
+              spanGaps: true,
+              pointRadius: isFullscreen ? 2 : 1.5,
+              pointHoverRadius: isFullscreen ? 5 : 4,
+              borderWidth: isFullscreen ? 2.5 : 2,
+              borderDash: [6, 5],
+              historyTooltips: bundle.comparisonInflowTooltips || []
+            },
+            {
+              label: `Outflow - ${comparisonLabel}`,
+              data: bundle.comparisonOutflowData || [],
+              borderColor: '#fb7185',
+              backgroundColor: 'rgba(251, 113, 133, 0.08)',
+              fill: false,
+              tension: 0.35,
+              spanGaps: true,
+              pointRadius: isFullscreen ? 2 : 1.5,
+              pointHoverRadius: isFullscreen ? 5 : 4,
+              borderWidth: isFullscreen ? 2.5 : 2,
+              borderDash: [3, 5],
+              historyTooltips: bundle.comparisonOutflowTooltips || []
+            }
+          );
+        }
+
         const tickMode = getFFDHistoryTickMode(labels);
 
         const chartInstance = new Chart(canvas, {
           type: 'line',
           data: {
             labels,
-            datasets: [
-              {
-                label: 'Inflow',
-                data: inflowData,
-                borderColor: '#38bdf8',
-                backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                fill: false,
-                tension: 0.35,
-                spanGaps: true,
-                pointRadius: isFullscreen ? 3 : 2
-              },
-              {
-                label: 'Outflow',
-                data: outflowData,
-                borderColor: '#34d399',
-                backgroundColor: 'rgba(52, 211, 153, 0.2)',
-                fill: true,
-                tension: 0.35,
-                spanGaps: true,
-                pointRadius: isFullscreen ? 3 : 2
-              }
-            ]
+            datasets
           },
           options: {
             responsive: true,
@@ -6237,7 +6731,11 @@ function addHydrometLayersToMap(map) {
             interaction: { intersect: false, mode: 'index' },
             plugins: {
               legend: {
-                labels: { color: '#e2e8f0' }
+                labels: {
+                  color: '#e2e8f0',
+                  boxWidth: 14,
+                  usePointStyle: true
+                }
               },
               tooltip: {
                 callbacks: {
@@ -6248,7 +6746,9 @@ function addHydrometLayersToMap(map) {
                   },
                   label: function (context) {
                     if (context.parsed.y === null) return null;
-                    return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString()} cusecs`;
+                    const detail = context.dataset.historyTooltips?.[context.dataIndex];
+                    const suffix = detail ? ` (${detail})` : '';
+                    return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString()} cusecs${suffix}`;
                   }
                 }
               }
@@ -6269,7 +6769,12 @@ function addHydrometLayersToMap(map) {
                 grid: { color: 'rgba(148, 163, 184, 0.15)' }
               },
               y: {
-                ticks: { color: '#cbd5f5' },
+                ticks: {
+                  color: '#cbd5f5',
+                  callback: function (value) {
+                    return Number(value).toLocaleString();
+                  }
+                },
                 grid: { color: 'rgba(148, 163, 184, 0.15)' }
               }
             }
@@ -6286,97 +6791,79 @@ function addHydrometLayersToMap(map) {
       const loadFFDHistoryData = async () => {
         if (!ffdHistoryName) return;
 
-        const startInput = document.getElementById('ffd-history-start');
-        const endInput = document.getElementById('ffd-history-end');
-        const startVal = startInput ? startInput.value : '';
-        const endVal = endInput ? endInput.value : '';
-        ffdHistoryFallbackYear = endVal
-          ? Number(endVal.split('-')[0])
-          : (startVal ? Number(startVal.split('-')[0]) : new Date().getFullYear());
-        if (Number.isNaN(ffdHistoryFallbackYear)) {
-          ffdHistoryFallbackYear = new Date().getFullYear();
-        }
-
-        let url = `${ffdHistoryConfig.apiBase}/api/history?name=${encodeURIComponent(ffdHistoryName)}`;
-        if (startVal && endVal) {
-          url += `&start_date=${encodeURIComponent(startVal)}&end_date=${encodeURIComponent(endVal)}`;
-          setFFDHistoryStatus(`Showing: ${startVal} to ${endVal}`);
-        } else {
-          url += `&days=${ffdHistoryConfig.defaultDays}`;
-          setFFDHistoryStatus(`Showing: Last ${ffdHistoryConfig.defaultDays} days`);
-        }
+        const selectedRange = getFFDHistorySelectedRange();
+        ffdHistoryFallbackYear = selectedRange?.end
+          ? selectedRange.end.getFullYear()
+          : new Date().getFullYear();
 
         try {
           setFFDHistoryStatus('Loading history...');
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error('history status');
-          }
-          const data = await response.json();
-          if (!data.success) {
-            throw new Error('history payload');
-          }
+          setFFDHistorySummaryMessage('Loading station summary...');
+          updateFFDHistoryCompareButtons();
 
-          const inflow = Array.isArray(data.inflow) ? data.inflow : [];
-          const outflow = Array.isArray(data.outflow) ? data.outflow : [];
-          if (inflow.length === 0 && outflow.length === 0) {
+          const currentSeries = await fetchFFDHistorySeries({
+            name: ffdHistoryName,
+            days: ffdHistoryConfig.defaultDays,
+            range: selectedRange
+          });
+
+          const allCurrentPoints = [...currentSeries.inflow, ...currentSeries.outflow];
+          if (allCurrentPoints.length === 0) {
             setFFDHistoryStatus('No data for selected range');
-            renderFFDHistoryChart('ffd-history-canvas', [], [], []);
+            const emptyBundle = buildFFDHistoryChartBundle({
+              currentRange: selectedRange ? { start: selectedRange.start, end: selectedRange.end } : null,
+              comparisonMode: ffdHistoryCompareMode
+            });
+            renderFFDHistoryChart('ffd-history-canvas', emptyBundle);
             ffdHistoryLastSeries = null;
+            setFFDHistorySummaryMessage('No history data for the selected range.');
             return;
           }
 
-          const resolvedInflow = resolveFFDHistorySeriesPoints(inflow, ffdHistoryFallbackYear);
-          const resolvedOutflow = resolveFFDHistorySeriesPoints(outflow, ffdHistoryFallbackYear);
+          const currentRange = getFFDHistoryRangeFromPoints(allCurrentPoints, selectedRange);
+          let comparisonRange = getFFDHistoryComparisonRange(currentRange, ffdHistoryCompareMode);
+          let comparisonSeries = { inflow: [], outflow: [] };
+          let comparisonError = null;
 
-          const labelMetaByKey = new Map();
-          const addLabel = (label) => {
-            const safeLabel = label ? String(label) : 'Unknown';
-            const key = getFFDHistoryPointKey(safeLabel);
-            if (!labelMetaByKey.has(key)) {
-              const parsedDate = parseFFDHistoryTimestamp(safeLabel, ffdHistoryFallbackYear);
-              labelMetaByKey.set(key, {
-                key,
-                label: safeLabel,
-                ts: parsedDate ? parsedDate.getTime() : Number.MAX_SAFE_INTEGER
+          if (comparisonRange) {
+            try {
+              comparisonSeries = await fetchFFDHistorySeries({
+                name: ffdHistoryName,
+                range: comparisonRange
               });
+              comparisonSeries.inflow = filterFFDHistoryPointsByRange(comparisonSeries.inflow, comparisonRange);
+              comparisonSeries.outflow = filterFFDHistoryPointsByRange(comparisonSeries.outflow, comparisonRange);
+            } catch (compareError) {
+              console.warn('FFD history comparison fetch failed:', compareError);
+              comparisonError = compareError;
             }
-          };
+          }
 
-          resolvedInflow.forEach(point => addLabel(point.label));
-          resolvedOutflow.forEach(point => addLabel(point.label));
-
-          const orderedMeta = Array.from(labelMetaByKey.values()).sort((a, b) => {
-            if (a.ts !== b.ts) return a.ts - b.ts;
-            return a.label.localeCompare(b.label);
+          const chartBundle = buildFFDHistoryChartBundle({
+            currentInflow: currentSeries.inflow,
+            currentOutflow: currentSeries.outflow,
+            comparisonInflow: comparisonSeries.inflow || [],
+            comparisonOutflow: comparisonSeries.outflow || [],
+            currentRange,
+            comparisonRange,
+            comparisonMode: ffdHistoryCompareMode,
+            comparisonError
           });
 
-          const labels = orderedMeta.map(item => item.label);
-          const indexMap = new Map(orderedMeta.map((item, idx) => [item.key, idx]));
+          renderFFDHistoryChart('ffd-history-canvas', chartBundle);
+          renderFFDHistorySummary(chartBundle);
+          ffdHistoryLastSeries = chartBundle;
 
-          const inflowData = new Array(labels.length).fill(null);
-          const outflowData = new Array(labels.length).fill(null);
-
-          resolvedInflow.forEach(point => {
-            const idx = indexMap.get(getFFDHistoryPointKey(point.label));
-            if (idx !== undefined) inflowData[idx] = point.y;
-          });
-          resolvedOutflow.forEach(point => {
-            const idx = indexMap.get(getFFDHistoryPointKey(point.label));
-            if (idx !== undefined) outflowData[idx] = point.y;
-          });
-
-          renderFFDHistoryChart('ffd-history-canvas', labels, inflowData, outflowData);
-          ffdHistoryLastSeries = { labels, inflowData, outflowData };
-          if (startVal && endVal) {
-            setFFDHistoryStatus(`Showing: ${startVal} to ${endVal}`);
+          if (selectedRange) {
+            setFFDHistoryStatus(`Showing: ${formatFFDHistoryDateInput(selectedRange.start)} to ${formatFFDHistoryDateInput(selectedRange.end)}`);
           } else {
             setFFDHistoryStatus(`Showing: Last ${ffdHistoryConfig.defaultDays} days`);
           }
         } catch (error) {
           console.warn('FFD history fetch failed:', error);
           setFFDHistoryStatus('History service unavailable');
-          renderFFDHistoryChart('ffd-history-canvas', [], [], []);
+          renderFFDHistoryChart('ffd-history-canvas', buildFFDHistoryChartBundle({ comparisonMode: ffdHistoryCompareMode }));
+          setFFDHistorySummaryMessage('History service unavailable.');
           ffdHistoryLastSeries = null;
         }
       };
@@ -6386,8 +6873,8 @@ function addHydrometLayersToMap(map) {
         window.__ffdHistoryPanelReady = true;
 
         const panel = document.getElementById('ffd-history-panel');
-        const header = panel.querySelector('.ffd-history-header');
         if (!panel) return;
+        const header = panel.querySelector('.ffd-history-header');
 
         const closeBtn = document.getElementById('ffd-history-close');
         const dateToggleBtn = document.getElementById('ffd-history-date-toggle');
@@ -6399,6 +6886,7 @@ function addHydrometLayersToMap(map) {
         const resetBtn = document.getElementById('ffd-history-reset');
         const startInput = document.getElementById('ffd-history-start');
         const endInput = document.getElementById('ffd-history-end');
+        const compareButtons = panel.querySelectorAll('[data-ffd-compare]');
 
         const setControlsOpen = (isOpen) => {
           panel.classList.toggle('controls-open', isOpen);
@@ -6453,6 +6941,17 @@ function addHydrometLayersToMap(map) {
         bindStopEvents(resetBtn);
         bindStopEvents(dateToggleBtn);
         bindStopEvents(controlsSection);
+        compareButtons.forEach((button) => {
+          bindStopEvents(button);
+          button.addEventListener('click', async () => {
+            const nextMode = button.getAttribute('data-ffd-compare') || 'month';
+            if (nextMode === ffdHistoryCompareMode) return;
+            ffdHistoryCompareMode = nextMode;
+            updateFFDHistoryCompareButtons();
+            await loadFFDHistoryData();
+          });
+        });
+        updateFFDHistoryCompareButtons();
 
         if (dateToggleBtn) {
           dateToggleBtn.addEventListener('click', () => {
@@ -6490,9 +6989,7 @@ function addHydrometLayersToMap(map) {
             fullscreenPanel.classList.add('open');
             renderFFDHistoryChart(
               'ffd-history-canvas-full',
-              ffdHistoryLastSeries.labels,
-              ffdHistoryLastSeries.inflowData,
-              ffdHistoryLastSeries.outflowData,
+              ffdHistoryLastSeries,
               true
             );
           });
@@ -6632,7 +7129,7 @@ function addHydrometLayersToMap(map) {
         }
       };
 
-      const openFFDHistoryPanel = async (name) => {
+      const openFFDHistoryPanel = async (name, props = null) => {
         ensureFFDHistoryPanelInitialized();
 
         const panel = document.getElementById('ffd-history-panel');
@@ -6641,6 +7138,7 @@ function addHydrometLayersToMap(map) {
         const keepManualPosition = panel.classList.contains('open') && panel.dataset.dragged === 'true';
 
         ffdHistoryName = name || 'Unknown Station';
+        ffdHistoryCurrentProps = props || null;
         titleEl.textContent = `${ffdHistoryName} - History`;
         panel.classList.remove('controls-open');
         const dateToggleBtn = document.getElementById('ffd-history-date-toggle');
@@ -6650,7 +7148,7 @@ function addHydrometLayersToMap(map) {
 
         if (!keepManualPosition) {
           panel.dataset.dragged = '';
-          panel.style.width = `${Math.round(getDockPanelWidth())}px`;
+          panel.style.width = `${Math.round(getFFDHistoryDockWidth())}px`;
           panel.style.right = '16px';
           panel.style.bottom = '16px';
           panel.style.left = 'auto';
@@ -7151,7 +7649,7 @@ function addHydrometLayersToMap(map) {
         }
 
         if (props.name) {
-          openFFDHistoryPanel(props.name);
+          openFFDHistoryPanel(props.name, props);
         }
       });
 
@@ -15008,6 +15506,20 @@ function getDockPanelWidth() {
   return Math.min(Math.max(220, mapWidth - 20), Math.min(400, maxAllowed));
 }
 
+function getFFDHistoryDockWidth() {
+  const mapContainer = getMapDockContainer();
+  const mapWidth = mapContainer ? mapContainer.clientWidth : window.innerWidth;
+  const maxAllowed = Math.max(300, mapWidth - 20);
+
+  if (window.innerWidth <= 768) {
+    return Math.min(Math.max(300, mapWidth - 16), maxAllowed);
+  }
+  if (window.innerWidth <= 1100) {
+    return Math.min(Math.max(560, mapWidth - 24), Math.min(720, maxAllowed));
+  }
+  return Math.min(Math.max(680, mapWidth - 24), Math.min(820, maxAllowed));
+}
+
 function getFluidMeterDockMetrics() {
   const compactView = window.innerWidth <= 1100;
   const baseTop = compactView ? 12 : 14;
@@ -15049,7 +15561,7 @@ function alignFFDHistoryPanelToFluidMeter() {
   if (!historyPanel || !historyPanel.classList.contains('open')) return;
   if (historyPanel.classList.contains('dragging') || historyPanel.dataset.dragged === 'true') return;
 
-  const sharedWidth = `${Math.round(getDockPanelWidth())}px`;
+  const sharedWidth = `${Math.round(getFFDHistoryDockWidth())}px`;
 
   if (!fluidContainer || fluidContainer.style.display !== 'block') {
     historyPanel.style.width = sharedWidth;
@@ -15068,7 +15580,7 @@ function alignFFDHistoryPanelToFluidMeter() {
     : 16;
   const rightOffset = fluidContainer.style.right && fluidContainer.style.right !== 'auto' ? fluidContainer.style.right : `${measuredRight}px`;
 
-  historyPanel.style.width = Number.isFinite(fluidRect.width) && fluidRect.width > 0 ? `${Math.round(fluidRect.width)}px` : sharedWidth;
+  historyPanel.style.width = sharedWidth;
   historyPanel.style.right = rightOffset;
   historyPanel.style.left = 'auto';
   historyPanel.style.top = 'auto';

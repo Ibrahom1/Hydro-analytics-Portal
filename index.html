@@ -2767,9 +2767,20 @@
                   <button id="ffd-history-reset" class="ffd-history-btn ghost">Reset</button>
                 </div>
               </div>
-              <div id="ffd-history-status" class="ffd-history-status">Showing: Last 7 days</div>
-              <div class="ffd-history-chart">
-                <canvas id="ffd-history-canvas"></canvas>
+              <div class="ffd-history-body">
+                <div class="ffd-history-toolbar">
+                  <div id="ffd-history-status" class="ffd-history-status">Showing: Last 7 days</div>
+                  <div class="ffd-history-compare" aria-label="Comparison range">
+                    <span>Compare</span>
+                    <button type="button" data-ffd-compare="month">Prev month</button>
+                    <button type="button" data-ffd-compare="year">Last year</button>
+                    <button type="button" class="active" data-ffd-compare="none">Off</button>
+                  </div>
+                </div>
+                <div id="ffd-history-summary" class="ffd-history-summary" aria-live="polite"></div>
+                <div class="ffd-history-chart">
+                  <canvas id="ffd-history-canvas"></canvas>
+                </div>
               </div>
             </div>
             <div id="ffd-history-fullscreen-panel" class="ffd-history-fullscreen">
