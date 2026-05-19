@@ -5739,6 +5739,13 @@ const convertToGeojson = (data) => {
         "recording_time": location.recording_time || "n/a",
         "outflow_trend": location.outflow_trend || "n/a",
         "inflow_trend": location.inflow_trend || "n/a",
+        "area_name": location.area_name || "",
+        "height": location.height || "",
+        "latitude": location.latitude ?? "",
+        "longitude": location.longitude ?? "",
+        "cyp_discharge": location.cyp_discharge || "",
+        "cyp_status": location.cyp_status || "",
+        "cyp_date": location.cyp_date || "",
         "from": FLOOD_ROUTING_MAP[location.name]?.from || [],
         "lag_hours": FLOOD_ROUTING_MAP[location.name]?.lag || [],
       },
@@ -7300,6 +7307,69 @@ function addHydrometLayersToMap(map) {
                         </div>`;
         };
 
+        const hasPopupValue = (value) => {
+          if (value === undefined || value === null) return false;
+          const text = String(value).trim();
+          if (!text) return false;
+          const lowered = text.toLowerCase();
+          return lowered !== 'n/a' && lowered !== 'null' && lowered !== 'undefined';
+        };
+
+        const escapePopupText = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[char]));
+
+        const formatCoordinate = (value) => {
+          const numericValue = parseFloat(value);
+          return Number.isFinite(numericValue) ? numericValue.toFixed(4) : escapePopupText(value);
+        };
+
+        const formatMetaRow = (label, value, formatter = null) => {
+          if (!hasPopupValue(value)) return '';
+          const displayValue = formatter ? formatter(value) : escapePopupText(value);
+          return `
+                            <div class="popup-meta-item">
+                                <span class="popup-meta-label">${label}:</span>
+                                <span class="popup-meta-value">${displayValue}</span>
+                            </div>`;
+        };
+
+        const popupMetadataRows = [
+          formatMetaRow('River / Area', props.area_name),
+          formatMetaRow('Station Height', props.height),
+          formatMetaRow('Latitude', props.latitude, formatCoordinate),
+          formatMetaRow('Longitude', props.longitude, formatCoordinate)
+        ].join('');
+
+        const popupMetadataHTML = popupMetadataRows ? `
+                            <div class="popup-meta-section">
+                                <div class="popup-meta-grid">
+                                    ${popupMetadataRows}
+                                </div>
+                            </div>` : '';
+
+        const maxPeakDetails = [props.cyp_status, props.cyp_date]
+          .filter(hasPopupValue)
+          .map(escapePopupText)
+          .join(' ');
+
+        const maxPeakHTML = hasPopupValue(props.cyp_discharge) ? `
+                            <div class="peak-section">
+                                <div class="peak-grid">
+                                    <div class="popup-meta-item">
+                                        <span class="popup-meta-label">Max. Peak:</span>
+                                        <span class="popup-meta-value">
+                                            ${escapePopupText(props.cyp_discharge)}
+                                            ${maxPeakDetails ? `<span class="popup-meta-detail">(${maxPeakDetails})</span>` : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>` : '';
+
         const popupHTML = `
                     <div class="ffd-popup-container">
                         <!-- Header Section -->
@@ -7315,6 +7385,9 @@ function addHydrometLayersToMap(map) {
 
                         <!-- Main Content -->
                         <div class="popup-content">
+                            <!-- Fallback HTML Metadata -->
+                            ${popupMetadataHTML}
+
                             <!-- Discharge Information -->
                             <div class="discharge-section">
                                 <div class="discharge-grid">
@@ -7340,6 +7413,9 @@ function addHydrometLayersToMap(map) {
                                     <span class="timestamp-value">${props.recording_time || 'Unknown'}</span>
                                 </div>
                             </div>
+
+                            <!-- Fallback HTML Max Peak -->
+                            ${maxPeakHTML}
                             
                             <!-- Last Update Info -->
                             ${lastUpdateInfo}
@@ -7421,17 +7497,17 @@ function addHydrometLayersToMap(map) {
                             font-size: 10px;
                         }
 
-                        .discharge-section, .trend-section {
+                        .discharge-section, .trend-section, .popup-meta-section, .peak-section {
                             margin-bottom: 8px;
                         }
 
-                        .discharge-grid, .trend-grid {
+                        .discharge-grid, .trend-grid, .popup-meta-grid, .peak-grid {
                             display: flex;
                             flex-direction: column;
                             gap: 4px;
                         }
 
-                        .discharge-item, .trend-item {
+                        .discharge-item, .trend-item, .popup-meta-item {
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
@@ -7442,16 +7518,25 @@ function addHydrometLayersToMap(map) {
                             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
                         }
 
-                        .discharge-label, .trend-label {
+                        .discharge-label, .trend-label, .popup-meta-label {
                             font-size: 13px;
                             font-weight: 500;
                             color: #495057;
                         }
 
-                        .discharge-value {
+                        .discharge-value, .popup-meta-value {
                             font-size: 14px;
                             font-weight: 700;
                             color: #212529;
+                            text-align: right;
+                        }
+
+                        .popup-meta-detail {
+                            display: block;
+                            font-size: 10px;
+                            color: #495057;
+                            line-height: 1.2;
+                            margin-top: 1px;
                         }
 
                         .discharge-value.no-data {
