@@ -7323,11 +7323,6 @@ function addHydrometLayersToMap(map) {
           "'": '&#39;'
         }[char]));
 
-        const formatCoordinate = (value) => {
-          const numericValue = parseFloat(value);
-          return Number.isFinite(numericValue) ? numericValue.toFixed(4) : escapePopupText(value);
-        };
-
         const formatMetaRow = (label, value, formatter = null) => {
           if (!hasPopupValue(value)) return '';
           const displayValue = formatter ? formatter(value) : escapePopupText(value);
@@ -7340,9 +7335,7 @@ function addHydrometLayersToMap(map) {
 
         const popupMetadataRows = [
           formatMetaRow('River / Area', props.area_name),
-          formatMetaRow('Station Height', props.height),
-          formatMetaRow('Latitude', props.latitude, formatCoordinate),
-          formatMetaRow('Longitude', props.longitude, formatCoordinate)
+          formatMetaRow('Station Height', props.height)
         ].join('');
 
         const popupMetadataHTML = popupMetadataRows ? `
@@ -7352,20 +7345,12 @@ function addHydrometLayersToMap(map) {
                                 </div>
                             </div>` : '';
 
-        const maxPeakDetails = [props.cyp_status, props.cyp_date]
-          .filter(hasPopupValue)
-          .map(escapePopupText)
-          .join(' ');
-
         const maxPeakHTML = hasPopupValue(props.cyp_discharge) ? `
                             <div class="peak-section">
                                 <div class="peak-grid">
                                     <div class="popup-meta-item">
                                         <span class="popup-meta-label">Max. Peak:</span>
-                                        <span class="popup-meta-value">
-                                            ${escapePopupText(props.cyp_discharge)}
-                                            ${maxPeakDetails ? `<span class="popup-meta-detail">(${maxPeakDetails})</span>` : ''}
-                                        </span>
+                                        <span class="popup-meta-value">${escapePopupText(props.cyp_discharge)}</span>
                                     </div>
                                 </div>
                             </div>` : '';
@@ -7529,14 +7514,6 @@ function addHydrometLayersToMap(map) {
                             font-weight: 700;
                             color: #212529;
                             text-align: right;
-                        }
-
-                        .popup-meta-detail {
-                            display: block;
-                            font-size: 10px;
-                            color: #495057;
-                            line-height: 1.2;
-                            margin-top: 1px;
                         }
 
                         .discharge-value.no-data {
