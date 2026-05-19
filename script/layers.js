@@ -1,8 +1,8 @@
 // Global GeoServer IP variables
 const geoserverUrl='172.18.7.35'
-const mamAyman = "172.18.1.168"; // National, Provincial, District, Tehsil
+const mamAyman = "172.18.1.181"; // National, Provincial, District, Tehsil
 const mamHimael = "172.18.1.147";
-const ibrahim  = "172.18.1.110";
+const ibrahim  = "172.18.1.112";
 const mapDiv = document.getElementById("map1");
 
 // DEW Exposure
@@ -3306,8 +3306,8 @@ document.getElementById('slideshowModal').addEventListener('click', function(e) 
   }
 });
 // Global GeoServer IP variables
-const mustafa = "172.18.1.55"; // Swat, Panjgora, etc.
-const ahad = "172.18.1.85"; // AJK, Jhal, hyd layers, etc.
+const mustafa = "172.18.1.37"; // Swat, Panjgora, etc.
+const ahad = "172.18.1.87"; // AJK, Jhal, hyd layers, etc.
 let isPlaying = false;
 let playInterval;
 let currentDay = 1;
@@ -12467,6 +12467,40 @@ document.getElementById("di_ht").addEventListener("change", function () {
     );
   });
 
+
+
+
+
+  ////2022 flood extent
+   map1.addSource("river_2022", {
+    type: "vector",
+    scheme: "tms",
+    tiles: [
+      `http://${mamAyman}:8080/geoserver/gwc/service/tms/1.0.0/Flood_Insight:river_2022@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+    ],
+  });
+  map1.addLayer({
+    id: "river_2022",
+    type: "fill",
+    source: "river_2022",
+    "source-layer": "river_2022",
+    layout: {
+      visibility: "none",
+    },
+    paint: {
+      "fill-opacity": 0.9,
+      "fill-color": "#0b6408",
+    },
+  });
+  document.getElementById("flood2022").addEventListener("change", function () {
+    const isVisible = this.checked;
+    // Correctly set the layer visibility property
+    map1.setLayoutProperty(
+      "river_2022",
+      "visibility", // Specify the 'visibility' layout property
+      isVisible ? "visible" : "none" // Toggle between 'visible' and 'none'
+    );
+  }); 
   //2023 FLOOD EXTENT 
   map1.addSource("VIIRS_20230726_20230730_FloodExtent_PAK", {
     type: "vector",
@@ -12488,7 +12522,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
       "fill-color": "#006A71",
     },
   });
-  document.getElementById("flood2022").addEventListener("change", function () {
+  document.getElementById("flood2023").addEventListener("change", function () {
     const isVisible = this.checked;
     // Correctly set the layer visibility property
     map1.setLayoutProperty(
