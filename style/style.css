@@ -2911,6 +2911,24 @@ body {
   color: #f8fafc;
   padding: 8px 10px;
   outline: none;
+  pointer-events: auto;
+}
+
+.gis-layer-edit-field select,
+.gis-layer-edit-field input[type="checkbox"],
+.gis-layer-edit-filter-value,
+.gis-layer-edit-filter-value input,
+.gis-layer-edit-check-row,
+.gis-layer-edit-check-row input {
+  cursor: pointer;
+}
+
+.gis-layer-edit-check-row input,
+.gis-layer-edit-filter-value input {
+  width: 16px;
+  height: 16px;
+  accent-color: #38bdf8;
+  pointer-events: auto;
 }
 
 .gis-layer-edit-field input[type="color"] {

@@ -20,7 +20,6 @@ function getDewMap() {
 }
 
 async function fetchDewJson(path = "") {
-  const response = await fetch(`${DEW_EXPOSURE_API_URL}${path}`);
   if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
   return await response.json();
 }

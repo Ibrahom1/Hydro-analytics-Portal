@@ -10,11 +10,91 @@
   let editForm = null;
   let editStatus = null;
   let selectedEditLayerId = '';
+  let activeSidebarToggle = null;
   const featureSummaryCache = new Map();
   const layerDrafts = new Map();
+  const existingLayerOriginalStyles = new Map();
+  const existingLayerToggleMappings = new Map();
   const PRESENTATION_KEYS = ['style', 'filter', 'feature_colors', 'label'];
   const LOCAL_PRESENTATION_KEY = 'hydro-gis-uploader-presentations-v1';
+  const EXISTING_LAYER_STYLE_KEY = 'hydro-gis-existing-layer-styles-v1';
   const MAP_READY_TIMEOUT_MS = 20000;
+  const EDITABLE_EXISTING_LAYER_TYPES = new Set(['circle', 'line', 'fill', 'raster']);
+  const KNOWN_EXISTING_TOGGLE_LAYERS = [
+    { checkboxId: 'natBoundary', layers: ['nationalBoundary'] },
+    { checkboxId: 'prvBoundary', layers: ['provincialBoundary'] },
+    { checkboxId: 'dstBoundary', layers: ['districtBoundary', 'DistrictBoundary'] },
+    { checkboxId: 'tslBoundary', layers: ['TehsilBoundary', 'TehsilBoundaryLine'] },
+    { checkboxId: 'uncBoundary', layers: ['Union_Council'] },
+    { checkboxId: 'PakRivers', layers: ['Pakistan_Rivers'] },
+    { checkboxId: 'kp_Rivers', layers: ['KP_RIVERS'] },
+    { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
+    { checkboxId: 'india', layers: ['indian'] },
+    { checkboxId: 'Glofas', layers: ['glofas'] },
+    { checkboxId: 'gmrcWapda', layers: ['gmrc_wapda_stations'] },
+    { checkboxId: 'pmdStations', layers: ['pmd_stations'] },
+    { checkboxId: 'damagedPmdStations', layers: ['damaged_pmd_stations'] },
+    { checkboxId: 'Barrages', layers: ['Barrages'] },
+    { checkboxId: 'watershed', layers: ['Combined'] },
+    { checkboxId: 'minorRivers', layers: ['minor_rivers_outline'] },
+    { checkboxId: 'breach', layers: ['breach_points'] },
+    { checkboxId: 'telemetric', layers: ['telemetric_stations'] },
+    { checkboxId: 'protectionBand', layers: ['protection_bands'] },
+    { checkboxId: 'settlements', layers: ['settlements'] },
+    { checkboxId: 'schools', layers: ['schools'] },
+    { checkboxId: 'railwayStations', layers: ['railway_stations'] },
+    { checkboxId: 'airports', layers: ['airports'] },
+    { checkboxId: 'bridges', layers: ['BridgesL'] },
+    { checkboxId: 'healthFacilities', layers: ['health_facilities'] },
+    { checkboxId: 'mainCanal', layers: ['main_canals_line'] },
+    { checkboxId: 'branchCanal', layers: ['branch_canals_line'] },
+    { checkboxId: 'linkCanals', layers: ['link_canals_line'] },
+    { checkboxId: 'distributaries', layers: ['distributories_line'] },
+    { checkboxId: 'ffd', layers: ['ffd_point'] },
+    { checkboxId: 'lowerIndusHighFlood', layers: ['lihfex'] },
+    { checkboxId: 'lowerIndusMediumFlood', layers: ['limfex'] },
+    { checkboxId: 'lowerIndusLowFlood', layers: ['lilfex'] },
+    { checkboxId: 'upperIndusHighFlood', layers: ['uihfex'] },
+    { checkboxId: 'upperIndusFlood', layers: ['Upper_indus_flood'] },
+    { checkboxId: 'upperIndusLowFlood', layers: ['uilfex'] },
+    { checkboxId: 'chenabHighFlood', layers: ['chfex'] },
+    { checkboxId: 'chenabMediumFlood', layers: ['cmfex'] },
+    { checkboxId: 'chenabLowFlood', layers: ['clfex'] },
+    { checkboxId: 'kabilHighFlood', layers: ['khfex'] },
+    { checkboxId: 'kabilMediumFlood', layers: ['Kabil_medium_flood'] },
+    { checkboxId: 'kabilLowFlood', layers: ['klfex'] },
+    { checkboxId: 'jhelumHighFlood', layers: ['jhfex'] },
+    { checkboxId: 'jhelumMediumFlood', layers: ['jmfex'] },
+    { checkboxId: 'jhelumLowFlood', layers: ['jlfex'] },
+    { checkboxId: 'swatHighExtent', layers: ['3_Swat_River_50yr_Flood_Extent'] },
+    { checkboxId: 'swatExtent', layers: ['2_Swat_River_25yr_Flood_Extent'] },
+    { checkboxId: 'swatLowExtent', layers: ['1_Swat_River_5yr_Flood_Extent'] },
+    { checkboxId: 'raviHighFlood', layers: ['rhfex'] },
+    { checkboxId: 'raviMediumFlood', layers: ['rmfex'] },
+    { checkboxId: 'raviLowFlood', layers: ['rlfex'] },
+    { checkboxId: 'sutlejHighFlood', layers: ['shfex'] },
+    { checkboxId: 'sutlejMediumFlood', layers: ['smfex'] },
+    { checkboxId: 'sutlejLowFlood', layers: ['slfex'] },
+    { checkboxId: 'DI', layers: ['DIKHAN_CL'] },
+    { checkboxId: 'di_ht', layers: ['DI_Khan_HT'] },
+    { checkboxId: 'DG', layers: ['DG khan'] },
+    { checkboxId: 'dg_ht', layers: ['DG khan HT'] },
+    { checkboxId: 'panjal', layers: ['Pir_Panjal_HT'] },
+    { checkboxId: 'hyder', layers: ['Hyderabad_arc'] },
+    { checkboxId: 'hyderabad', layers: ['Terrain_hyd'] },
+    { checkboxId: 'urbanFloodingKpk', layers: ['kpk_urban'] },
+    { checkboxId: 'urbanFloodingPunjab', layers: ['urban_punjab'] },
+    { checkboxId: 'urbanFloodingSindh', layers: ['urban_sindh'] },
+    { checkboxId: 'Sindh', layers: ['Sindh'] },
+    { checkboxId: 'Kirthar', layers: ['Kirthar'] },
+    { checkboxId: 'Kirthar_extent', layers: ['KIRTHAR_RANGE'] },
+    { checkboxId: 'Gujranwala', layers: ['Gujranwala'] },
+    { checkboxId: 'sargodha', layers: ['Depth_Max_Terrain_sargodha'] },
+    { checkboxId: 'rwp', layers: ['Depth_Max_Terrain_Rawalpindi'] },
+    { checkboxId: 'fais', layers: ['Depth_Max_Terrain_dem_faislabad'] },
+    { checkboxId: 'nowshera', layers: ['Nowshera_Depth'] },
+    { checkboxId: 'charsadda', layers: ['Charsadda_Depth'] }
+  ];
 
   const DEFAULT_LAYER_PAINT = {
     point: {
@@ -64,6 +144,41 @@
     haloColor: '#000000',
     haloWidth: 1
   };
+
+  const UPLOADED_POPUP_SKIPPED_FIELD_NAMES = new Set([
+    'x',
+    'y',
+    'z',
+    'lat',
+    'latitude',
+    'latitde',
+    'lattitude',
+    'latitud',
+    'lon',
+    'long',
+    'lng',
+    'longitude',
+    'longitud',
+    'xcoord',
+    'ycoord',
+    'xcoordinate',
+    'ycoordinate',
+    'coordx',
+    'coordy',
+    'easting',
+    'northing',
+    'geom',
+    'geometry',
+    'thegeom',
+    'wkbgeometry',
+    'shape',
+    'shapeleng',
+    'shapelength',
+    'shapearea',
+    'bbox',
+    'bounds',
+    'centroid'
+  ]);
 
   function getMapInstance() {
     try {
@@ -144,6 +259,40 @@
     }
   }
 
+  function readExistingLayerStyleStore() {
+    try {
+      return JSON.parse(localStorage.getItem(EXISTING_LAYER_STYLE_KEY) || '{}') || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function writeExistingLayerStyleStore(store) {
+    try {
+      localStorage.setItem(EXISTING_LAYER_STYLE_KEY, JSON.stringify(store));
+    } catch (error) {
+      console.warn('[GIS uploader] Could not write existing layer style backup:', error);
+    }
+  }
+
+  function saveExistingLayerStyle(layerId, payload) {
+    if (!layerId) return;
+    const store = readExistingLayerStyleStore();
+    store[layerId] = {
+      ...presentationPayloadCopy(payload),
+      saved_at: new Date().toISOString()
+    };
+    writeExistingLayerStyleStore(store);
+  }
+
+  function removeExistingLayerStyle(layerId) {
+    if (!layerId) return;
+    const store = readExistingLayerStyleStore();
+    if (!store[layerId]) return;
+    delete store[layerId];
+    writeExistingLayerStyleStore(store);
+  }
+
   function presentationPayloadCopy(payload) {
     const copy = {};
     PRESENTATION_KEYS.forEach((key) => {
@@ -217,6 +366,16 @@
     }[char]));
   }
 
+  function escapePopupHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char]));
+  }
+
   function escapeAttributeSelector(value) {
     return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   }
@@ -225,11 +384,351 @@
     return String(value || '').replace(/\s+/g, ' ').trim();
   }
 
+  function normalizePropertyKey(value) {
+    return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  function cloneData(value) {
+    if (value === undefined) return undefined;
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (error) {
+      return value;
+    }
+  }
+
+  function isUploadedEditableLayer(layer) {
+    return !layer?.editor_source || layer.editor_source === 'uploaded';
+  }
+
+  function isExistingEditableLayer(layer) {
+    return layer?.editor_source === 'existing';
+  }
+
+  function editorLayerKey(layer) {
+    if (!layer?.id) return '';
+    return `${isExistingEditableLayer(layer) ? 'existing' : 'uploaded'}:${layer.id}`;
+  }
+
+  function existingLayerBucketFromType(type) {
+    if (type === 'circle') return 'point';
+    if (type === 'line') return 'line';
+    if (type === 'fill') return 'fill';
+    if (type === 'raster') return 'raster';
+    return '';
+  }
+
+  function existingLayerTypeFromBucket(bucket) {
+    if (bucket === 'point') return 'point';
+    if (bucket === 'line') return 'line';
+    if (bucket === 'fill') return 'fill';
+    return 'raster';
+  }
+
+  function friendlyLayerName(layerId) {
+    return cleanText(String(layerId || '')
+      .replace(/^gis-upload-/i, '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')) || layerId;
+  }
+
+  function layerTypeDisplayName(layer) {
+    if (layer?.map_layer_type === 'circle' || layer?.render_type === 'point') return 'Point';
+    if (layer?.map_layer_type === 'line' || layer?.render_type === 'line') return 'Line';
+    if (layer?.map_layer_type === 'fill' || layer?.render_type === 'fill') return 'Fill';
+    if (layer?.map_layer_type === 'raster' || layer?.kind === 'raster') return 'Raster';
+    return 'Layer';
+  }
+
+  function sidebarToggleLabel(checkbox) {
+    if (!checkbox) return '';
+    const row = checkbox.closest('label');
+    const firstSpan = row?.querySelector('span');
+    return cleanText(firstSpan?.textContent || checkbox.getAttribute('aria-label') || checkbox.id);
+  }
+
+  function sidebarTogglePath(checkbox) {
+    const row = checkbox?.closest('label');
+    const panels = [];
+    let panel = row?.parentElement?.closest?.('[id]');
+    while (panel && panel.id !== 'app-sidebar') {
+      if (isSidebarPlacementPanel(panel)) {
+        panels.unshift(getPanelLabel(panel));
+      }
+      panel = panel.parentElement?.closest?.('[id]');
+    }
+    return panels;
+  }
+
+  function sidebarToggleInfo(checkbox) {
+    if (!checkbox?.id) return null;
+    return {
+      checkboxId: checkbox.id,
+      label: sidebarToggleLabel(checkbox),
+      path: sidebarTogglePath(checkbox)
+    };
+  }
+
+  function checkedSidebarToggleInfos() {
+    const sidebar = document.getElementById('app-sidebar');
+    if (!sidebar) return [];
+    return Array.from(sidebar.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(sidebarToggleInfo)
+      .filter(Boolean);
+  }
+
+  function checkboxForToggleInfo(info) {
+    if (!info?.checkboxId) return null;
+    return document.getElementById(info.checkboxId);
+  }
+
+  function isToggleInfoActive(info) {
+    const checkbox = checkboxForToggleInfo(info);
+    return Boolean(checkbox?.checked);
+  }
+
+  function isLayerCurrentlyVisible(map, styleLayer) {
+    if (!map || !styleLayer?.id) return false;
+    try {
+      return map.getLayoutProperty(styleLayer.id, 'visibility') !== 'none';
+    } catch (error) {
+      return styleLayer.layout?.visibility !== 'none';
+    }
+  }
+
+  function defaultPaintValue(bucket, property) {
+    const value = DEFAULT_LAYER_PAINT[bucket]?.[property];
+    return cloneData(value);
+  }
+
+  function rgbToHex(value, fallback) {
+    const match = String(value || '').match(/rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i);
+    if (!match) return fallback;
+    const toHex = (part) => Math.max(0, Math.min(255, Number(part) || 0)).toString(16).padStart(2, '0');
+    return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
+  }
+
+  function normalizeColorForInput(value, fallback) {
+    const text = String(value || '').trim();
+    if (/^#[0-9a-f]{6}$/i.test(text)) return text;
+    if (/^#[0-9a-f]{3}$/i.test(text)) {
+      return `#${text[1]}${text[1]}${text[2]}${text[2]}${text[3]}${text[3]}`;
+    }
+    return rgbToHex(text, fallback);
+  }
+
+  function normalizePaintValueForInput(bucket, property, value) {
+    const fallback = defaultPaintValue(bucket, property);
+    if (property.includes('color')) return normalizeColorForInput(value, fallback || '#06b6d4');
+    if (property === 'line-dasharray') return Array.isArray(value) ? cloneData(value) : cloneData(fallback || DASH_PRESETS.solid);
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : fallback;
+  }
+
+  function editablePaintProperties(bucket) {
+    return Object.keys(DEFAULT_LAYER_PAINT[bucket] || {});
+  }
+
+  function readLayerPaint(map, layerId, bucket) {
+    const paint = {};
+    editablePaintProperties(bucket).forEach((property) => {
+      let value;
+      try {
+        value = map.getPaintProperty(layerId, property);
+      } catch (error) {
+        value = undefined;
+      }
+      paint[property] = normalizePaintValueForInput(bucket, property, value);
+    });
+    return paint;
+  }
+
+  function mergePaintStyles(baseStyle, savedStyle) {
+    const merged = { paint: cloneData(baseStyle?.paint || {}) || {} };
+    Object.entries(savedStyle?.paint || {}).forEach(([bucket, paint]) => {
+      merged.paint[bucket] = {
+        ...(merged.paint[bucket] || {}),
+        ...(paint || {})
+      };
+    });
+    return merged;
+  }
+
+  function isRegisteredCustomLayer(layerId) {
+    try {
+      return typeof customLayerRegistry !== 'undefined' && customLayerRegistry?.has(layerId);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function isKnownAppLayerSource(map, styleLayer) {
+    const sourceId = styleLayer?.source;
+    if (!sourceId) return false;
+    if (/^(mapbox|composite)$/i.test(sourceId)) return false;
+    try {
+      const source = map.getStyle()?.sources?.[sourceId];
+      return /geoserver|geojson|wms|ows|gwc|172\.18|localhost|hydro|gcop|hydromet/i.test(JSON.stringify(source || {}));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function isExistingLayerCandidate(map, styleLayer) {
+    if (!map || !styleLayer?.id || !EDITABLE_EXISTING_LAYER_TYPES.has(styleLayer.type)) return false;
+    if (String(styleLayer.id).startsWith('gis-upload-')) return false;
+    return isRegisteredCustomLayer(styleLayer.id) || isKnownAppLayerSource(map, styleLayer);
+  }
+
+  function recordExistingLayerToggle(layerId, info) {
+    if (!layerId || !info?.checkboxId) return;
+    existingLayerToggleMappings.set(layerId, {
+      checkboxId: info.checkboxId,
+      label: info.label || info.checkboxId,
+      path: Array.isArray(info.path) ? info.path : []
+    });
+  }
+
+  function toggleInfoFromKnownLayerMap(layerId) {
+    const match = KNOWN_EXISTING_TOGGLE_LAYERS.find((entry) => entry.layers.includes(layerId));
+    if (!match) return null;
+    const checkbox = document.getElementById(match.checkboxId);
+    if (!checkbox?.checked) return null;
+    return sidebarToggleInfo(checkbox);
+  }
+
+  function normalizedLayerHints(styleLayer) {
+    return [
+      styleLayer?.id,
+      styleLayer?.source,
+      styleLayer?.['source-layer']
+    ].filter(Boolean).map(normalizePropertyKey);
+  }
+
+  function toggleInfoByNameMatch(styleLayer) {
+    const hints = normalizedLayerHints(styleLayer);
+    if (!hints.length) return null;
+    return checkedSidebarToggleInfos().find((info) => {
+      const checkboxHint = normalizePropertyKey(info.checkboxId);
+      const labelHint = normalizePropertyKey(info.label);
+      return hints.some((hint) => {
+        const checkboxMatch = checkboxHint && (
+          hint === checkboxHint
+          || (checkboxHint.length >= 3 && hint.includes(checkboxHint))
+          || (hint.length >= 3 && checkboxHint.includes(hint))
+        );
+        const labelMatch = labelHint && (
+          hint === labelHint
+          || (labelHint.length >= 4 && hint.includes(labelHint))
+          || (hint.length >= 4 && labelHint.includes(hint))
+        );
+        return checkboxMatch || labelMatch;
+      });
+    }) || null;
+  }
+
+  function toggleInfoForStyleLayer(styleLayer) {
+    const mapped = existingLayerToggleMappings.get(styleLayer?.id);
+    if (mapped && isToggleInfoActive(mapped)) return mapped;
+    const knownMapped = toggleInfoFromKnownLayerMap(styleLayer?.id);
+    if (knownMapped) {
+      recordExistingLayerToggle(styleLayer.id, knownMapped);
+      return knownMapped;
+    }
+    const matched = toggleInfoByNameMatch(styleLayer);
+    if (matched) {
+      recordExistingLayerToggle(styleLayer.id, matched);
+      return matched;
+    }
+    return null;
+  }
+
+  function rememberExistingLayerOriginalStyle(map, styleLayer) {
+    if (!map || !styleLayer?.id || existingLayerOriginalStyles.has(styleLayer.id)) {
+      return existingLayerOriginalStyles.get(styleLayer?.id);
+    }
+    const bucket = existingLayerBucketFromType(styleLayer.type);
+    if (!bucket) return null;
+    const originalStyle = {
+      paint: {
+        [bucket]: readLayerPaint(map, styleLayer.id, bucket)
+      }
+    };
+    existingLayerOriginalStyles.set(styleLayer.id, originalStyle);
+    return originalStyle;
+  }
+
+  function existingEditableLayerFromStyleLayer(map, styleLayer, toggleInfo) {
+    if (!isExistingLayerCandidate(map, styleLayer)) return null;
+    const bucket = existingLayerBucketFromType(styleLayer.type);
+    const originalStyle = rememberExistingLayerOriginalStyle(map, styleLayer) || { paint: { [bucket]: {} } };
+    const savedPresentation = readExistingLayerStyleStore()[styleLayer.id] || {};
+    const displayName = toggleInfo?.label || friendlyLayerName(styleLayer.id);
+    const editableLayer = {
+      id: styleLayer.id,
+      editor_source: 'existing',
+      display_name: displayName,
+      toggle_label: displayName,
+      toggle_checkbox_id: toggleInfo?.checkboxId || '',
+      toggle_path: toggleInfo?.path || [],
+      kind: bucket === 'raster' ? 'raster' : 'vector',
+      render_type: existingLayerTypeFromBucket(bucket),
+      map_layer_type: styleLayer.type,
+      map_source_id: styleLayer.source || '',
+      map_source_layer: styleLayer['source-layer'] || '',
+      map_filter: cloneData(styleLayer.filter || null),
+      map_minzoom: styleLayer.minzoom,
+      map_maxzoom: styleLayer.maxzoom,
+      style: mergePaintStyles(originalStyle, savedPresentation.style),
+      original_style: cloneData(originalStyle)
+    };
+    ['filter', 'feature_colors', 'label'].forEach((key) => {
+      if (savedPresentation[key]) editableLayer[key] = cloneData(savedPresentation[key]);
+    });
+    return editableLayer;
+  }
+
+  function getExistingEditableLayers() {
+    const map = getMapInstance();
+    if (!map?.getStyle) return [];
+    const layers = Array.from(map.getStyle().layers || [])
+      .filter((styleLayer) => isExistingLayerCandidate(map, styleLayer))
+      .filter((styleLayer) => isLayerCurrentlyVisible(map, styleLayer))
+      .map((styleLayer) => {
+        const toggleInfo = toggleInfoForStyleLayer(styleLayer);
+        if (!toggleInfo || !isToggleInfoActive(toggleInfo)) return null;
+        return existingEditableLayerFromStyleLayer(map, styleLayer, toggleInfo);
+      })
+      .filter(Boolean);
+
+    const nameCounts = layers.reduce((counts, layer) => {
+      const label = layer.display_name || layer.id;
+      counts.set(label, (counts.get(label) || 0) + 1);
+      return counts;
+    }, new Map());
+    const nameIndexes = new Map();
+    return layers.map((layer) => {
+      const label = layer.display_name || layer.id;
+      if ((nameCounts.get(label) || 0) > 1) {
+        const typeName = layerTypeDisplayName(layer);
+        const key = `${label}:${typeName}`;
+        const index = (nameIndexes.get(key) || 0) + 1;
+        nameIndexes.set(key, index);
+        layer.display_name = `${label} (${typeName}${index > 1 ? ` ${index}` : ''})`;
+      }
+      return layer;
+    })
+      .sort((a, b) => cleanText(a.display_name).localeCompare(cleanText(b.display_name)));
+  }
+
   function sourceId(layer) {
     return `gis-upload-source-${layer.id}`;
   }
 
   function layerIds(layer) {
+    if (isExistingEditableLayer(layer)) {
+      return [layer.id];
+    }
     if (layer.kind === 'raster') {
       return [`gis-upload-${layer.id}-raster`];
     }
@@ -243,7 +742,12 @@
   }
 
   function labelLayerId(layer) {
+    if (isExistingEditableLayer(layer)) return existingLabelLayerIdForLayerId(layer.id);
     return `gis-upload-${layer.id}-label`;
+  }
+
+  function existingLabelLayerIdForLayerId(layerId) {
+    return `gis-existing-${layerId}-label`;
   }
 
   function allUploadedLayerIds(layer) {
@@ -256,6 +760,7 @@
   }
 
   function uploadedLayerType(layer) {
+    if (isExistingEditableLayer(layer)) return existingLayerBucketFromType(layer.map_layer_type);
     if (layer?.kind === 'raster') return 'raster';
     if (layer?.render_type === 'point') return 'point';
     if (layer?.render_type === 'line') return 'line';
@@ -263,6 +768,9 @@
   }
 
   function editablePaintBuckets(layer) {
+    if (isExistingEditableLayer(layer)) {
+      return [existingLayerBucketFromType(layer.map_layer_type)].filter(Boolean);
+    }
     const type = uploadedLayerType(layer);
     if (type === 'fill') return ['fill', 'outline'];
     return [type];
@@ -276,6 +784,9 @@
   }
 
   function styleLayerIdsForBucket(layer, bucket) {
+    if (isExistingEditableLayer(layer)) {
+      return bucket === existingLayerBucketFromType(layer.map_layer_type) ? [layer.id] : [];
+    }
     const ids = layerIds(layer);
     if (bucket === 'fill') return ids.slice(0, 1);
     if (bucket === 'outline') return ids.slice(1, 2);
@@ -292,11 +803,25 @@
     if (!filter?.field || !Array.isArray(filter.values) || !filter.values.length) {
       return null;
     }
+    const values = Array.from(new Set(filter.values.map(normalizeFilterValue))).filter((value) => value !== '');
+    if (!values.length) return null;
     return [
-      'in',
+      'match',
       ['to-string', ['get', filter.field]],
-      ['literal', filter.values.map(normalizeFilterValue)]
+      values,
+      true,
+      false
     ];
+  }
+
+  function buildLegacyMapboxFilter(layer) {
+    const filter = layer?.filter;
+    if (!filter?.field || !Array.isArray(filter.values) || !filter.values.length) {
+      return null;
+    }
+    const values = Array.from(new Set(filter.values.map(normalizeFilterValue))).filter((value) => value !== '');
+    if (!values.length) return null;
+    return ['in', filter.field, ...values];
   }
 
   function featureColorBucket(layer) {
@@ -310,6 +835,291 @@
     if (layer?.render_type === 'point') return 'circle-color';
     if (layer?.render_type === 'line') return 'line-color';
     return 'fill-color';
+  }
+
+  function popupInteractiveLayerIds(layer) {
+    if (layer?.kind !== 'vector') return [];
+    const ids = layerIds(layer);
+    if (layer.render_type === 'point' || layer.render_type === 'line') return ids.slice(0, 1);
+    return ids.slice(0, 1);
+  }
+
+  function shouldSkipPopupField(name) {
+    const key = normalizePropertyKey(name);
+    if (!key) return true;
+    if (UPLOADED_POPUP_SKIPPED_FIELD_NAMES.has(key)) return true;
+    if (/^(x|y|z|lat|latitude|latitde|lattitude|latitud|lon|long|lng|longitude|longitud)(coord|coordinate|dd)?\d*$/.test(key)) return true;
+    if (/^(coord)?(x|y)$/.test(key)) return true;
+    if (/^(shape)(leng|length|area)$/.test(key)) return true;
+    return false;
+  }
+
+  function hasPopupValue(value) {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.keys(value).length > 0;
+    return true;
+  }
+
+  function formatPopupLabel(name) {
+    const spaced = String(name || '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!spaced) return 'Attribute';
+    return spaced
+      .split(' ')
+      .map((word) => {
+        if (word.length <= 3 && word === word.toUpperCase()) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+  }
+
+  function formatPopupValue(value) {
+    if (Array.isArray(value)) return value.map(formatPopupValue).join(', ');
+    if (value && typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch (error) {
+        return String(value);
+      }
+    }
+    return String(value ?? '');
+  }
+
+  function popupRowsForFeature(feature) {
+    return Object.entries(feature?.properties || {})
+      .filter(([name, value]) => !shouldSkipPopupField(name) && hasPopupValue(value))
+      .map(([name, value]) => ({
+        label: formatPopupLabel(name),
+        value: formatPopupValue(value)
+      }));
+  }
+
+  function popupTitleForFeature(layer, rows, properties) {
+    const titleKeys = new Set([
+      'name',
+      'title',
+      'label',
+      'stationname',
+      'station',
+      'site',
+      'sitename',
+      'district',
+      'tehsil',
+      'village',
+      'city'
+    ]);
+    const matchedTitle = Object.entries(properties || {}).find(([name, value]) => {
+      return titleKeys.has(normalizePropertyKey(name)) && hasPopupValue(value) && !shouldSkipPopupField(name);
+    });
+    if (matchedTitle) return formatPopupValue(matchedTitle[1]);
+    return rows[0]?.value || layer?.display_name || 'Uploaded Feature';
+  }
+
+  function uploadedLayerAccentColor(layer) {
+    const bucket = featureColorBucket(layer) || uploadedLayerType(layer);
+    const property = featureColorPaintProperty(layer);
+    const color = paintForBucket(layer, bucket)[property] || '#06b6d4';
+    return /^#[0-9a-f]{3,8}$/i.test(String(color)) ? color : '#06b6d4';
+  }
+
+  function uploadedLayerTypeLabel(layer) {
+    if (layer?.render_type === 'point') return 'Point';
+    if (layer?.render_type === 'line') return 'Line';
+    return 'Polygon';
+  }
+
+  function createUploadedFeaturePopupHtml(feature, layer) {
+    const rows = popupRowsForFeature(feature);
+    const accentColor = uploadedLayerAccentColor(layer);
+    const title = popupTitleForFeature(layer, rows, feature?.properties || {});
+    const layerName = layer?.display_name || 'Uploaded Layer';
+    const contentRows = rows.length
+      ? rows.map((row) => `
+        <div class="discharge-item">
+          <span class="discharge-label">${escapePopupHtml(row.label)}:</span>
+          <span class="discharge-value">${escapePopupHtml(row.value)}</span>
+        </div>
+      `).join('')
+      : '<div class="gis-upload-popup-empty">No display attributes available.</div>';
+
+    return `
+      <div class="ffd-popup-container gis-upload-popup-container">
+        <div class="popup-header" style="border-left: 4px solid ${accentColor};">
+          <div class="station-info">
+            <h3 class="station-name">${escapePopupHtml(title)}</h3>
+            <div class="status-badge" style="background-color: ${accentColor};" title="${escapePopupHtml(layerName)}">
+              <i class="fas fa-layer-group"></i>
+              ${escapePopupHtml(uploadedLayerTypeLabel(layer))}
+            </div>
+          </div>
+        </div>
+        <div class="popup-content">
+          <div class="gis-upload-popup-layer">${escapePopupHtml(layerName)}</div>
+          <div class="discharge-section">
+            <div class="discharge-grid">
+              ${contentRows}
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>
+        .gis-upload-feature-popup .mapboxgl-popup-content {
+          padding: 0 !important;
+          border-radius: 12px !important;
+          overflow: hidden !important;
+        }
+        .gis-upload-feature-popup .mapboxgl-popup-close-button {
+          display: none !important;
+        }
+        .gis-upload-popup-container {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          width: 340px;
+          max-width: 340px;
+          background: #ffffff;
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+          overflow: hidden;
+          border: 2px solid ${accentColor};
+          position: relative;
+        }
+        .gis-upload-popup-container .popup-header {
+          background: #f8f9fa;
+          padding: 8px 12px;
+          border-bottom: 2px solid #e3f2fd;
+        }
+        .gis-upload-popup-container .station-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+        }
+        .gis-upload-popup-container .station-name {
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a1a1a;
+          margin: 0;
+          line-height: 1.2;
+          flex: 1;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        .gis-upload-popup-container .status-badge {
+          color: white;
+          padding: 4px 8px;
+          border-radius: 16px;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          white-space: nowrap;
+        }
+        .gis-upload-popup-container .popup-content {
+          padding: 8px 12px 12px;
+          max-height: 360px;
+          overflow: auto;
+        }
+        .gis-upload-popup-layer {
+          margin: 0 0 8px;
+          color: #475569;
+          font-size: 12px;
+          font-weight: 600;
+          overflow-wrap: anywhere;
+        }
+        .gis-upload-popup-container .discharge-section {
+          margin-bottom: 0;
+        }
+        .gis-upload-popup-container .discharge-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .gis-upload-popup-container .discharge-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 6px 8px;
+          background: #f8f9fa;
+          border-radius: 6px;
+          border: 1px solid #e3f2fd;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .gis-upload-popup-container .discharge-label {
+          flex: 0 0 42%;
+          font-size: 12px;
+          font-weight: 600;
+          color: #495057;
+          overflow-wrap: anywhere;
+        }
+        .gis-upload-popup-container .discharge-value {
+          flex: 1;
+          min-width: 0;
+          text-align: right;
+          font-size: 13px;
+          font-weight: 700;
+          color: #212529;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        .gis-upload-popup-empty {
+          padding: 10px 8px;
+          background: #f8f9fa;
+          border: 1px solid #e3f2fd;
+          border-radius: 6px;
+          color: #475569;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .gis-upload-feature-popup .mapboxgl-popup-tip {
+          border-top-color: #ffffff !important;
+        }
+      </style>
+    `;
+  }
+
+  function bindUploadedLayerPopups(map, layer) {
+    if (!map || !layer || layer.kind !== 'vector' || typeof mapboxgl === 'undefined') return;
+    if (!map.__gisUploaderPopupBoundLayerIds) {
+      map.__gisUploaderPopupBoundLayerIds = new Set();
+    }
+
+    popupInteractiveLayerIds(layer).forEach((styleLayerId) => {
+      if (!map.getLayer(styleLayerId) || map.__gisUploaderPopupBoundLayerIds.has(styleLayerId)) return;
+
+      map.on('click', styleLayerId, (event) => {
+        const feature = event.features?.[0];
+        if (!feature) return;
+        const currentLayer = currentUploadedLayer(layer.id) || layer;
+        new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: true,
+          maxWidth: '360px',
+          className: 'ffd-enhanced-popup gis-upload-feature-popup'
+        })
+          .setLngLat(event.lngLat)
+          .setHTML(createUploadedFeaturePopupHtml(feature, currentLayer))
+          .addTo(map);
+      });
+
+      map.on('mouseenter', styleLayerId, () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', styleLayerId, () => {
+        map.getCanvas().style.cursor = '';
+      });
+
+      map.__gisUploaderPopupBoundLayerIds.add(styleLayerId);
+    });
   }
 
   function buildFeatureColorExpression(layer) {
@@ -337,29 +1147,60 @@
     return layer?.kind === 'vector' && Boolean(label.enabled && label.field);
   }
 
-  function labelLayerDefinition(layer, visibility) {
+  function labelLayerLayout(layer, visibility) {
     const label = labelConfigForLayer(layer);
+    return {
+      visibility: isLabelEnabled(layer) ? visibility : 'none',
+      'text-field': ['to-string', ['get', label.field || '']],
+      'text-size': Number(label.size) || DEFAULT_LABEL_STYLE.size,
+      'text-anchor': 'center',
+      'text-offset': [0, layer.render_type === 'point' ? 1.2 : 0],
+      'text-allow-overlap': false,
+      'text-ignore-placement': false,
+      'symbol-placement': layer.render_type === 'line' ? 'line' : 'point'
+    };
+  }
+
+  function labelLayerPaint(layer) {
+    const label = labelConfigForLayer(layer);
+    return {
+      'text-color': label.color || DEFAULT_LABEL_STYLE.color,
+      'text-halo-color': label.haloColor || DEFAULT_LABEL_STYLE.haloColor,
+      'text-halo-width': Number(label.haloWidth) || DEFAULT_LABEL_STYLE.haloWidth,
+      'text-opacity': isLabelEnabled(layer) ? 1 : 0
+    };
+  }
+
+  function labelLayerDefinition(layer, visibility) {
     return {
       id: labelLayerId(layer),
       type: 'symbol',
       source: sourceId(layer),
-      layout: {
-        visibility: isLabelEnabled(layer) ? visibility : 'none',
-        'text-field': ['to-string', ['get', label.field || '']],
-        'text-size': Number(label.size) || DEFAULT_LABEL_STYLE.size,
-        'text-anchor': 'center',
-        'text-offset': [0, layer.render_type === 'point' ? 1.2 : 0],
-        'text-allow-overlap': false,
-        'text-ignore-placement': false,
-        'symbol-placement': layer.render_type === 'line' ? 'line' : 'point'
-      },
-      paint: {
-        'text-color': label.color || DEFAULT_LABEL_STYLE.color,
-        'text-halo-color': label.haloColor || DEFAULT_LABEL_STYLE.haloColor,
-        'text-halo-width': Number(label.haloWidth) || DEFAULT_LABEL_STYLE.haloWidth,
-        'text-opacity': isLabelEnabled(layer) ? 1 : 0
-      }
+      layout: labelLayerLayout(layer, visibility),
+      paint: labelLayerPaint(layer)
     };
+  }
+
+  function existingLabelLayerDefinition(map, layer, visibility) {
+    const styleLayer = map?.getLayer(layer.id);
+    const source = layer.map_source_id || styleLayer?.source;
+    if (!source) return null;
+    const definition = {
+      id: labelLayerId(layer),
+      type: 'symbol',
+      source,
+      layout: labelLayerLayout(layer, visibility),
+      paint: labelLayerPaint(layer)
+    };
+    const sourceLayer = layer.map_source_layer || styleLayer?.['source-layer'];
+    if (sourceLayer) definition['source-layer'] = sourceLayer;
+    const baseFilter = layer.map_filter || styleLayer?.filter;
+    if (baseFilter) definition.filter = cloneData(baseFilter);
+    const minzoom = Number.isFinite(layer.map_minzoom) ? layer.map_minzoom : styleLayer?.minzoom;
+    const maxzoom = Number.isFinite(layer.map_maxzoom) ? layer.map_maxzoom : styleLayer?.maxzoom;
+    if (Number.isFinite(minzoom)) definition.minzoom = minzoom;
+    if (Number.isFinite(maxzoom)) definition.maxzoom = maxzoom;
+    return definition;
   }
 
   function applyLayerStyle(map, layer) {
@@ -394,20 +1235,45 @@
   }
 
   function applyLayerFilter(map, layer) {
-    if (!map || !layer || layer.kind !== 'vector') return;
+    if (!map || !layer || !isUploadedEditableLayer(layer) || layer.kind !== 'vector') return;
     const filter = buildMapboxFilter(layer);
+    const fallbackFilter = buildLegacyMapboxFilter(layer);
     allUploadedLayerIds(layer).forEach((styleLayerId) => {
       if (!map.getLayer(styleLayerId)) return;
       try {
         map.setFilter(styleLayerId, filter);
       } catch (error) {
-        console.warn('[GIS uploader] Could not apply uploaded layer filter:', error);
+        if (!fallbackFilter) {
+          console.warn('[GIS uploader] Could not apply uploaded layer filter:', error);
+          return;
+        }
+        try {
+          map.setFilter(styleLayerId, fallbackFilter);
+        } catch (fallbackError) {
+          console.warn('[GIS uploader] Could not apply uploaded layer filter:', fallbackError);
+        }
       }
     });
   }
 
-  function applyLayerLabels(map, layer) {
-    if (!map || !layer || layer.kind !== 'vector') return;
+  function updateLabelLayerProperties(map, layerId, definition) {
+    Object.entries(definition.layout || {}).forEach(([property, value]) => {
+      try {
+        map.setLayoutProperty(layerId, property, value);
+      } catch (error) {
+        console.warn('[GIS uploader] Could not update label layout:', property, error);
+      }
+    });
+    Object.entries(definition.paint || {}).forEach(([property, value]) => {
+      try {
+        map.setPaintProperty(layerId, property, value);
+      } catch (error) {
+        console.warn('[GIS uploader] Could not update label paint:', property, error);
+      }
+    });
+  }
+
+  function applyUploadedLayerLabels(map, layer) {
     const id = labelLayerId(layer);
     const visibility = isLayerChecked(layer) ? 'visible' : 'none';
 
@@ -421,20 +1287,39 @@
     }
 
     const definition = labelLayerDefinition(layer, visibility);
-    Object.entries(definition.layout).forEach(([property, value]) => {
+    updateLabelLayerProperties(map, id, definition);
+  }
+
+  function applyExistingLayerLabels(map, layer) {
+    const id = labelLayerId(layer);
+    const baseLayer = map.getLayer(layer.id);
+    if (!baseLayer) return;
+    const visibility = isLayerCurrentlyVisible(map, baseLayer) ? 'visible' : 'none';
+    const definition = existingLabelLayerDefinition(map, layer, visibility);
+    if (!definition) return;
+
+    if (!map.getLayer(id)) {
+      if (!isLabelEnabled(layer)) return;
       try {
-        map.setLayoutProperty(id, property, value);
+        map.addLayer(definition);
       } catch (error) {
-        console.warn('[GIS uploader] Could not update label layout:', property, error);
+        console.warn('[GIS uploader] Could not add existing layer labels:', error);
+        return;
       }
-    });
-    Object.entries(definition.paint).forEach(([property, value]) => {
-      try {
-        map.setPaintProperty(id, property, value);
-      } catch (error) {
-        console.warn('[GIS uploader] Could not update label paint:', property, error);
-      }
-    });
+    }
+
+    updateLabelLayerProperties(map, id, definition);
+  }
+
+  function applyLayerLabels(map, layer) {
+    if (!map || !layer || layer.kind !== 'vector') return;
+    if (isExistingEditableLayer(layer)) {
+      applyExistingLayerLabels(map, layer);
+      return;
+    }
+    if (isUploadedEditableLayer(layer)) {
+      applyUploadedLayerLabels(map, layer);
+    }
   }
 
   function applySavedLayerPresentation(map, layer) {
@@ -494,6 +1379,7 @@
           paint: paintForBucket(layer, 'point')
         });
       }
+      bindUploadedLayerPopups(map, layer);
       applySavedLayerPresentation(map, layer);
       return map;
     }
@@ -509,6 +1395,7 @@
           paint: paintForBucket(layer, 'line')
         });
       }
+      bindUploadedLayerPopups(map, layer);
       applySavedLayerPresentation(map, layer);
       return map;
     }
@@ -540,6 +1427,7 @@
     } catch (error) {
       // Non-critical label ordering helper.
     }
+    bindUploadedLayerPopups(map, layer);
     applySavedLayerPresentation(map, layer);
     return map;
   }
@@ -623,8 +1511,29 @@
     editStatus.dataset.tone = tone;
   }
 
+  function asUploadedEditableLayer(layer) {
+    if (!layer) return layer;
+    layer.editor_source = 'uploaded';
+    return layer;
+  }
+
+  function getUploadedEditableLayers() {
+    return Array.from(uploadedLayers.values())
+      .map(asUploadedEditableLayer)
+      .filter(isLayerChecked)
+      .sort((a, b) => cleanText(a.display_name).localeCompare(cleanText(b.display_name)));
+  }
+
+  function getEditableLayers() {
+    return [
+      ...getUploadedEditableLayers(),
+      ...getExistingEditableLayers()
+    ];
+  }
+
   function selectedEditLayer() {
-    return uploadedLayers.get(selectedEditLayerId) || null;
+    if (!selectedEditLayerId) return null;
+    return getEditableLayers().find((layer) => editorLayerKey(layer) === selectedEditLayerId) || null;
   }
 
   function presentationPayloadFromEditor() {
@@ -637,8 +1546,9 @@
   }
 
   function layerWithDraft(layer) {
-    if (!layer?.id || !layerDrafts.has(layer.id)) return layer;
-    const draft = layerDrafts.get(layer.id);
+    const key = editorLayerKey(layer);
+    if (!layer?.id || !layerDrafts.has(key)) return layer;
+    const draft = layerDrafts.get(key);
     const nextLayer = { ...layer };
     PRESENTATION_KEYS.forEach((key) => {
       if (draft[key]) {
@@ -669,8 +1579,9 @@
     savedLayer = mergeLayerWithLocalPresentation(savedLayer);
     if (!savedLayer?.id) return fallbackLayer;
 
+    asUploadedEditableLayer(savedLayer);
     uploadedLayers.set(savedLayer.id, savedLayer);
-    layerDrafts.delete(savedLayer.id);
+    layerDrafts.delete(editorLayerKey(savedLayer));
     try {
       const map = await ensureMapLayer(savedLayer);
       applySavedLayerPresentation(map, savedLayer);
@@ -794,7 +1705,27 @@
     `;
   }
 
+  function renderExistingFillControls(layer) {
+    const fill = paintForBucket(layer, 'fill');
+    return `
+      <div class="gis-layer-edit-section">
+        <div class="gis-layer-edit-section-title">Fill Layer Style</div>
+        ${colorControl('fill', 'fill-color', 'Fill color', fill['fill-color'])}
+        ${rangeControl('fill', 'fill-opacity', 'Fill opacity', fill['fill-opacity'], 0, 1, 0.01)}
+      </div>
+    `;
+  }
+
+  function renderExistingStyleControls(layer) {
+    const bucket = existingLayerBucketFromType(layer.map_layer_type);
+    if (bucket === 'point') return renderPointControls(layer);
+    if (bucket === 'line') return renderLineControls(layer);
+    if (bucket === 'fill') return renderExistingFillControls(layer);
+    return renderRasterControls(layer);
+  }
+
   function renderStyleControls(layer) {
+    if (isExistingEditableLayer(layer)) return renderExistingStyleControls(layer);
     if (layer.kind === 'raster') return renderRasterControls(layer);
     if (layer.render_type === 'point') return renderPointControls(layer);
     if (layer.render_type === 'line') return renderLineControls(layer);
@@ -802,7 +1733,7 @@
   }
 
   function renderFilterShell(layer) {
-    if (layer.kind !== 'vector') return '';
+    if (!isUploadedEditableLayer(layer) || layer.kind !== 'vector') return '';
     return `
       <div class="gis-layer-edit-section" data-gis-filter-section>
         <div class="gis-layer-edit-section-title">
@@ -815,7 +1746,7 @@
   }
 
   function renderFeatureColorShell(layer) {
-    if (layer.kind !== 'vector') return '';
+    if (!isUploadedEditableLayer(layer) || layer.kind !== 'vector') return '';
     return `
       <div class="gis-layer-edit-section" data-gis-feature-color-section>
         <div class="gis-layer-edit-section-title">
@@ -828,7 +1759,7 @@
   }
 
   function renderLabelShell(layer) {
-    if (layer.kind !== 'vector') return '';
+    if (layer?.kind !== 'vector') return '';
     return `
       <div class="gis-layer-edit-section" data-gis-label-section>
         <div class="gis-layer-edit-section-title">Labels</div>
@@ -862,16 +1793,15 @@
       const value = input.dataset.gisFeatureColorValue;
       if (value) colors[value] = input.value;
     });
-    if (!Object.keys(colors).length) return null;
     return { field, colors };
   }
 
   function collectLabelFromEditor() {
     const enabled = Boolean(editForm?.querySelector('[data-gis-label-enabled]')?.checked);
     const field = editForm?.querySelector('[data-gis-label-field]')?.value || '';
-    if (!enabled || !field) return null;
+    if (!enabled && !field) return null;
     return {
-      enabled: true,
+      enabled,
       field,
       color: editForm?.querySelector('[data-gis-label-prop="color"]')?.value || DEFAULT_LABEL_STYLE.color,
       size: Number(editForm?.querySelector('[data-gis-label-prop="size"]')?.value || DEFAULT_LABEL_STYLE.size),
@@ -885,7 +1815,6 @@
     if (!field) return null;
     const values = Array.from(editForm.querySelectorAll('[data-gis-filter-value]:checked'))
       .map((input) => input.value);
-    if (!values.length) return null;
     return { field, values };
   }
 
@@ -893,13 +1822,18 @@
     const layer = selectedEditLayer();
     if (!layer) return;
     const draft = presentationPayloadFromEditor();
-    layerDrafts.set(layer.id, draft);
+    layerDrafts.set(editorLayerKey(layer), draft);
     const previewLayer = layerWithDraft(layer);
     try {
+      if (isExistingEditableLayer(previewLayer)) {
+        const map = getMapInstance();
+        if (map) applySavedLayerPresentation(map, previewLayer);
+        return;
+      }
       const map = await ensureMapLayer(previewLayer);
       applySavedLayerPresentation(map, previewLayer);
     } catch (error) {
-      console.warn('[GIS uploader] Could not preview uploaded layer style:', error);
+      console.warn('[GIS uploader] Could not preview layer style:', error);
     }
   }
 
@@ -907,7 +1841,9 @@
     const layer = selectedEditLayer();
     if (!layer || !editForm) return;
     editablePaintBuckets(layer).forEach((bucket) => {
-      const defaults = DEFAULT_LAYER_PAINT[bucket] || {};
+      const defaults = isExistingEditableLayer(layer)
+        ? (layer.original_style?.paint?.[bucket] || existingLayerOriginalStyles.get(layer.id)?.paint?.[bucket] || DEFAULT_LAYER_PAINT[bucket] || {})
+        : (DEFAULT_LAYER_PAINT[bucket] || {});
       Object.entries(defaults).forEach(([property, value]) => {
         const input = editForm.querySelector(`[data-paint-bucket="${bucket}"][data-paint-prop="${property}"]`);
         if (!input) return;
@@ -934,7 +1870,7 @@
       input.value = DEFAULT_LABEL_STYLE[prop];
       updateLabelOutput(input);
     });
-    layerDrafts.set(layer.id, presentationPayloadFromEditor());
+    layerDrafts.set(editorLayerKey(layer), presentationPayloadFromEditor());
     applyEditorFormToMap();
   }
 
@@ -942,8 +1878,25 @@
     const layer = selectedEditLayer();
     if (!layer) return;
     setEditStatus('Saving style...', 'neutral');
-    const payload = layerDrafts.get(layer.id) || presentationPayloadFromEditor();
-    layerDrafts.set(layer.id, payload);
+    const key = editorLayerKey(layer);
+    const payload = layerDrafts.get(key) || presentationPayloadFromEditor();
+    layerDrafts.set(key, payload);
+
+    if (isExistingEditableLayer(layer)) {
+      const styledLayer = layerWithDraft(layer);
+      try {
+        const map = getMapInstance();
+        if (map) applySavedLayerPresentation(map, styledLayer);
+        saveExistingLayerStyle(layer.id, payload);
+        layerDrafts.delete(key);
+        renderEditPanel();
+        setEditStatus('Existing layer style saved in this browser.', 'success');
+      } catch (error) {
+        setEditStatus(error.message || 'Existing layer style save failed.', 'error');
+      }
+      return;
+    }
+
     saveLocalLayerPresentation(layer.id, payload);
     try {
       const response = await fetch(`${API_BASE}/layers/${encodeURIComponent(layer.id)}/style`, {
@@ -957,14 +1910,14 @@
       }
       const fallbackLayer = applyPresentationToLayer(body.layer || layer, payload);
       const savedLayer = await refreshUploadedLayerFromRegistry(body.layer?.id || layer.id, fallbackLayer);
-      selectedEditLayerId = savedLayer.id;
+      selectedEditLayerId = editorLayerKey(savedLayer);
       renderUploadedLayerManager();
       renderEditPanel();
       setEditStatus('Style saved.', 'success');
     } catch (error) {
       const localLayer = applyPresentationToLayer(layer, payload);
       uploadedLayers.set(layer.id, localLayer);
-      layerDrafts.delete(layer.id);
+      layerDrafts.delete(key);
       try {
         const map = await ensureMapLayer(localLayer);
         applySavedLayerPresentation(map, localLayer);
@@ -977,14 +1930,91 @@
     }
   }
 
+  function featureSummaryCacheKey(layer) {
+    return editorLayerKey(layer) || layer?.id || '';
+  }
+
+  function fieldTypeForValue(value) {
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'boolean') return 'boolean';
+    if (value instanceof Date) return 'date';
+    return 'string';
+  }
+
+  function summarizeFeatureFields(features) {
+    const fieldsByName = new Map();
+    (features || []).forEach((feature) => {
+      Object.entries(feature?.properties || {}).forEach(([name, value]) => {
+        if (shouldSkipPopupField(name) || !hasPopupValue(value)) return;
+        if (!fieldsByName.has(name)) {
+          fieldsByName.set(name, {
+            name,
+            type: fieldTypeForValue(value),
+            values: new Set()
+          });
+        }
+        const field = fieldsByName.get(name);
+        if (field.values.size < 100) {
+          field.values.add(normalizeFilterValue(value));
+        }
+      });
+    });
+    return Array.from(fieldsByName.values())
+      .map((field) => ({
+        name: field.name,
+        type: field.type,
+        values: Array.from(field.values).sort((a, b) => a.localeCompare(b))
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function queryRenderedFeaturesForExistingLayer(map, layer) {
+    try {
+      return map.queryRenderedFeatures({ layers: [layer.id] }) || [];
+    } catch (error) {
+      try {
+        return map.queryRenderedFeatures(undefined, { layers: [layer.id] }) || [];
+      } catch (fallbackError) {
+        return [];
+      }
+    }
+  }
+
+  function querySourceFeaturesForExistingLayer(map, layer) {
+    if (!map?.querySourceFeatures || !layer?.map_source_id) return [];
+    const options = {};
+    if (layer.map_source_layer) options.sourceLayer = layer.map_source_layer;
+    if (layer.map_filter) options.filter = cloneData(layer.map_filter);
+    try {
+      return map.querySourceFeatures(layer.map_source_id, options) || [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async function loadExistingFeatureSummary(layer) {
+    const map = await waitForMapReady();
+    const features = [
+      ...querySourceFeaturesForExistingLayer(map, layer),
+      ...queryRenderedFeaturesForExistingLayer(map, layer)
+    ];
+    return { fields: summarizeFeatureFields(features) };
+  }
+
   async function loadFeatureSummary(layer) {
-    if (featureSummaryCache.has(layer.id)) return featureSummaryCache.get(layer.id);
+    const cacheKey = featureSummaryCacheKey(layer);
+    if (cacheKey && featureSummaryCache.has(cacheKey)) return featureSummaryCache.get(cacheKey);
+    if (isExistingEditableLayer(layer)) {
+      const summary = await loadExistingFeatureSummary(layer);
+      if (cacheKey && summary.fields?.length) featureSummaryCache.set(cacheKey, summary);
+      return summary;
+    }
     const response = await fetch(`${API_BASE}/layers/${encodeURIComponent(layer.id)}/feature-summary`, { cache: 'no-store' });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(body.detail || `Feature summary failed with HTTP ${response.status}`);
     }
-    featureSummaryCache.set(layer.id, body);
+    if (cacheKey) featureSummaryCache.set(cacheKey, body);
     return body;
   }
 
@@ -1114,7 +2144,7 @@
     const label = labelConfigForLayer(layer);
     content.innerHTML = `
       <label class="gis-layer-edit-check-row">
-        <input type="checkbox" data-gis-label-enabled${label.enabled && label.field ? ' checked' : ''} />
+        <input type="checkbox" data-gis-label-enabled${label.enabled ? ' checked' : ''} />
         <span>Show labels</span>
       </label>
       <label class="gis-layer-edit-field">
@@ -1138,15 +2168,21 @@
   }
 
   async function loadAndRenderFilterFields(layer) {
-    if (layer.kind !== 'vector') return;
+    if (layer?.kind !== 'vector') return;
     try {
       const summary = await loadFeatureSummary(layer);
-      if (selectedEditLayerId !== layer.id) return;
-      renderFilterFields(layer, summary);
-      renderFeatureColorFields(layer, summary);
-      renderLabelFields(layer, summary);
+      if (selectedEditLayerId !== editorLayerKey(layer)) return;
+      const activeLayer = layerWithDraft(selectedEditLayer()) || layer;
+      if (isUploadedEditableLayer(activeLayer)) {
+        renderFilterFields(activeLayer, summary);
+        renderFeatureColorFields(activeLayer, summary);
+      }
+      renderLabelFields(activeLayer, summary);
     } catch (error) {
-      ['[data-gis-filter-content]', '[data-gis-feature-color-content]', '[data-gis-label-content]'].forEach((selector) => {
+      const selectors = isUploadedEditableLayer(layer)
+        ? ['[data-gis-filter-content]', '[data-gis-feature-color-content]', '[data-gis-label-content]']
+        : ['[data-gis-label-content]'];
+      selectors.forEach((selector) => {
         const content = editForm?.querySelector(selector);
         if (content) content.innerHTML = `<div class="gis-layer-edit-empty">${escapeHtml(error.message || 'Could not load feature fields.')}</div>`;
       });
@@ -1157,12 +2193,14 @@
     const layer = layerWithDraft(selectedEditLayer());
     if (!editForm) return;
     if (!layer) {
-      editForm.innerHTML = '<div class="gis-layer-edit-empty">No uploaded layers available.</div>';
+      editForm.innerHTML = '<div class="gis-layer-edit-empty">No editable map layers available. Turn on a sidebar layer or upload a layer first.</div>';
       return;
     }
+    const sourceLabel = isExistingEditableLayer(layer) ? 'existing map layer' : 'uploaded layer';
+    const typeLabel = layer.kind === 'raster' ? 'raster' : (layer.render_type || 'vector');
 
     editForm.innerHTML = `
-      <div class="gis-layer-edit-meta">${escapeHtml(layer.kind || 'layer')} / ${escapeHtml(layer.render_type || 'raster')}</div>
+      <div class="gis-layer-edit-meta">${escapeHtml(sourceLabel)} / ${escapeHtml(typeLabel)}</div>
       ${renderStyleControls(layer)}
       ${renderFilterShell(layer)}
       ${renderFeatureColorShell(layer)}
@@ -1177,8 +2215,9 @@
 
   function renderEditLayerOptions() {
     if (!editLayerSelect) return;
-    const layers = Array.from(uploadedLayers.values())
-      .sort((a, b) => cleanText(a.display_name).localeCompare(cleanText(b.display_name)));
+    const uploaded = getUploadedEditableLayers();
+    const existing = getExistingEditableLayers();
+    const layers = [...uploaded, ...existing];
 
     editLayerSelect.innerHTML = '';
     if (!layers.length) {
@@ -1188,11 +2227,20 @@
     }
 
     editLayerSelect.disabled = false;
-    const hasSelected = layers.some((layer) => layer.id === selectedEditLayerId);
-    if (!hasSelected) selectedEditLayerId = layers[0].id;
-    layers.forEach((layer) => {
-      editLayerSelect.appendChild(new Option(layer.display_name || layer.id, layer.id));
-    });
+    const hasSelected = layers.some((layer) => editorLayerKey(layer) === selectedEditLayerId);
+    if (!hasSelected) selectedEditLayerId = editorLayerKey(layers[0]);
+
+    const appendGroup = (label, groupLayers) => {
+      if (!groupLayers.length) return;
+      const group = document.createElement('optgroup');
+      group.label = label;
+      groupLayers.forEach((layer) => {
+        group.appendChild(new Option(layer.display_name || layer.id, editorLayerKey(layer)));
+      });
+      editLayerSelect.appendChild(group);
+    };
+    appendGroup('Uploaded layers', uploaded);
+    appendGroup('Visible toggled layers', existing);
     editLayerSelect.value = selectedEditLayerId;
   }
 
@@ -1213,19 +2261,19 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'mapboxgl-ctrl-icon gis-layer-edit-btn';
-      button.title = 'Edit uploaded GIS layer styles';
-      button.innerHTML = '<img src="media/UI/controlicons/edit.gif" alt="Edit uploaded layer styles" />';
+      button.title = 'Edit GIS layer styles';
+      button.innerHTML = '<img src="media/UI/controlicons/edit.gif" alt="Edit GIS layer styles" />';
 
       const panel = document.createElement('div');
       panel.className = 'gis-layer-edit-panel';
       panel.innerHTML = `
         <div class="gis-layer-edit-header">
-          <span>Edit Uploaded Layers</span>
+          <span>Edit GIS Layers</span>
           <button type="button" data-gis-edit-close title="Close">&times;</button>
         </div>
         <div class="gis-layer-edit-body">
           <label class="gis-layer-edit-field">
-            <span>Uploaded layer</span>
+            <span>Map layer</span>
             <select data-gis-edit-layer></select>
           </label>
           <div data-gis-edit-form></div>
@@ -1241,6 +2289,12 @@
       editLayerSelect = panel.querySelector('[data-gis-edit-layer]');
       editForm = panel.querySelector('[data-gis-edit-form]');
       editStatus = panel.querySelector('[data-gis-edit-status]');
+
+      ['click', 'dblclick', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend', 'wheel', 'keydown'].forEach((eventName) => {
+        panel.addEventListener(eventName, (event) => {
+          event.stopPropagation();
+        });
+      });
 
       button.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -1353,6 +2407,30 @@
     window.__gisLayerEditControlAdded = true;
   }
 
+  function renderEditPanelIfOpen() {
+    if (editPanel?.classList.contains('is-open')) {
+      renderEditPanel();
+    }
+  }
+
+  function bindSidebarToggleTracking() {
+    const sidebar = document.getElementById('app-sidebar');
+    if (!sidebar || sidebar.__gisLayerEditToggleTrackingBound) return;
+    sidebar.__gisLayerEditToggleTrackingBound = true;
+
+    sidebar.addEventListener('change', (event) => {
+      const checkbox = event.target;
+      if (!checkbox?.matches?.('input[type="checkbox"]')) return;
+      activeSidebarToggle = sidebarToggleInfo(checkbox);
+      setTimeout(() => {
+        if (activeSidebarToggle?.checkboxId === checkbox.id) {
+          activeSidebarToggle = null;
+        }
+        renderEditPanelIfOpen();
+      }, 0);
+    }, true);
+  }
+
   function restoreUploadedLayersOnMap() {
     uploadedLayers.forEach((layer) => {
       const currentLayer = currentUploadedLayer(layer.id) || mergeLayerWithLocalPresentation(layer);
@@ -1360,6 +2438,75 @@
         .then(() => setUploadedLayerVisibility(currentLayer, isLayerChecked(currentLayer)))
         .catch((error) => console.warn('[GIS uploader] Could not restore uploaded layer:', error));
     });
+  }
+
+  function applySavedExistingLayerStyleById(map, layerId) {
+    if (!map || !layerId) return;
+    const styleLayer = map.getLayer(layerId);
+    if (!isExistingLayerCandidate(map, styleLayer)) return;
+    rememberExistingLayerOriginalStyle(map, styleLayer);
+    const savedPresentation = readExistingLayerStyleStore()[layerId];
+    if (!savedPresentation || !PRESENTATION_KEYS.some((key) => Boolean(savedPresentation[key]))) return;
+    const editableLayer = existingEditableLayerFromStyleLayer(map, styleLayer);
+    if (editableLayer) applySavedLayerPresentation(map, editableLayer);
+  }
+
+  function setExistingLabelVisibility(map, layerId, visible) {
+    if (!map || !layerId) return;
+    const labelId = existingLabelLayerIdForLayerId(layerId);
+    if (!map.getLayer(labelId)) return;
+    try {
+      map.setLayoutProperty(labelId, 'visibility', visible ? 'visible' : 'none');
+    } catch (error) {
+      console.warn('[GIS uploader] Could not sync existing layer label visibility:', error);
+    }
+  }
+
+  function restoreExistingLayerStyles() {
+    const map = getMapInstance();
+    if (!map?.getStyle) return;
+    (map.getStyle().layers || []).forEach((styleLayer) => {
+      if (!isExistingLayerCandidate(map, styleLayer)) return;
+      rememberExistingLayerOriginalStyle(map, styleLayer);
+      applySavedExistingLayerStyleById(map, styleLayer.id);
+    });
+    renderEditPanelIfOpen();
+  }
+
+  function bindExistingLayerStyleAutoApply() {
+    const map = getMapInstance();
+    if (!map || map.__gisExistingLayerStyleBound) return;
+    map.__gisExistingLayerStyleBound = true;
+
+    const previousSetLayoutProperty = map.setLayoutProperty.bind(map);
+    map.setLayoutProperty = function (layerId, prop, value) {
+      const result = previousSetLayoutProperty(layerId, prop, value);
+      if (prop === 'visibility') {
+        const styleLayer = map.getLayer(layerId);
+        if (activeSidebarToggle && isExistingLayerCandidate(map, styleLayer)) {
+          recordExistingLayerToggle(layerId, activeSidebarToggle);
+        }
+        if (value !== 'none') {
+          applySavedExistingLayerStyleById(map, layerId);
+        } else {
+          setExistingLabelVisibility(map, layerId, false);
+        }
+        renderEditPanelIfOpen();
+      }
+      return result;
+    };
+
+    const previousAddLayer = map.addLayer.bind(map);
+    map.addLayer = function (layer, beforeId) {
+      const result = beforeId === undefined ? previousAddLayer(layer) : previousAddLayer(layer, beforeId);
+      if (layer?.id) {
+        setTimeout(() => {
+          applySavedExistingLayerStyleById(map, layer.id);
+          renderEditPanelIfOpen();
+        }, 0);
+      }
+      return result;
+    };
   }
 
   function renderUploadedLayerManager() {
@@ -1600,6 +2747,7 @@
 
   function addUploadedLayer(layer, focusToggle) {
     if (!layer?.id) return;
+    asUploadedEditableLayer(layer);
     uploadedLayers.set(layer.id, layer);
     addLayerToggle(layer, focusToggle);
     renderUploadedLayerManager();
@@ -1631,6 +2779,7 @@
       }
       setUploadedLayerVisibility(currentLayer, checkbox.checked)
         .catch((error) => console.warn('[GIS uploader] Could not toggle uploaded layer:', error));
+      renderEditPanelIfOpen();
     });
 
     panel.appendChild(row);
@@ -1664,9 +2813,10 @@
     modal?.querySelector(`.gis-uploaded-manager-row[data-gis-layer-id="${selectorId}"]`)?.remove();
     uploadedLayers.delete(layer.id);
     featureSummaryCache.delete(layer.id);
-    layerDrafts.delete(layer.id);
+    featureSummaryCache.delete(editorLayerKey(asUploadedEditableLayer(layer)));
+    layerDrafts.delete(editorLayerKey(asUploadedEditableLayer(layer)));
     removeLocalLayerPresentation(layer.id);
-    if (selectedEditLayerId === layer.id) selectedEditLayerId = '';
+    if (selectedEditLayerId === editorLayerKey(layer)) selectedEditLayerId = '';
     renderUploadedLayerManager();
     renderEditPanel();
   }
@@ -1720,7 +2870,10 @@
     if (!map || map.__gisUploaderStyleBound) return;
     map.__gisUploaderStyleBound = true;
     map.on('style.load', () => {
-      setTimeout(restoreUploadedLayersOnMap, 350);
+      setTimeout(() => {
+        restoreUploadedLayersOnMap();
+        restoreExistingLayerStyles();
+      }, 350);
     });
   }
 
@@ -1728,11 +2881,13 @@
     waitForMapInstance()
       .then(() => {
         addEditControl();
+        bindExistingLayerStyleAutoApply();
         bindMapStyleReload();
         return waitForMapReady();
       })
       .then(() => {
         restoreUploadedLayersOnMap();
+        restoreExistingLayerStyles();
       })
       .catch((error) => console.warn('[GIS uploader] Map bindings were not initialized:', error.message || error));
   }
@@ -1742,6 +2897,7 @@
     if (uploadButton) {
       uploadButton.addEventListener('click', openModal);
     }
+    bindSidebarToggleTracking();
     initializeMapBindings();
     loadSavedLayers();
   });
