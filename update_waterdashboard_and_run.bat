@@ -107,11 +107,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Updating Indian dam values from current CWC bulletin snapshot...
-"%VENV_PYTHON%" "%REPO_ROOT%current_day_reservoir_snapshot.py"
-if errorlevel 1 (
-  echo Warning: Failed to refresh Indian dam snapshot. Continuing with existing Indian values.
-)
+echo Skipping Indian dam snapshot refresh. Current CWC bulletin update is commented out.
+rem Uncomment this block when the current CWC bulletin should update data\current_reservoir_snapshot.json again.
+rem echo Updating Indian dam values from current CWC bulletin snapshot...
+rem "%VENV_PYTHON%" "%REPO_ROOT%current_day_reservoir_snapshot.py"
+rem if errorlevel 1 (
+rem   echo Warning: Failed to refresh Indian dam snapshot. Continuing with existing Indian values.
+rem )
 
 echo Updating ft_and_percentage.js from Daily Water Situation.pdf...
 "%VENV_PYTHON%" "%REPO_ROOT%res_storages\storages.py"

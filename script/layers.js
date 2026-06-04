@@ -3307,7 +3307,7 @@ document.getElementById('slideshowModal').addEventListener('click', function(e) 
 });
 // Global GeoServer IP variables
 const mustafa = "172.18.1.37"; // Swat, Panjgora, etc.
-const ahad = "172.18.1.87"; // AJK, Jhal, hyd layers, etc.
+const ahad = "172.18.1.85"; // AJK, Jhal, hyd layers, etc.
 let isPlaying = false;
 let playInterval;
 let currentDay = 1;
@@ -8490,7 +8490,7 @@ function addHydrometLayersToMap(map) {
   //DI khan HT extent
 map1.addSource("DI_Khan_HT", {
   type: "geojson",
-  data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADI_Khan_HT&outputFormat=application%2Fjson",
+  data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADI_Khan_HT&outputFormat=application%2Fjson`,
 });
 
 map1.addLayer({
@@ -8520,7 +8520,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   //DG khan HT extent
   map1.addSource("DG khan HT", {
     type: "geojson",
-    data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson",
+    data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson`,
   });
   map1.addLayer({
     id: "DG khan HT",
@@ -8579,7 +8579,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   //Hyderabad arc extent
   map1.addSource("Hyderabad_arc", {
     type: "geojson",
-    data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson",
+    data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson`,
   });
   map1.addLayer({
     id: "Hyderabad_arc",
@@ -8606,7 +8606,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   //jhal arc extent
   map1.addSource("jhal_magsi_arc_Complete", {
     type: "geojson",
-    data: "http://172.18.1.85:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson",
+    data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson`,
   });
   map1.addLayer({
     id: "jhal_magsi_arc_Complete",
@@ -12528,11 +12528,6 @@ document.getElementById("di_ht").addEventListener("change", function () {
       isVisible ? "visible" : "none" // Toggle between 'visible' and 'none'
     );
   });
-
-
-
-
-
   ////2022 flood extent
    map1.addSource("river_2022", {
     type: "vector",

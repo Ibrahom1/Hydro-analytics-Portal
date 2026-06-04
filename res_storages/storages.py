@@ -807,11 +807,14 @@ def main() -> int:
 			f"Avg5Years={avg5_year_percentages[dam]}%, Variation={variation5_year[dam]} {console_arrow}"
 		)
 
-	indian_snapshot_values = load_indian_snapshot_values(snapshot_json_path)
-	if indian_snapshot_values is None:
-		print("[WARN] Indian dam values kept as-is in ft_and_percentage.js")
-	else:
-		print(f"[INFO] Loaded Indian dam snapshot data: {snapshot_json_path}")
+	indian_snapshot_values = None
+	print("[INFO] Indian dam snapshot update disabled; existing Indian values kept as-is in ft_and_percentage.js")
+	# Uncomment this block when current_reservoir_snapshot.json should update Indian weekly-bulletin values again.
+	# indian_snapshot_values = load_indian_snapshot_values(snapshot_json_path)
+	# if indian_snapshot_values is None:
+	# 	print("[WARN] Indian dam values kept as-is in ft_and_percentage.js")
+	# else:
+	# 	print(f"[INFO] Loaded Indian dam snapshot data: {snapshot_json_path}")
 
 	update_js_file(
 		js_path,

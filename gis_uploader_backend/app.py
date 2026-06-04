@@ -11,9 +11,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 load_dotenv()
 
@@ -33,6 +33,50 @@ ALLOWED_SHAPEFILE_EXTS = REQUIRED_SHAPEFILE_EXTS | {".cst", ".cpd", ".cpg", ".qm
 POINT_SHAPE_TYPES = {1, 8, 11, 18, 21, 28}
 LINE_SHAPE_TYPES = {3, 13, 23}
 POLYGON_SHAPE_TYPES = {5, 15, 25, 31}
+MAX_FILTER_VALUES = 250
+MAX_FEATURE_SUMMARY_FEATURES = int(os.getenv("GIS_FEATURE_SUMMARY_MAX_FEATURES", "5000"))
+MAX_FEATURE_SUMMARY_VALUES = int(os.getenv("GIS_FEATURE_SUMMARY_VALUES", "250"))
+MAX_FEATURE_COLOR_VALUES = 250
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+}
+
+STYLE_PAINT_SCHEMA: Dict[str, Dict[str, str]] = {
+    "point": {
+        "circle-color": "color",
+        "circle-opacity": "opacity",
+        "circle-radius": "number",
+        "circle-stroke-color": "color",
+        "circle-stroke-width": "number",
+        "circle-stroke-opacity": "opacity",
+    },
+    "line": {
+        "line-color": "color",
+        "line-opacity": "opacity",
+        "line-width": "number",
+        "line-dasharray": "dasharray",
+    },
+    "fill": {
+        "fill-color": "color",
+        "fill-opacity": "opacity",
+    },
+    "outline": {
+        "line-color": "color",
+        "line-opacity": "opacity",
+        "line-width": "number",
+    },
+    "raster": {
+        "raster-opacity": "opacity",
+    },
+}
+
+STYLE_BUCKETS_BY_LAYER: Dict[str, Tuple[str, ...]] = {
+    "point": ("point",),
+    "line": ("line",),
+    "fill": ("fill", "outline"),
+    "raster": ("raster",),
+}
 
 app = FastAPI(title="Hydro GIS Uploader API", version="1.0.0")
 app.add_middleware(
@@ -91,10 +135,288 @@ def save_registry(layers: List[Dict[str, Any]]) -> None:
     REGISTRY_PATH.write_text(json.dumps(layers, indent=2), encoding="utf-8")
 
 
+def no_cache_json(payload: Dict[str, Any]) -> JSONResponse:
+    return JSONResponse(content=payload, headers=NO_CACHE_HEADERS)
+
+
 def upsert_layer(layer: Dict[str, Any]) -> None:
     layers = [item for item in load_registry() if item.get("id") != layer["id"]]
     layers.append(layer)
     save_registry(layers)
+
+
+def find_layer_or_404(layer_id: str) -> Dict[str, Any]:
+    layer = next((item for item in load_registry() if item.get("id") == layer_id), None)
+    if not layer:
+        raise HTTPException(status_code=404, detail="Uploaded layer toggler not found.")
+    return layer
+
+
+def normalize_number(value: Any, field_name: str, min_value: float, max_value: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a number.")
+    if number != number or number < min_value or number > max_value:
+        raise HTTPException(status_code=400, detail=f"{field_name} must be between {min_value} and {max_value}.")
+    return round(number, 3)
+
+
+def normalize_color(value: Any, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a color string.")
+    cleaned = value.strip()
+    if not re.match(r"^#[0-9A-Fa-f]{6}$", cleaned):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a hex color like #0ea5e9.")
+    return cleaned
+
+
+def normalize_dasharray(value: Any, field_name: str) -> List[float]:
+    if not isinstance(value, list) or len(value) < 2 or len(value) > 4:
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a dash array with 2 to 4 numbers.")
+    return [normalize_number(item, field_name, 0, 20) for item in value]
+
+
+def normalize_paint_value(value: Any, value_type: str, field_name: str) -> Any:
+    if value_type == "color":
+        return normalize_color(value, field_name)
+    if value_type == "opacity":
+        return normalize_number(value, field_name, 0, 1)
+    if value_type == "number":
+        return normalize_number(value, field_name, 0, 50)
+    if value_type == "dasharray":
+        return normalize_dasharray(value, field_name)
+    raise HTTPException(status_code=400, detail=f"Unsupported style field: {field_name}")
+
+
+def normalize_style_payload(payload: Dict[str, Any], layer: Dict[str, Any]) -> Dict[str, Any]:
+    raw_style = payload.get("style") or {}
+    if not isinstance(raw_style, dict):
+        raise HTTPException(status_code=400, detail="style must be an object.")
+
+    raw_paint = raw_style.get("paint") or {}
+    if not isinstance(raw_paint, dict):
+        raise HTTPException(status_code=400, detail="style.paint must be an object.")
+
+    layer_style_key = "raster" if layer.get("kind") == "raster" else str(layer.get("render_type") or "")
+    allowed_buckets = STYLE_BUCKETS_BY_LAYER.get(layer_style_key, ())
+    if not allowed_buckets:
+        raise HTTPException(status_code=400, detail="Layer type does not support style editing.")
+
+    normalized_paint: Dict[str, Dict[str, Any]] = {}
+    for bucket, values in raw_paint.items():
+        if bucket not in STYLE_PAINT_SCHEMA:
+            raise HTTPException(status_code=400, detail=f"Unsupported style bucket: {bucket}")
+        if bucket not in allowed_buckets:
+            if values:
+                raise HTTPException(status_code=400, detail=f"{bucket} style is not supported for this layer.")
+            continue
+        if not isinstance(values, dict):
+            raise HTTPException(status_code=400, detail=f"style.paint.{bucket} must be an object.")
+
+        allowed_fields = STYLE_PAINT_SCHEMA[bucket]
+        normalized_values: Dict[str, Any] = {}
+        for paint_name, paint_value in values.items():
+            if paint_name not in allowed_fields:
+                raise HTTPException(status_code=400, detail=f"Unsupported paint property: {bucket}.{paint_name}")
+            normalized_values[paint_name] = normalize_paint_value(
+                paint_value,
+                allowed_fields[paint_name],
+                f"{bucket}.{paint_name}",
+            )
+        if normalized_values:
+            normalized_paint[bucket] = normalized_values
+
+    return {"paint": normalized_paint}
+
+
+def normalize_filter_payload(payload: Dict[str, Any], layer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    raw_filter = payload.get("filter")
+    if raw_filter in (None, "", {}):
+        return None
+    if layer.get("kind") != "vector":
+        raise HTTPException(status_code=400, detail="Filters are only supported for uploaded vector layers.")
+    if not isinstance(raw_filter, dict):
+        raise HTTPException(status_code=400, detail="filter must be an object.")
+
+    field_name = str(raw_filter.get("field") or "").strip()
+    if not field_name:
+        return None
+    if not re.match(r"^[^<>]{1,160}$", field_name):
+        raise HTTPException(status_code=400, detail="filter.field contains unsupported characters.")
+
+    raw_values = raw_filter.get("values")
+    if not isinstance(raw_values, list):
+        raise HTTPException(status_code=400, detail="filter.values must be a list.")
+
+    values: List[Any] = []
+    seen = set()
+    for raw_value in raw_values:
+        if raw_value is None:
+            continue
+        if isinstance(raw_value, bool):
+            value: Any = raw_value
+            value_key = ("bool", raw_value)
+        elif isinstance(raw_value, (int, float)):
+            value = raw_value
+            value_key = ("number", str(raw_value))
+        else:
+            value = str(raw_value).strip()
+            if not value:
+                continue
+            value = value[:240]
+            value_key = ("string", value)
+
+        if value_key in seen:
+            continue
+        seen.add(value_key)
+        values.append(value)
+        if len(values) >= MAX_FILTER_VALUES:
+            break
+
+    if not values:
+        return None
+    return {"field": field_name, "values": values}
+
+
+def normalize_field_name(raw_field: Any, label: str) -> str:
+    field_name = str(raw_field or "").strip()
+    if not field_name:
+        return ""
+    if not re.match(r"^[^<>]{1,160}$", field_name):
+        raise HTTPException(status_code=400, detail=f"{label} contains unsupported characters.")
+    return field_name
+
+
+def normalize_feature_colors_payload(payload: Dict[str, Any], layer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    raw_config = payload.get("feature_colors")
+    if raw_config in (None, "", {}):
+        return None
+    if layer.get("kind") != "vector":
+        raise HTTPException(status_code=400, detail="Feature colors are only supported for uploaded vector layers.")
+    if not isinstance(raw_config, dict):
+        raise HTTPException(status_code=400, detail="feature_colors must be an object.")
+
+    field_name = normalize_field_name(raw_config.get("field"), "feature_colors.field")
+    if not field_name:
+        return None
+
+    raw_colors = raw_config.get("colors") or {}
+    if not isinstance(raw_colors, dict):
+        raise HTTPException(status_code=400, detail="feature_colors.colors must be an object.")
+
+    colors: Dict[str, str] = {}
+    for raw_value, raw_color in raw_colors.items():
+        value = str(raw_value).strip()
+        if not value:
+            continue
+        colors[value[:240]] = normalize_color(raw_color, "feature_colors.colors")
+        if len(colors) >= MAX_FEATURE_COLOR_VALUES:
+            break
+
+    if not colors:
+        return None
+    return {"field": field_name, "colors": colors}
+
+
+def normalize_label_payload(payload: Dict[str, Any], layer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    raw_label = payload.get("label")
+    if raw_label in (None, "", {}):
+        return None
+    if layer.get("kind") != "vector":
+        raise HTTPException(status_code=400, detail="Labels are only supported for uploaded vector layers.")
+    if not isinstance(raw_label, dict):
+        raise HTTPException(status_code=400, detail="label must be an object.")
+
+    enabled = bool(raw_label.get("enabled"))
+    field_name = normalize_field_name(raw_label.get("field"), "label.field")
+    if not enabled or not field_name:
+        return None
+
+    return {
+        "enabled": True,
+        "field": field_name,
+        "color": normalize_color(raw_label.get("color") or "#ffffff", "label.color"),
+        "size": normalize_number(raw_label.get("size", 12), "label.size", 8, 36),
+        "haloColor": normalize_color(raw_label.get("haloColor") or "#000000", "label.haloColor"),
+        "haloWidth": normalize_number(raw_label.get("haloWidth", 1), "label.haloWidth", 0, 8),
+    }
+
+
+def fetch_vector_feature_collection(layer: Dict[str, Any], max_features: Optional[int] = None) -> Dict[str, Any]:
+    if layer.get("kind") != "vector":
+        raise HTTPException(status_code=400, detail="Uploaded vector layer not found.")
+
+    params: Dict[str, Any] = {
+        "service": "WFS",
+        "version": "1.0.0",
+        "request": "GetFeature",
+        "typeName": layer["qualified_layer_name"],
+        "outputFormat": "application/json",
+    }
+    if max_features:
+        params["maxFeatures"] = max_features
+
+    response = requests.get(
+        f"{GEOSERVER_URL}/{GEOSERVER_WORKSPACE}/ows",
+        params=params,
+        auth=(GEOSERVER_USER, GEOSERVER_PASSWORD),
+        timeout=GEOSERVER_TIMEOUT,
+    )
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail=f"GeoServer WFS request failed with {response.status_code}: {response.text[:700]}",
+        )
+
+    try:
+        payload = response.json()
+    except ValueError:
+        raise HTTPException(status_code=502, detail="GeoServer WFS response was not valid JSON.")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=502, detail="GeoServer WFS response was not a GeoJSON object.")
+    return payload
+
+
+def feature_value_key(value: Any) -> Tuple[str, str]:
+    if isinstance(value, bool):
+        return ("bool", "true" if value else "false")
+    if isinstance(value, (int, float)):
+        return ("number", str(value))
+    return ("string", str(value))
+
+
+def summarize_feature_properties(feature_collection: Dict[str, Any]) -> List[Dict[str, Any]]:
+    values_by_field: Dict[str, List[Any]] = {}
+    seen_by_field: Dict[str, set] = {}
+
+    for feature in feature_collection.get("features") or []:
+        properties = feature.get("properties") if isinstance(feature, dict) else None
+        if not isinstance(properties, dict):
+            continue
+        for field_name, raw_value in properties.items():
+            if raw_value is None or isinstance(raw_value, (dict, list)):
+                continue
+            field = str(field_name)
+            values = values_by_field.setdefault(field, [])
+            if len(values) >= MAX_FEATURE_SUMMARY_VALUES:
+                continue
+            seen = seen_by_field.setdefault(field, set())
+            value_key = feature_value_key(raw_value)
+            if value_key in seen:
+                continue
+            seen.add(value_key)
+            values.append(raw_value)
+
+    fields = []
+    for field_name in sorted(values_by_field.keys(), key=lambda value: value.lower()):
+        fields.append(
+            {
+                "name": field_name,
+                "values": sorted(values_by_field[field_name], key=lambda value: str(value).lower()),
+            }
+        )
+    return fields
 
 
 def geoserver_rest_url(path: str) -> str:
@@ -363,8 +685,8 @@ def health() -> Dict[str, Any]:
 
 
 @app.get("/api/gis/layers")
-def list_layers() -> Dict[str, Any]:
-    return {"layers": load_registry()}
+def list_layers() -> JSONResponse:
+    return no_cache_json({"layers": load_registry()})
 
 
 @app.delete("/api/gis/layers/{layer_id}")
@@ -379,31 +701,71 @@ def delete_layer(layer_id: str) -> Dict[str, Any]:
     return {"deleted": True, "layer": layer, "cleanup": cleanup}
 
 
+@app.patch("/api/gis/layers/{layer_id}/style")
+def update_layer_style(layer_id: str, payload: Dict[str, Any] = Body(...)) -> JSONResponse:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
+
+    layers = load_registry()
+    layer_index = next((index for index, item in enumerate(layers) if item.get("id") == layer_id), None)
+    if layer_index is None:
+        raise HTTPException(status_code=404, detail="Uploaded layer toggler not found.")
+
+    layer = dict(layers[layer_index])
+    style = normalize_style_payload(payload, layer)
+    filter_config = normalize_filter_payload(payload, layer)
+    feature_colors = normalize_feature_colors_payload(payload, layer)
+    label_config = normalize_label_payload(payload, layer)
+
+    if style.get("paint"):
+        layer["style"] = style
+    else:
+        layer.pop("style", None)
+
+    if filter_config:
+        layer["filter"] = filter_config
+    else:
+        layer.pop("filter", None)
+
+    if feature_colors:
+        layer["feature_colors"] = feature_colors
+    else:
+        layer.pop("feature_colors", None)
+
+    if label_config:
+        layer["label"] = label_config
+    else:
+        layer.pop("label", None)
+
+    layer["updated_at"] = now_iso()
+    layers[layer_index] = layer
+    save_registry(layers)
+    return no_cache_json({"layer": layer})
+
+
+@app.get("/api/gis/layers/{layer_id}/feature-summary")
+def get_layer_feature_summary(layer_id: str) -> Dict[str, Any]:
+    layer = find_layer_or_404(layer_id)
+    if layer.get("kind") != "vector":
+        raise HTTPException(status_code=400, detail="Feature summaries are only available for uploaded vector layers.")
+
+    feature_collection = fetch_vector_feature_collection(layer, MAX_FEATURE_SUMMARY_FEATURES)
+    fields = summarize_feature_properties(feature_collection)
+    return {
+        "layer_id": layer_id,
+        "feature_count": len(feature_collection.get("features") or []),
+        "fields": fields,
+    }
+
+
 @app.get("/api/gis/layers/{layer_id}/geojson")
 def proxy_vector_geojson(layer_id: str) -> Response:
-    layer = next((item for item in load_registry() if item.get("id") == layer_id), None)
+    layer = find_layer_or_404(layer_id)
     if not layer or layer.get("kind") != "vector":
         raise HTTPException(status_code=404, detail="Uploaded vector layer not found.")
 
-    params = {
-        "service": "WFS",
-        "version": "1.0.0",
-        "request": "GetFeature",
-        "typeName": layer["qualified_layer_name"],
-        "outputFormat": "application/json",
-    }
-    response = requests.get(
-        f"{GEOSERVER_URL}/{GEOSERVER_WORKSPACE}/ows",
-        params=params,
-        auth=(GEOSERVER_USER, GEOSERVER_PASSWORD),
-        timeout=GEOSERVER_TIMEOUT,
-    )
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=502,
-            detail=f"GeoServer WFS request failed with {response.status_code}: {response.text[:700]}",
-        )
-    return Response(content=response.content, media_type="application/json")
+    feature_collection = fetch_vector_feature_collection(layer)
+    return Response(content=json.dumps(feature_collection), media_type="application/json")
 
 
 @app.post("/api/gis/upload/vector")

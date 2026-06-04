@@ -2823,6 +2823,248 @@ body {
   margin-top: 4px;
 }
 
+.gis-layer-edit-control {
+  position: relative;
+}
+
+.gis-layer-edit-panel {
+  position: absolute;
+  top: 54px;
+  right: 58px;
+  width: min(360px, calc(100vw - 28px));
+  max-height: min(680px, calc(100vh - 110px));
+  overflow: auto;
+  border: 1px solid rgba(226, 232, 240, 0.2);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 8;
+}
+
+.gis-layer-edit-panel.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.gis-layer-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gis-layer-edit-header button,
+.gis-layer-edit-section-title button {
+  border: 0;
+  background: transparent;
+  color: #f8fafc;
+  cursor: pointer;
+}
+
+.gis-layer-edit-header button {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.gis-layer-edit-body {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.gis-layer-edit-field {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gis-layer-edit-field span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gis-layer-edit-field output {
+  color: rgba(203, 213, 225, 0.78);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gis-layer-edit-field input,
+.gis-layer-edit-field select {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #f8fafc;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.gis-layer-edit-field input[type="color"] {
+  height: 38px;
+  padding: 4px;
+}
+
+.gis-layer-edit-field input[type="range"] {
+  padding: 0;
+  accent-color: #38bdf8;
+}
+
+.gis-layer-edit-meta {
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 11px;
+}
+
+.gis-layer-edit-section {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(30, 41, 59, 0.54);
+}
+
+.gis-layer-edit-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #e0f2fe;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gis-layer-edit-section-title button {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.gis-layer-edit-filter-values {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.gis-layer-edit-feature-color-values {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.gis-layer-edit-filter-value {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 12px;
+}
+
+.gis-layer-edit-filter-value span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gis-layer-edit-feature-color-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 12px;
+}
+
+.gis-layer-edit-feature-color-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gis-layer-edit-feature-color-row input[type="color"] {
+  width: 42px;
+  height: 30px;
+  padding: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.gis-layer-edit-check-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gis-layer-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.gis-layer-edit-actions button {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(51, 65, 85, 0.82);
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gis-layer-edit-actions button[data-gis-save-style] {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8);
+  border-color: rgba(125, 211, 252, 0.42);
+}
+
+.gis-layer-edit-empty,
+.gis-layer-edit-filter-loading,
+.gis-layer-edit-status {
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 12px;
+}
+
+.gis-layer-edit-status {
+  min-height: 18px;
+}
+
+.gis-layer-edit-status[data-tone="success"] {
+  color: #86efac;
+}
+
+.gis-layer-edit-status[data-tone="error"] {
+  color: #fca5a5;
+}
+
 @media (max-width: 640px) {
   .gis-uploader-modal {
     padding: 10px;
@@ -2837,6 +3079,11 @@ body {
   .gis-uploader-footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .gis-layer-edit-panel {
+    right: 58px;
+    width: min(340px, calc(100vw - 18px));
   }
 }
 
@@ -3920,6 +4167,7 @@ body {
 .mapboxgl-ctrl-group button,
 .rain-toggle-btn,
 .layer-reorder-btn,
+.gis-layer-edit-btn,
 .time-layer-control-btn,
 .geoglows-toggle-btn,
 .threed-toggle-btn {
@@ -3933,6 +4181,7 @@ body {
 .mapboxgl-ctrl-group button,
 .rain-toggle-btn,
 .layer-reorder-btn,
+.gis-layer-edit-btn,
 .time-layer-control-btn,
 .geoglows-toggle-btn,
 .threed-toggle-btn {
@@ -3995,6 +4244,7 @@ body {
 
 .mapboxgl-ctrl-group button:hover,
 .layer-reorder-btn:hover,
+.gis-layer-edit-btn:hover,
 .time-layer-control-btn:hover,
 .geoglows-toggle-btn:hover,
 .threed-toggle-btn:hover,
@@ -4010,6 +4260,7 @@ body {
 
 .rain-toggle-btn img,
 .layer-reorder-btn img,
+.gis-layer-edit-btn img,
 .time-layer-control-btn img,
 .geoglows-toggle-btn img,
 .threed-toggle-btn img {
