@@ -34,14 +34,19 @@ if not defined BOOTSTRAP_PYTHON (
   exit /b 1
 )
 
-echo Updating waterdashboard repository if Git is available...
+echo Updating Hydro Analytics and waterdashboard repositories if Git is available...
 where git >nul 2>&1
 if errorlevel 1 (
-  echo Git not found. Skipping waterdashboard git pull.
+  echo Git not found. Skipping repository updates.
 ) else (
+  git -C "%REPO_ROOT%" pull
+  if errorlevel 1 (
+    echo Warning: Main Hydro Analytics git pull failed. Continuing with local files.
+  )
+
   git -C "%REPO_ROOT%waterdashboard" pull
   if errorlevel 1 (
-    echo Warning: Git pull failed. Continuing with local files.
+    echo Warning: waterdashboard git pull failed. Continuing with local files.
   )
 )
 
