@@ -1934,6 +1934,15 @@
     return editorLayerKey(layer) || layer?.id || '';
   }
 
+  function cachedFeatureSummary(layer) {
+    const cacheKey = featureSummaryCacheKey(layer);
+    return (
+      (cacheKey && featureSummaryCache.get(cacheKey)) ||
+      (layer?.id && featureSummaryCache.get(layer.id)) ||
+      null
+    );
+  }
+
   function fieldTypeForValue(value) {
     if (typeof value === 'number') return 'number';
     if (typeof value === 'boolean') return 'boolean';
@@ -2019,7 +2028,7 @@
   }
 
   function populateFilterValues(layer, useSavedSelection = true) {
-    const summary = featureSummaryCache.get(layer.id);
+    const summary = cachedFeatureSummary(layer);
     const fieldSelect = editForm?.querySelector('[data-gis-filter-field]');
     const valuesContainer = editForm?.querySelector('[data-gis-filter-values]');
     if (!summary || !fieldSelect || !valuesContainer) return;
@@ -2077,7 +2086,7 @@
   }
 
   function populateFeatureColorValues(layer, useSavedSelection = true) {
-    const summary = featureSummaryCache.get(layer.id);
+    const summary = cachedFeatureSummary(layer);
     const fieldSelect = editForm?.querySelector('[data-gis-feature-color-field]');
     const valuesContainer = editForm?.querySelector('[data-gis-feature-color-values]');
     if (!summary || !fieldSelect || !valuesContainer) return;

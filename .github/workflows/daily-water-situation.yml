@@ -2,7 +2,7 @@ name: Daily Water Situation SQLite Ingestion
 
 on:
   schedule:
-    - cron: "0 5 * * *"
+    - cron: "0 4 * * *"
     - cron: "0 9 * * *"
   workflow_dispatch:
 
