@@ -39,14 +39,26 @@ where git >nul 2>&1
 if errorlevel 1 (
   echo Git not found. Skipping repository updates.
 ) else (
-  git -C "%REPO_ROOT%" pull
+  pushd "%~dp0" >nul
   if errorlevel 1 (
-    echo Warning: Main Hydro Analytics git pull failed. Continuing with local files.
+    echo Warning: Could not enter this batch file folder. Skipping main Hydro Analytics git pull.
+  ) else (
+    git pull
+    if errorlevel 1 (
+      echo Warning: Main Hydro Analytics git pull failed. Continuing with local files.
+    )
+    popd >nul
   )
 
-  git -C "%REPO_ROOT%waterdashboard" pull
+  pushd "%~dp0waterdashboard" >nul
   if errorlevel 1 (
-    echo Warning: waterdashboard git pull failed. Continuing with local files.
+    echo Warning: Could not enter waterdashboard folder. Skipping waterdashboard git pull.
+  ) else (
+    git pull
+    if errorlevel 1 (
+      echo Warning: waterdashboard git pull failed. Continuing with local files.
+    )
+    popd >nul
   )
 )
 
