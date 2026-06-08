@@ -34,6 +34,7 @@ EXPECTED_COUNTS = {
     "reservoir_storages": 4,
     "barrages_discharge": 9,
 }
+SECTION_TABLE_NAMES = tuple(EXPECTED_COUNTS.keys())
 
 
 @dataclass(frozen=True)
@@ -310,6 +311,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS daily_water_reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_date TEXT NOT NULL UNIQUE,
+            recorded_date TEXT NOT NULL,
             source_sha256 TEXT NOT NULL UNIQUE,
             source_pdf_path TEXT NOT NULL,
             historical_pdf_path TEXT NOT NULL,
@@ -321,6 +323,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS river_inflows (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             station TEXT NOT NULL,
             today REAL NOT NULL,
@@ -336,6 +339,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS skardu_temperature (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             metric TEXT NOT NULL,
             today REAL NOT NULL,
@@ -351,6 +355,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS reservoir_outflows (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             reservoir_or_channel TEXT NOT NULL,
             today REAL NOT NULL,
@@ -366,6 +371,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS irsa_indent_at_reservoirs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             reservoir TEXT NOT NULL,
             today REAL NOT NULL,
@@ -381,6 +387,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS reservoir_levels (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             reservoir TEXT NOT NULL,
             mol_ft REAL,
@@ -398,6 +405,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS reservoir_storages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             reservoir TEXT NOT NULL,
             max_maf REAL,
@@ -414,6 +422,7 @@ def create_schema(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS barrages_discharge (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id INTEGER NOT NULL REFERENCES daily_water_reports(id) ON DELETE CASCADE,
+            recorded_date TEXT NOT NULL,
             row_order INTEGER NOT NULL,
             river_group TEXT NOT NULL,
             station TEXT NOT NULL,
@@ -426,6 +435,46 @@ def create_schema(connection: sqlite3.Connection) -> None:
             variation_band TEXT NOT NULL CHECK (variation_band IN ('0-25', '25-50', '>50')),
             UNIQUE(report_id, row_order)
         );
+        """
+    )
+    ensure_daily_water_reports_recorded_date(connection)
+    ensure_recorded_date_columns(connection)
+
+
+def table_column_names(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    rows = connection.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+    return {str(row[1]) for row in rows}
+
+
+def ensure_recorded_date_columns(connection: sqlite3.Connection) -> None:
+    for table_name in SECTION_TABLE_NAMES:
+        columns = table_column_names(connection, table_name)
+        if "recorded_date" not in columns:
+            connection.execute(f'ALTER TABLE "{table_name}" ADD COLUMN recorded_date TEXT')
+
+        connection.execute(
+            f"""
+            UPDATE "{table_name}"
+            SET recorded_date = (
+                SELECT daily_water_reports.report_date
+                FROM daily_water_reports
+                WHERE daily_water_reports.id = "{table_name}".report_id
+            )
+            WHERE recorded_date IS NULL OR recorded_date = ''
+            """
+        )
+
+
+def ensure_daily_water_reports_recorded_date(connection: sqlite3.Connection) -> None:
+    columns = table_column_names(connection, "daily_water_reports")
+    if "recorded_date" not in columns:
+        connection.execute('ALTER TABLE "daily_water_reports" ADD COLUMN recorded_date TEXT')
+
+    connection.execute(
+        """
+        UPDATE daily_water_reports
+        SET recorded_date = report_date
+        WHERE recorded_date IS NULL OR recorded_date = ''
         """
     )
 
@@ -447,7 +496,7 @@ def get_report_id_by_date(connection: sqlite3.Connection, report_date: str) -> O
 
 
 def delete_section_rows(connection: sqlite3.Connection, report_id: int) -> None:
-    for table_name in EXPECTED_COUNTS:
+    for table_name in SECTION_TABLE_NAMES:
         connection.execute(f"DELETE FROM {table_name} WHERE report_id = ?", (report_id,))
 
 
@@ -465,6 +514,7 @@ def upsert_report(
 
     values = (
         report_date,
+        report_date,
         source_sha256,
         relative_posix(source_pdf_path),
         relative_posix(historical_pdf_path),
@@ -478,6 +528,7 @@ def upsert_report(
             """
             INSERT INTO daily_water_reports (
                 report_date,
+                recorded_date,
                 source_sha256,
                 source_pdf_path,
                 historical_pdf_path,
@@ -485,7 +536,7 @@ def upsert_report(
                 processed_at_karachi,
                 page_count
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             values,
         )
@@ -494,7 +545,8 @@ def upsert_report(
     connection.execute(
         """
         UPDATE daily_water_reports
-        SET source_sha256 = ?,
+        SET recorded_date = ?,
+            source_sha256 = ?,
             source_pdf_path = ?,
             historical_pdf_path = ?,
             processed_at_utc = ?,
@@ -513,11 +565,13 @@ def insert_simple_rows(
     table_name: str,
     label_column: str,
     report_id: int,
+    recorded_date: str,
     rows: Iterable[dict[str, object]],
 ) -> None:
     sql = f"""
         INSERT INTO {table_name} (
             report_id,
+            recorded_date,
             row_order,
             {label_column},
             today,
@@ -528,7 +582,7 @@ def insert_simple_rows(
             variation_trend,
             variation_band
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     for row in rows:
         values = row["values"]
@@ -538,6 +592,7 @@ def insert_simple_rows(
             sql,
             (
                 report_id,
+                recorded_date,
                 row["row_order"],
                 row[label_column],
                 *to_common_tuple(values),
@@ -548,15 +603,58 @@ def insert_simple_rows(
 def insert_reservoir_levels(
     connection: sqlite3.Connection,
     report_id: int,
+    recorded_date: str,
     rows: Iterable[dict[str, object]],
 ) -> None:
     sql = """
         INSERT INTO reservoir_levels (
             report_id,
+            recorded_date,
             row_order,
             reservoir,
             mol_ft,
             mcl_ft,
+            today,
+            last_year,
+            avg_last_5_years,
+            avg_last_10_years,
+            variation_percent,
+            variation_trend,
+            variation_band
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    for row in rows:
+        values = row["values"]
+        if not isinstance(values, CommonValues):
+            raise ValueError("Invalid common values for reservoir_levels.")
+        connection.execute(
+            sql,
+            (
+                report_id,
+                recorded_date,
+                row["row_order"],
+                row["reservoir"],
+                row["mol_ft"],
+                row["mcl_ft"],
+                *to_common_tuple(values),
+            ),
+        )
+
+
+def insert_reservoir_storages(
+    connection: sqlite3.Connection,
+    report_id: int,
+    recorded_date: str,
+    rows: Iterable[dict[str, object]],
+) -> None:
+    sql = """
+        INSERT INTO reservoir_storages (
+            report_id,
+            recorded_date,
+            row_order,
+            reservoir,
+            max_maf,
             today,
             last_year,
             avg_last_5_years,
@@ -570,49 +668,12 @@ def insert_reservoir_levels(
     for row in rows:
         values = row["values"]
         if not isinstance(values, CommonValues):
-            raise ValueError("Invalid common values for reservoir_levels.")
-        connection.execute(
-            sql,
-            (
-                report_id,
-                row["row_order"],
-                row["reservoir"],
-                row["mol_ft"],
-                row["mcl_ft"],
-                *to_common_tuple(values),
-            ),
-        )
-
-
-def insert_reservoir_storages(
-    connection: sqlite3.Connection,
-    report_id: int,
-    rows: Iterable[dict[str, object]],
-) -> None:
-    sql = """
-        INSERT INTO reservoir_storages (
-            report_id,
-            row_order,
-            reservoir,
-            max_maf,
-            today,
-            last_year,
-            avg_last_5_years,
-            avg_last_10_years,
-            variation_percent,
-            variation_trend,
-            variation_band
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    for row in rows:
-        values = row["values"]
-        if not isinstance(values, CommonValues):
             raise ValueError("Invalid common values for reservoir_storages.")
         connection.execute(
             sql,
             (
                 report_id,
+                recorded_date,
                 row["row_order"],
                 row["reservoir"],
                 row["max_maf"],
@@ -624,11 +685,13 @@ def insert_reservoir_storages(
 def insert_barrages_discharge(
     connection: sqlite3.Connection,
     report_id: int,
+    recorded_date: str,
     rows: Iterable[dict[str, object]],
 ) -> None:
     sql = """
         INSERT INTO barrages_discharge (
             report_id,
+            recorded_date,
             row_order,
             river_group,
             station,
@@ -640,7 +703,7 @@ def insert_barrages_discharge(
             variation_trend,
             variation_band
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     for row in rows:
         values = row["values"]
@@ -650,6 +713,7 @@ def insert_barrages_discharge(
             sql,
             (
                 report_id,
+                recorded_date,
                 row["row_order"],
                 row["river_group"],
                 row["station"],
@@ -661,15 +725,17 @@ def insert_barrages_discharge(
 def insert_sections(
     connection: sqlite3.Connection,
     report_id: int,
+    recorded_date: str,
     sections: dict[str, list[dict[str, object]]],
 ) -> None:
-    insert_simple_rows(connection, "river_inflows", "station", report_id, sections["river_inflows"])
-    insert_simple_rows(connection, "skardu_temperature", "metric", report_id, sections["skardu_temperature"])
+    insert_simple_rows(connection, "river_inflows", "station", report_id, recorded_date, sections["river_inflows"])
+    insert_simple_rows(connection, "skardu_temperature", "metric", report_id, recorded_date, sections["skardu_temperature"])
     insert_simple_rows(
         connection,
         "reservoir_outflows",
         "reservoir_or_channel",
         report_id,
+        recorded_date,
         sections["reservoir_outflows"],
     )
     insert_simple_rows(
@@ -677,11 +743,12 @@ def insert_sections(
         "irsa_indent_at_reservoirs",
         "reservoir",
         report_id,
+        recorded_date,
         sections["irsa_indent_at_reservoirs"],
     )
-    insert_reservoir_levels(connection, report_id, sections["reservoir_levels"])
-    insert_reservoir_storages(connection, report_id, sections["reservoir_storages"])
-    insert_barrages_discharge(connection, report_id, sections["barrages_discharge"])
+    insert_reservoir_levels(connection, report_id, recorded_date, sections["reservoir_levels"])
+    insert_reservoir_storages(connection, report_id, recorded_date, sections["reservoir_storages"])
+    insert_barrages_discharge(connection, report_id, recorded_date, sections["barrages_discharge"])
 
 
 def archive_pdf(pdf_path: Path, archive_dir: Path, report_date: str) -> Path:
@@ -720,7 +787,7 @@ def ingest_pdf(pdf_path: Path, db_path: Path, archive_dir: Path) -> bool:
             sections = payload["sections"]
             if not isinstance(sections, dict):
                 raise ValueError("Parsed payload has invalid sections.")
-            insert_sections(connection, report_id, sections)
+            insert_sections(connection, report_id, report_date, sections)
 
     print(f"[INFO] Ingested report date {report_date} into {db_path}")
     print(f"[INFO] Archived PDF to {archive_path}")
