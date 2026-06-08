@@ -35,10 +35,12 @@ if not defined BOOTSTRAP_PYTHON (
 )
 
 echo Updating Hydro Analytics and waterdashboard repositories if Git is available...
+set "HAS_GIT="
 where git >nul 2>&1
 if errorlevel 1 (
   echo Git not found. Skipping repository updates.
 ) else (
+  set "HAS_GIT=1"
   pushd "%~dp0" >nul
   if errorlevel 1 (
     echo Warning: Could not enter this batch file folder. Skipping main Hydro Analytics git pull.
@@ -138,6 +140,45 @@ if errorlevel 1 (
   echo Failed to update dam values from PDF.
   pause
   exit /b 1
+)
+
+echo Ingesting Daily Water Situation PDF into SQLite and historical archive...
+"%VENV_PYTHON%" "%REPO_ROOT%res_storages\daily_water_situation_db.py"
+if errorlevel 1 (
+  echo Failed to ingest Daily Water Situation PDF into SQLite.
+  pause
+  exit /b 1
+)
+
+if defined HAS_GIT (
+  echo Committing Daily Water Situation PDF, SQLite, archive, and dashboard JS updates...
+  pushd "%REPO_ROOT%" >nul
+  if errorlevel 1 (
+    echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
+  ) else (
+    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js"
+    if errorlevel 1 (
+      echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
+    ) else (
+      git diff --cached --quiet
+      if errorlevel 1 (
+        git commit -m "Update daily water situation data"
+        if errorlevel 1 (
+          echo Warning: Failed to commit Daily Water Situation updates. Continuing without push.
+        ) else (
+          git push
+          if errorlevel 1 (
+            echo Warning: Failed to push Daily Water Situation updates. Commit remains local.
+          )
+        )
+      ) else (
+        echo No Daily Water Situation changes to commit.
+      )
+    )
+    popd >nul
+  )
+) else (
+  echo Git not found. Daily Water Situation updates were not committed.
 )
 
 if not exist "%REPO_ROOT%waterdashboard\backend\app.py" (

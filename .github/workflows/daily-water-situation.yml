@@ -30,11 +30,11 @@ jobs:
       - name: Ingest Daily Water Situation PDF
         run: python res_storages/daily_water_situation_db.py
 
-      - name: Commit SQLite and historical PDF updates
+      - name: Commit SQLite, source PDF, and historical PDF updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/daily_water_situation.sqlite "res_storages/Historical Daily Storages"
+          git add data/daily_water_situation.sqlite "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages"
           if git diff --cached --quiet; then
             echo "No Daily Water Situation changes to commit."
           else
