@@ -207,19 +207,45 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /r /c:":8001 .*LISTENING"') d
 echo Preparing Hydro Dashboard Backend runner...
 (
   echo @echo off
-  echo call "%VENV_ACTIVATE%"
+  echo setlocal
+  echo set "REPO_ROOT=%%~dp0"
+  echo set "VENV_DIR=%%REPO_ROOT%%.venv"
+  echo set "VENV_ACTIVATE=%%VENV_DIR%%\Scripts\activate.bat"
+  echo set "VENV_PYTHON=%%VENV_DIR%%\Scripts\python.exe"
   echo set "PORT=5000"
-  echo cd /d "%REPO_ROOT%waterdashboard\backend"
-  echo "%VENV_PYTHON%" app.py
+  echo.
+  echo if not exist "%%VENV_PYTHON%%" ^(
+  echo   echo Python virtual environment was not found at "%%VENV_PYTHON%%".
+  echo   echo Run update_waterdashboard_and_run.bat first to create/install dependencies.
+  echo   pause
+  echo   exit /b 1
+  echo ^)
+  echo.
+  echo if exist "%%VENV_ACTIVATE%%" call "%%VENV_ACTIVATE%%"
+  echo cd /d "%%REPO_ROOT%%waterdashboard\backend"
+  echo "%%VENV_PYTHON%%" app.py
   echo pause
 ) > "%DASHBOARD_RUNNER%"
 
 echo Preparing Hydro GIS Uploader API runner...
 (
   echo @echo off
-  echo call "%VENV_ACTIVATE%"
-  echo cd /d "%REPO_ROOT%"
-  echo "%VENV_PYTHON%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port 8001
+  echo setlocal
+  echo set "REPO_ROOT=%%~dp0"
+  echo set "VENV_DIR=%%REPO_ROOT%%.venv"
+  echo set "VENV_ACTIVATE=%%VENV_DIR%%\Scripts\activate.bat"
+  echo set "VENV_PYTHON=%%VENV_DIR%%\Scripts\python.exe"
+  echo.
+  echo if not exist "%%VENV_PYTHON%%" ^(
+  echo   echo Python virtual environment was not found at "%%VENV_PYTHON%%".
+  echo   echo Run update_waterdashboard_and_run.bat first to create/install dependencies.
+  echo   pause
+  echo   exit /b 1
+  echo ^)
+  echo.
+  echo if exist "%%VENV_ACTIVATE%%" call "%%VENV_ACTIVATE%%"
+  echo cd /d "%%REPO_ROOT%%"
+  echo "%%VENV_PYTHON%%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port 8001
   echo pause
 ) > "%GIS_RUNNER%"
 
