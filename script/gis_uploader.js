@@ -13,12 +13,13 @@
   let activeSidebarToggle = null;
   const featureSummaryCache = new Map();
   const layerDrafts = new Map();
+  const mapLayerPreparationPromises = new Map();
   const existingLayerOriginalStyles = new Map();
   const existingLayerToggleMappings = new Map();
   const PRESENTATION_KEYS = ['style', 'filter', 'feature_colors', 'label'];
   const LOCAL_PRESENTATION_KEY = 'hydro-gis-uploader-presentations-v1';
   const EXISTING_LAYER_STYLE_KEY = 'hydro-gis-existing-layer-styles-v1';
-  const MAP_READY_TIMEOUT_MS = 20000;
+  const MAP_READY_TIMEOUT_MS = 45000;
   const EDITABLE_EXISTING_LAYER_TYPES = new Set(['circle', 'line', 'fill', 'raster']);
   const KNOWN_EXISTING_TOGGLE_LAYERS = [
     { checkboxId: 'natBoundary', layers: ['nationalBoundary'] },
@@ -189,21 +190,80 @@
     return null;
   }
 
+  function isMapStyleReadyForLayerChanges(map) {
+    if (!map || typeof map.getStyle !== 'function') return false;
+    try {
+      const style = map.getStyle();
+      if (!style || !Array.isArray(style.layers)) return false;
+      if (typeof map.isStyleLoaded === 'function' && map.isStyleLoaded()) return true;
+      if (map.__gisUploaderStyleReady && map.__gisUploaderStyleReadyStyle === map.style) return true;
+      return Boolean(map.style?._loaded);
+    } catch (error) {
+      return false;
+    }
+  }
+
   function waitForMapReady() {
     return new Promise((resolve, reject) => {
       const startedAt = Date.now();
-      const check = () => {
+      let boundMap = null;
+      let timeoutId = null;
+      let settled = false;
+
+      const unbindMapEvents = () => {
+        if (!boundMap) return;
+        boundMap.off?.('load', check);
+        boundMap.off?.('style.load', markReady);
+        boundMap.off?.('styledata', check);
+      };
+
+      const cleanup = () => {
+        unbindMapEvents();
+        if (timeoutId) clearTimeout(timeoutId);
+      };
+
+      const markReady = () => {
         const map = getMapInstance();
-        if (map && (typeof map.isStyleLoaded !== 'function' || map.isStyleLoaded())) {
+        if (map) {
+          map.__gisUploaderStyleReady = true;
+          map.__gisUploaderStyleReadyStyle = map.style;
+        }
+        check();
+      };
+
+      const check = () => {
+        if (settled) return;
+        const map = getMapInstance();
+        if (isMapStyleReadyForLayerChanges(map)) {
+          if (map) {
+            map.__gisUploaderStyleReady = true;
+            map.__gisUploaderStyleReadyStyle = map.style;
+          }
+          settled = true;
+          cleanup();
           resolve(map);
           return;
         }
         if (Date.now() - startedAt > MAP_READY_TIMEOUT_MS) {
+          settled = true;
+          cleanup();
           reject(new Error('Map is not ready yet.'));
           return;
         }
-        setTimeout(check, 150);
+        if (!map) {
+          setTimeout(check, 100);
+          return;
+        }
+        if (map && map !== boundMap) {
+          unbindMapEvents();
+          boundMap = map;
+          map.on?.('load', check);
+          map.on?.('style.load', markReady);
+          map.on?.('styledata', check);
+        }
       };
+
+      timeoutId = setTimeout(check, MAP_READY_TIMEOUT_MS);
       check();
     });
   }
@@ -746,13 +806,17 @@
     return `gis-upload-${layer.id}-label`;
   }
 
+  function warmupLayerId(layer) {
+    return `gis-upload-${layer.id}-warmup`;
+  }
+
   function existingLabelLayerIdForLayerId(layerId) {
     return `gis-existing-${layerId}-label`;
   }
 
   function allUploadedLayerIds(layer) {
-    if (layer.kind === 'raster') return layerIds(layer);
-    return [...layerIds(layer), labelLayerId(layer)];
+    if (layer.kind === 'raster') return [...layerIds(layer), warmupLayerId(layer)];
+    return [...layerIds(layer), labelLayerId(layer), warmupLayerId(layer)];
   }
 
   function checkboxId(layer) {
@@ -1328,12 +1392,77 @@
     applyLayerFilter(map, layer);
   }
 
+  function warmupLayerDefinition(layer) {
+    const id = warmupLayerId(layer);
+    const source = sourceId(layer);
+    const layout = { visibility: 'visible' };
+
+    if (layer.kind === 'raster') {
+      return {
+        id,
+        type: 'raster',
+        source,
+        layout,
+        paint: { 'raster-opacity': 0 }
+      };
+    }
+
+    if (layer.render_type === 'point') {
+      return {
+        id,
+        type: 'circle',
+        source,
+        layout,
+        paint: {
+          'circle-opacity': 0,
+          'circle-radius': 4,
+          'circle-stroke-opacity': 0
+        }
+      };
+    }
+
+    if (layer.render_type === 'line') {
+      return {
+        id,
+        type: 'line',
+        source,
+        layout,
+        paint: {
+          'line-opacity': 0,
+          'line-color': '#000000',
+          'line-width': 1
+        }
+      };
+    }
+
+    return {
+      id,
+      type: 'fill',
+      source,
+      layout,
+      paint: {
+        'fill-opacity': 0,
+        'fill-color': '#000000'
+      }
+    };
+  }
+
+  function ensureUploadedWarmupLayer(map, layer) {
+    const id = warmupLayerId(layer);
+    if (!map || !layer || map.getLayer(id)) return;
+    try {
+      map.addLayer(warmupLayerDefinition(layer));
+    } catch (error) {
+      console.warn('[GIS uploader] Could not add uploaded layer warmup:', error);
+    }
+  }
+
   function isLayerChecked(layer) {
     const checkbox = document.getElementById(checkboxId(layer));
     return Boolean(checkbox?.checked);
   }
 
-  async function ensureMapLayer(layer) {
+  async function ensureMapLayerInternal(layer) {
     const map = await waitForMapReady();
     const source = sourceId(layer);
     const visibility = isLayerChecked(layer) ? 'visible' : 'none';
@@ -1352,6 +1481,8 @@
         });
       }
     }
+
+    ensureUploadedWarmupLayer(map, layer);
 
     if (layer.kind === 'raster') {
       const id = layerIds(layer)[0];
@@ -1430,6 +1561,19 @@
     bindUploadedLayerPopups(map, layer);
     applySavedLayerPresentation(map, layer);
     return map;
+  }
+
+  async function ensureMapLayer(layer) {
+    if (!layer?.id) return waitForMapReady();
+    if (mapLayerPreparationPromises.has(layer.id)) {
+      return mapLayerPreparationPromises.get(layer.id);
+    }
+    const promise = ensureMapLayerInternal(layer)
+      .finally(() => {
+        mapLayerPreparationPromises.delete(layer.id);
+      });
+    mapLayerPreparationPromises.set(layer.id, promise);
+    return promise;
   }
 
   async function setUploadedLayerVisibility(layer, visible) {

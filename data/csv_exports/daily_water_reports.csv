@@ -1,0 +1,6 @@
+id,report_date,source_sha256,source_pdf_path,historical_pdf_path,processed_at_utc,processed_at_karachi,page_count,recorded_date
+1,2026-03-31,527d223147a6e83d7afafc7f44e6ac972d6cfeeb85458bb8817a41bec91304b4,res_storages/Daily Water Situation.pdf,res_storages/Historical Daily Storages/2026-03-31.pdf,2026-06-05T07:01:01Z,2026-06-05T12:01:01+05:00,2,2026-03-31
+2,2026-06-08,0db0c3ee0ae75fd3521e59d825ebd5748aeb5f58f3f17aafeb483509d6fd6a4b,res_storages/Daily Water Situation.pdf,res_storages/Historical Daily Storages/2026-06-08.pdf,2026-06-08T09:38:43Z,2026-06-08T14:38:43+05:00,2,2026-06-08
+3,2026-06-09,3ade8fafceb56a932f0cd2b953a3de8abaa0f0d643ced722c1ff3576c6d88e9d,res_storages/Daily Water Situation.pdf,res_storages/Historical Daily Storages/2026-06-09.pdf,2026-06-09T05:16:25Z,2026-06-09T10:16:25+05:00,2,2026-06-09
+4,2026-06-10,6eda2351ddb22f98e417e72b8d480a7710c8916a8072b172dd97aa2fccc2741f,res_storages/Daily Water Situation.pdf,res_storages/Historical Daily Storages/2026-06-10.pdf,2026-06-10T09:15:11Z,2026-06-10T14:15:11+05:00,2,2026-06-10
+5,2026-06-11,dc9894dfdab400ebb262711f8483fce760af3e5fa814572af08e281e37dfc7a6,res_storages/Daily Water Situation.pdf,res_storages/Historical Daily Storages/2026-06-11.pdf,2026-06-11T03:59:49Z,2026-06-11T08:59:49+05:00,2,2026-06-11

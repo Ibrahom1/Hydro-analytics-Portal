@@ -1,9 +1,77 @@
 // Global GeoServer IP variables
 const geoserverUrl='172.18.7.35'
-const mamAyman = "172.18.1.181"; // National, Provincial, District, Tehsil
+const mamAyman = "172.18.1.179"; // National, Provincial, District, Tehsil
 const mamHimael = "172.18.1.147";
 const ibrahim  = "172.18.1.112";
 const mapDiv = document.getElementById("map1");
+
+function canHydroMapAcceptLayerChanges(map) {
+  if (!map || typeof map.getStyle !== 'function') return false;
+  try {
+    const style = map.getStyle();
+    if (!style || !Array.isArray(style.layers)) return false;
+    if (typeof map.isStyleLoaded === 'function' && map.isStyleLoaded()) return true;
+    if (map.__hydroStyleReadyForLayers && map.__hydroStyleReadyStyle === map.style) return true;
+    return Boolean(map.style?._loaded);
+  } catch (error) {
+    return false;
+  }
+}
+
+function waitForHydroMapStyleReady(map, timeoutMs = 45000) {
+  if (!map) return Promise.resolve(null);
+  if (canHydroMapAcceptLayerChanges(map)) {
+    map.__hydroStyleReadyForLayers = true;
+    map.__hydroStyleReadyStyle = map.style;
+    return Promise.resolve(map);
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      map.off?.('load', check);
+      map.off?.('style.load', markReady);
+      map.off?.('styledata', check);
+      clearTimeout(timeoutId);
+    };
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      map.__hydroStyleReadyForLayers = true;
+      map.__hydroStyleReadyStyle = map.style;
+      cleanup();
+      resolve(map);
+    };
+    const markReady = () => {
+      map.__hydroStyleReadyForLayers = true;
+      map.__hydroStyleReadyStyle = map.style;
+      finish();
+    };
+    const check = () => {
+      if (settled) return;
+      if (canHydroMapAcceptLayerChanges(map)) finish();
+    };
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('Map style was not ready in time.'));
+    }, timeoutMs);
+
+    map.on?.('load', check);
+    map.on?.('style.load', markReady);
+    map.on?.('styledata', check);
+    check();
+  });
+}
+
+function whenHydroMapStyleReady(map, callback, timeoutMs) {
+  waitForHydroMapStyleReady(map, timeoutMs)
+    .then((readyMap) => {
+      if (readyMap) callback();
+    })
+    .catch((error) => console.warn('[Map readiness] Map style was not ready:', error.message || error));
+}
 
 // DEW Exposure
 let exposuresLoadPromise = null;
@@ -47,26 +115,7 @@ function normalizeExposureFeatureCollection(payload) {
 
 function waitForDewMapStyle(map) {
   if (!map) return Promise.reject(new Error('Map is not available.'));
-  if (map.isStyleLoaded()) return Promise.resolve();
-
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      map.off('styledata', onReady);
-      map.off('idle', onReady);
-      reject(new Error('Map style was not ready in time.'));
-    }, 8000);
-
-    const onReady = () => {
-      if (!map.isStyleLoaded()) return;
-      clearTimeout(timeoutId);
-      map.off('styledata', onReady);
-      map.off('idle', onReady);
-      resolve();
-    };
-
-    map.on('styledata', onReady);
-    map.on('idle', onReady);
-  });
+  return waitForHydroMapStyleReady(map, 45000).then(() => undefined);
 }
 
 function bindExposureControls() {
@@ -302,54 +351,6 @@ let selectedTehsils = [];
 let selectedDistrict = [];
 let blinkInterval = null;
 
-// const dashboards = [
-//   {
-//     toggleBtn: document.getElementById("toggleDashboard"),
-//     iframe: document.getElementById("dashboardFrame"),
-//     textSpan: document.getElementById("dashboardText"),
-//     label: "Hydro Dashboard"
-//   },
-//   {
-//     toggleBtn: document.getElementById("toggleHydrostructure"),
-//     iframe: document.getElementById("hydrostructureFrame"),
-//     textSpan: document.getElementById("hydrostructureText"),
-//     label: "Hydrostructure Portal"
-//   }
-// ];
-
-
-// //iframe toggling for hydro dashboard
-// let activeDashboard = null;
-
-// function toggleDashboard(targetDashboard) {
-//   const isSame = activeDashboard === targetDashboard;
-//   activeDashboard = isSame ? null : targetDashboard;
-
-//   // Loop through all dashboards and update visibility
-//   dashboards.forEach(d => {
-//     if (d === targetDashboard && !isSame) {
-//       d.iframe.classList.remove("hidden");
-//       d.textSpan.textContent = "Back to Map";
-//     } else {
-//       d.iframe.classList.add("hidden");
-//       d.textSpan.textContent = d.label;
-//     }
-//   });
-
-//   // Toggle map children visibility
-//   Array.from(mapDiv.children).forEach(child => {
-//     if (child.tagName === "IFRAME") return; // skip iframe handling here
-//     child.style.display = activeDashboard ? "none" : "";
-//   });
-// }
-
-// dashboards.forEach(d => {
-//   d.toggleBtn.addEventListener("click", () => toggleDashboard(d));
-// });
-
-// // On page load, show only map content
-// toggleDashboard(null);
-
 //This is for blink button Tehsils (Tehsil Layer)
 function updateBlinkLayersButtonVisibility() {
   const btn = document.getElementById('blinkLayersBtn');
@@ -498,12 +499,12 @@ function handleTslBoundary(checkbox) {
         id: "TehsilBoundaryHighlight", // Layer to show highlight
         type: "fill",
         source: "tehsilBoundary",
-        "source-layer": "Tehsil_Boundary",
+        "source-layer": "tehsil_boundary",
         paint: {
           "fill-color": "orange", // Highlight color
           "fill-opacity": 0.3, // Semi-transparent
         },
-        filter: ["in", "TEHSIL", ""], // Initially no features are selected
+        filter: ["in", "name", ""], // Initially no features are selected
       };
 
       map1.addLayer(layerDef);
@@ -1141,6 +1142,66 @@ function addBoundaryLayers(map) {
 
     },
   });
+
+  // Invisible always-on layers keep boundary sources warm, so checkbox toggles
+  // only change visibility instead of waiting for first-time tile/data loading.
+  safeAddLayer({
+    id: "__boundaryWarmup_national",
+    type: "line",
+    source: "nationalBoundary",
+    "source-layer": "national_boundary",
+    layout: { visibility: "visible" },
+    paint: {
+      "line-opacity": 0,
+      "line-color": "#000000",
+      "line-width": 1,
+    },
+  });
+  safeAddLayer({
+    id: "__boundaryWarmup_provincial",
+    type: "line",
+    source: "provincialBoundary",
+    "source-layer": "provincial_boundary",
+    layout: { visibility: "visible" },
+    paint: {
+      "line-opacity": 0,
+      "line-color": "#000000",
+      "line-width": 1,
+    },
+  });
+  safeAddLayer({
+    id: "__boundaryWarmup_district",
+    type: "fill",
+    source: "districtBoundary",
+    "source-layer": "district_boundary",
+    layout: { visibility: "visible" },
+    paint: {
+      "fill-opacity": 0,
+      "fill-color": "#000000",
+    },
+  });
+  safeAddLayer({
+    id: "__boundaryWarmup_tehsil",
+    type: "fill",
+    source: "tehsilBoundary",
+    "source-layer": "tehsil_boundary",
+    layout: { visibility: "visible" },
+    paint: {
+      "fill-opacity": 0,
+      "fill-color": "#000000",
+    },
+  });
+  safeAddLayer({
+    id: "__boundaryWarmup_unionCouncil",
+    type: "line",
+    source: "Union_Council",
+    layout: { visibility: "visible" },
+    paint: {
+      "line-opacity": 0,
+      "line-color": "#000000",
+      "line-width": 1,
+    },
+  });
 }
 document.addEventListener('DOMContentLoaded', function () {
   const boundaryToggles = [
@@ -1227,12 +1288,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let boundaryListenersAttached = false;
 
   function whenMapStyleReady(map, cb) {
-    if (!map) return;
-    if (typeof map.isStyleLoaded === 'function' && map.isStyleLoaded()) {
-      cb();
-      return;
-    }
-    map.once('style.load', cb);
+    whenHydroMapStyleReady(map, cb);
   }
 
   function ensureBoundaryLayersAndSync() {
@@ -1273,9 +1329,7 @@ document.addEventListener('DOMContentLoaded', function () {
   attachBoundaryCheckboxListeners();
 
   // Ensure boundaries are present if map style is already ready.
-  if (typeof map1 !== 'undefined' && map1 && map1.isStyleLoaded && map1.isStyleLoaded()) {
-    ensureBoundaryLayersAndSync();
-  }
+  whenHydroMapStyleReady(map1, ensureBoundaryLayersAndSync);
 
   window.ensureBoundaryLayersAndSync = ensureBoundaryLayersAndSync;
 
@@ -1337,11 +1391,7 @@ function toggleHighlight(checkbox) {
       }
     };
 
-    if (typeof map1.isStyleLoaded === 'function' && map1.isStyleLoaded()) {
-      apply();
-    } else {
-      map1.once('style.load', apply);
-    }
+    whenHydroMapStyleReady(map1, apply);
   }
 
   if (checkbox.id === 'monsoonvideo') {
@@ -2060,15 +2110,7 @@ class WeatherLayerController {
 
   // Helper method to wait for map style to load
   waitForMapStyle() {
-    return new Promise(resolve => {
-      if (map1 && map1.isStyleLoaded && map1.isStyleLoaded()) {
-        resolve();
-      } else if (map1) {
-        map1.once('style.load', resolve);
-      } else {
-        resolve(); // Fallback if map1 is not available
-      }
-    });
+    return waitForHydroMapStyleReady(map1).catch(() => undefined);
   }
 
   // Optimized close function
@@ -2264,9 +2306,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.addLightningForecastLayers = addLightningForecastLayers;
-  if (map1 && typeof map1.isStyleLoaded === 'function' && map1.isStyleLoaded()) {
-    addLightningForecastLayers();
-  }
+  whenHydroMapStyleReady(map1, addLightningForecastLayers);
   // Toggle visibility
   ltwToggle.addEventListener('change', (e) => {
     const visible = e.target.checked;
@@ -2411,9 +2451,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.addWeeklyAccumulationLayers = addWeeklyAccumulationLayers;
-  if (map1 && typeof map1.isStyleLoaded === 'function' && map1.isStyleLoaded()) {
-    addWeeklyAccumulationLayers();
-  }
+  whenHydroMapStyleReady(map1, addWeeklyAccumulationLayers);
 
   // Toggle visibility of the weekly precipitation accumulation layers
   wpaToggle.addEventListener('change', (e) => {
@@ -2558,12 +2596,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addPrecip2026Layers = addPrecip2026Layers;
   function whenPrecip2026StyleReady(cb) {
-    if (!map1 || typeof map1.isStyleLoaded !== 'function') return;
-    if (map1.isStyleLoaded()) {
-      cb();
-    } else {
-      map1.once('style.load', cb);
-    }
+    whenHydroMapStyleReady(map1, cb);
   }
 
   function syncPrecip2026Visibility() {
@@ -2591,7 +2624,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (map1 && !map1.__precip2026StyleBound) {
     map1.__precip2026StyleBound = true;
-    map1.on('style.load', ensurePrecip2026LayersAndSync);
+    map1.on('style.load', () => {
+      map1.__hydroStyleReadyForLayers = true;
+      map1.__hydroStyleReadyStyle = map1.style;
+      ensurePrecip2026LayersAndSync();
+    });
   }
 
   // Toggle visibility of the Precipitation 2026 layers
@@ -3464,7 +3501,7 @@ function restoreBlinkingState() {
 
       if (map1.getLayer("TehsilBoundaryHighlight") && blinkingState.selectedTehsils.length > 0) {
         try {
-          map1.setFilter("TehsilBoundaryHighlight", ["in", "TEHSIL", ...blinkingState.selectedTehsils]);
+          map1.setFilter("TehsilBoundaryHighlight", ["in", "name", ...blinkingState.selectedTehsils]);
         } catch (e) {
           console.log("Could not restore tehsil filter:", e);
         }
@@ -5762,6 +5799,67 @@ const convertToGeojson = (data) => {
 };
 
 //----------------------------------------------------------------LAYERS---------------------------------------------------------------------// 
+function add3DBuildingsLayer(map) {
+  const layerId = 'add-3d-buildings';
+  const fallbackSourceId = 'mapbox-streets-buildings';
+
+  if (!map || !map.getStyle || map.getLayer(layerId)) return;
+
+  let sourceId = 'composite';
+  if (!map.getSource(sourceId)) {
+    sourceId = fallbackSourceId;
+    if (!map.getSource(sourceId)) {
+      map.addSource(sourceId, {
+        type: 'vector',
+        url: 'mapbox://mapbox.mapbox-streets-v8'
+      });
+    }
+  }
+
+  const layers = map.getStyle().layers || [];
+  const labelLayer = layers.find(layer => layer.type === 'symbol' && layer.layout && layer.layout['text-field']);
+  const layerDef = {
+    id: layerId,
+    source: sourceId,
+    'source-layer': 'building',
+    filter: ['==', 'extrude', 'true'],
+    type: 'fill-extrusion',
+    minzoom: 15,
+    paint: {
+      'fill-extrusion-color': '#aaa',
+      'fill-extrusion-height': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        15,
+        0,
+        15.05,
+        ['get', 'height']
+      ],
+      'fill-extrusion-base': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        15,
+        0,
+        15.05,
+        ['get', 'min_height']
+      ],
+      'fill-extrusion-opacity': 0.6
+    }
+  };
+
+  try {
+    if (labelLayer?.id && map.getLayer(labelLayer.id)) {
+      map.addLayer(layerDef, labelLayer.id);
+    } else {
+      map.addLayer(layerDef);
+    }
+  } catch (error) {
+    console.warn('3D buildings setup error:', error);
+  }
+}
+
 function addHydrometLayersToMap(map) {
   if (map._hydrometLayersAdded) {
     return;
@@ -9579,7 +9677,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   ///Jhelum Medium
   map1.addSource("jmfex", {
     type: "geojson",
-    data: `http://${mamAyman}:8080/geoserver/WaterResourceMonitoring/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=WaterResourceMonitoring%3Ajmfex&maxFeatures=50&outputFormat=application%2Fjson`,
+    data: `http://${mamAyman}:8080/geoserver/WaterResourceMonitoring/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=WaterResourceMonitoring%3Ajmfex&outputFormat=application%2Fjson`,
   });
 
   map1.addLayer({
@@ -14116,43 +14214,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
 
 
 
-  ////3d buildings layer
-  map1.addLayer(
-    {
-      'id': 'add-3d-buildings',
-      'source': 'composite',
-      'source-layer': 'building',
-      'filter': ['==', 'extrude', 'true'],
-      'type': 'fill-extrusion',
-      'minzoom': 15,
-      'paint': {
-        'fill-extrusion-color': '#aaa',
-
-        // Use an 'interpolate' expression to
-        // add a smooth transition effect to
-        // the buildings as the user zooms in.
-        'fill-extrusion-height': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          15,
-          0,
-          15.05,
-          ['get', 'height']
-        ],
-        'fill-extrusion-base': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          15,
-          0,
-          15.05,
-          ['get', 'min_height']
-        ],
-        'fill-extrusion-opacity': 0.6
-      }
-    },
-  );
+  add3DBuildingsLayer(map1);
   //WATER SHED LAYER
   if (!map1.getSource("Combined")) {
     map1.addSource("Combined", {
@@ -14383,10 +14445,22 @@ function runStyleLoadPipeline() {
   pendingStyleIsSatellite = false;
 }
 
-map1.on('style.load', runStyleLoadPipeline);
-if (typeof map1.isStyleLoaded === 'function' && map1.isStyleLoaded()) {
-  runStyleLoadPipeline();
+let hydroStyleLoadPipelineScheduled = false;
+function scheduleHydroStyleLoadPipeline() {
+  if (hydroStyleLoadPipelineScheduled) return;
+  hydroStyleLoadPipelineScheduled = true;
+  setTimeout(() => {
+    hydroStyleLoadPipelineScheduled = false;
+    runStyleLoadPipeline();
+  }, 0);
 }
+
+map1.on('style.load', () => {
+  map1.__hydroStyleReadyForLayers = true;
+  map1.__hydroStyleReadyStyle = map1.style;
+  scheduleHydroStyleLoadPipeline();
+});
+whenHydroMapStyleReady(map1, scheduleHydroStyleLoadPipeline);
 //-----------------------------------------------------Mapbox gl js BasemapSwitcher COntrol Start-----------------------------------------------------------------------------------------------//
 class MapboxStyleSwitcherControl {
   getVisibleLayers() {
@@ -15577,6 +15651,53 @@ let xOffset = 0;
 let yOffset = 0;
 let isDraggableSetup = false;
 let isFluidMeterDockObserverSetup = false;
+let isFluidMeterFeatureCloseBound = false;
+
+const FLUID_METER_SUPPORTED_DAM_NAMES = new Set([
+  'mangla',
+  'mangla dam',
+  'tarbela',
+  'tarbella',
+  'tarbela dam',
+  'tarbella dam',
+  'chashma',
+  'chashma barrage',
+  'bhakra dam',
+  'pong dam',
+  'thein dam'
+]);
+
+function normalizeDamFeatureName(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getFeatureNameForFluidMeter(feature) {
+  const properties = feature?.properties || {};
+  return properties.name || properties.Name || properties.NAME || properties.damName || properties.DamName || '';
+}
+
+function isFluidMeterSupportedDamFeature(feature) {
+  return FLUID_METER_SUPPORTED_DAM_NAMES.has(normalizeDamFeatureName(getFeatureNameForFluidMeter(feature)));
+}
+
+function bindFluidMeterFeatureCloseHandler() {
+  if (isFluidMeterFeatureCloseBound || typeof map1 === 'undefined' || !map1) return;
+
+  map1.on('click', (event) => {
+    const container = document.getElementById('fluidMeterContainer');
+    if (!container || container.style.display !== 'block') return;
+
+    const features = map1.queryRenderedFeatures(event.point);
+    if (!features.length) return;
+    if (features.some(isFluidMeterSupportedDamFeature)) return;
+
+    closeFluidMeter();
+  });
+
+  isFluidMeterFeatureCloseBound = true;
+}
+
+bindFluidMeterFeatureCloseHandler();
 
 function getMapDockContainer() {
   return document.getElementById('map1');
@@ -16500,26 +16621,7 @@ function normalizeExposureFeatureCollection(payload) {
 
 function waitForDewMapStyle(map) {
   if (!map) return Promise.reject(new Error('Map is not available.'));
-  if (map.isStyleLoaded()) return Promise.resolve();
-
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      map.off('styledata', onReady);
-      map.off('idle', onReady);
-      reject(new Error('Map style was not ready in time.'));
-    }, 8000);
-
-    const onReady = () => {
-      if (!map.isStyleLoaded()) return;
-      clearTimeout(timeoutId);
-      map.off('styledata', onReady);
-      map.off('idle', onReady);
-      resolve();
-    };
-
-    map.on('styledata', onReady);
-    map.on('idle', onReady);
-  });
+  return waitForHydroMapStyleReady(map, 45000).then(() => undefined);
 }
 
 function bindExposureControls() {

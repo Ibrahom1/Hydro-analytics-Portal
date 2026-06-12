@@ -1,0 +1,11 @@
+id,report_id,row_order,metric,today,last_year,avg_last_5_years,avg_last_10_years,variation_percent,variation_trend,variation_band,recorded_date
+1,1,1,Maximum,14.4,9.4,13.5,14.1,7.0,increase,0-25,2026-03-31
+2,1,2,Minimum,7.2,5.0,6.2,5.9,16.0,increase,0-25,2026-03-31
+3,2,1,Maximum,26.7,24.4,25.1,26.0,6.0,increase,0-25,2026-06-08
+4,2,2,Minimum,12.8,14.4,15.6,14.8,-18.0,decrease,0-25,2026-06-08
+5,3,1,Maximum,28.9,25.6,27.6,27.6,5.0,increase,0-25,2026-06-09
+6,3,2,Minimum,13.9,14.4,14.8,14.7,-6.0,decrease,0-25,2026-06-09
+7,4,1,Maximum,31.1,26.7,27.4,27.5,13.0,increase,0-25,2026-06-10
+8,4,2,Minimum,14.4,14.6,15.4,15.8,-6.0,decrease,0-25,2026-06-10
+9,5,1,Maximum,32.2,29.4,27.1,27.9,19.0,increase,0-25,2026-06-11
+10,5,2,Minimum,14.4,16.7,16.1,15.4,-11.0,decrease,0-25,2026-06-11
