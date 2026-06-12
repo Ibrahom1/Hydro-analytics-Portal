@@ -3347,40 +3347,6 @@
 
       headingSpan.textContent = anyFloodChecked ? 'Pakistan Flood Insight' : 'Hydro-Analytics 2026';
     }
-
-    /* Toggling logic for Hydro Dashboard button
-    document.getElementById('toggleDashboard').addEventListener('click', function () {
-      const headingSpan = document.querySelector('.heading-container span');
-      if (!headingSpan) return;
-    
-      // Always show the heading again when this button is clicked
-      headingSpan.style.display = 'inline';
-    
-      // Toggle between the two text values
-      const current = headingSpan.textContent.trim();
-      if (current === 'Hydro Dashboard 2025') {
-        updateHeaderText('Hydro-Analytics 2026');
-      } else {
-        updateHeaderText('Hydro Dashboard 2025');
-      }
-    });
-    
-    document.getElementById('toggleHydrostructure').addEventListener('click', function () {
-      const headingSpan = document.querySelector('.heading-container span');
-      if (!headingSpan) return;
-    
-      const isVisible = headingSpan.style.display !== 'none';
-    
-      if (isVisible) {
-        // Hide the header
-        headingSpan.style.display = 'none';
-      } else {
-        // Show it again with "Hydro-Analytics 2026"
-        headingSpan.style.display = 'inline';
-        headingSpan.textContent = 'Hydro-Analytics 2026';
-      }
-    });
-    */
   </script>
   <!-- <script src="script/mosques.js"></script>
   <script src="script/towers.js"></script> -->
@@ -3391,8 +3357,8 @@
   <script src="script/geojson/layer_glofas.js"></script>
   <script src="script/geojson/layer_floodpunjab.js"></script>
   <script src="script/geojson/layer_floodevent.js"></script>
-  <script src="script/layers.js?v=20260612-fast-map-ready"></script>
-  <script src="script/gis_uploader.js?v=20260612-map-ready"></script>
+  <script src="script/layers.js"></script>
+  <script src="script/gis_uploader.js?v=20260604-visible-uploaded-editor"></script>
 
 
   <!-- DEW Exposure Panel -->
