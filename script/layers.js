@@ -15875,10 +15875,8 @@ function dragStart(e) {
   const container = document.getElementById('fluidMeterContainer');
   if (!container) return;
 
-  // Prevent dragging if clicking on the close button or fluid meter canvas
-  if (e.target.classList.contains('close-btn') ||
-    e.target.tagName === 'CANVAS' ||
-    e.target.closest('#fluid-meter')) {
+  // Do not start panel drag from actionable controls.
+  if (e.target.closest('button, input, select, textarea, a, .close-btn')) {
     return;
   }
 
@@ -16183,6 +16181,7 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
   container.style.display = 'block';
   setupFluidMeterDockObserver();
   dockFluidMeter(container);
+  makeDraggable();
 
   renderDamInsights(damName, percentage, {
     ...details,
