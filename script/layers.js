@@ -6364,8 +6364,10 @@ function addHydrometLayersToMap(map) {
       const formatFFDHistoryCardDate = (dateObj) => {
         if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return 'Date unavailable';
         const day = dateObj.getDate();
-        const month = dateObj.toLocaleString('en-US', { month: 'long' });
-        return `${day}-${month}-${dateObj.getFullYear()}`;
+        const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = shortMonths[dateObj.getMonth()];
+        const year = String(dateObj.getFullYear()).slice(-2);
+        return `${day}-${month}-${year}`;
       };
 
       const getFFDHistoryComparisonLabel = (mode = ffdHistoryCompareMode) => (
@@ -6648,7 +6650,7 @@ function addHydrometLayersToMap(map) {
         };
       };
 
-      const renderFFDHistorySummary = (bundle) => {
+      const renderFFDHistorySummary = (bundle, dailySituation = null) => {
         const summaryEl = document.getElementById('ffd-history-summary');
         if (!summaryEl) return;
 
@@ -6682,7 +6684,7 @@ function addHydrometLayersToMap(map) {
           ? (outflowDelta ? `Now ${outflowDelta}` : 'Same as now')
           : emptyComparisonMeta;
 
-        const cards = hasComparison ? [
+        let cards = hasComparison ? [
           {
             label: `Inflow ${currentInflowDate}`,
             value: formatFFDHistoryValue(currentInflow),
@@ -6734,13 +6736,84 @@ function addHydrometLayersToMap(map) {
           }
         ];
 
+        // Query daily situation data from SQLite if available and add to panel
+        if (dailySituation) {
+          const normName = ffdHistoryName.toLowerCase();
+          const isDam = normName.includes('tarbela') || normName.includes('mangla') || normName.includes('chashma');
+          
+          if (!isDam) {
+            let rows = [];
+            if (dailySituation.barrages_discharge && dailySituation.barrages_discharge.length > 0) {
+              rows = dailySituation.barrages_discharge;
+            } else if (dailySituation.river_inflows && dailySituation.river_inflows.length > 0) {
+              rows = dailySituation.river_inflows;
+            } else if (dailySituation.reservoir_levels && dailySituation.reservoir_levels.length > 0) {
+              rows = dailySituation.reservoir_levels;
+            }
+
+            if (rows.length > 0) {
+              const latestData = rows.find(r => r.recorded_date === dailySituation.latest_date);
+              if (latestData) {
+                const isLvl = (dailySituation.reservoir_levels && dailySituation.reservoir_levels.length > 0);
+                const unit = isLvl ? "ft" : "cusecs";
+                
+                let avg5Val = latestData.avg_last_5_years;
+                let avg10Val = latestData.avg_last_10_years;
+
+                if (!isLvl) {
+                  if (avg5Val !== null && avg5Val !== undefined) avg5Val = avg5Val * 1000;
+                  if (avg10Val !== null && avg10Val !== undefined) avg10Val = avg10Val * 1000;
+                }
+
+                const formatVal = (v) => (v !== null && v !== undefined) ? `${parseFloat(v).toLocaleString()} ${unit}` : 'N/A';
+
+                const getTrendStyle = (val) => {
+                  if (val === null || val === undefined) return { arrow: '', tone: 'neutral' };
+                  const num = parseFloat(val);
+                  if (num > 0) return { arrow: '▲', tone: 'up' };
+                  if (num < 0) return { arrow: '▼', tone: 'down' };
+                  return { arrow: '▶', tone: 'neutral' };
+                };
+
+                const curVal = latestData.today;
+
+                const dbAvg5 = latestData.avg_last_5_years;
+                const deltaAvg5 = (curVal && dbAvg5) ? ((curVal - dbAvg5) / dbAvg5) * 100 : null;
+                const avg5Trend = getTrendStyle(deltaAvg5);
+
+                const dbAvg10 = latestData.avg_last_10_years;
+                const deltaAvg10 = (curVal && dbAvg10) ? ((curVal - dbAvg10) / dbAvg10) * 100 : null;
+                const avg10Trend = getTrendStyle(deltaAvg10);
+
+                cards.push({
+                  label: '5-Year Average',
+                  value: formatVal(avg5Val),
+                  meta: deltaAvg5 !== null ? `${avg5Trend.arrow} ${Math.abs(deltaAvg5).toFixed(1)}%` : '',
+                  tone: 'compare-inflow',
+                  metaTone: avg5Trend.tone
+                });
+
+                cards.push({
+                  label: '10-Year Average',
+                  value: formatVal(avg10Val),
+                  meta: deltaAvg10 !== null ? `${avg10Trend.arrow} ${Math.abs(deltaAvg10).toFixed(1)}%` : '',
+                  tone: 'compare-outflow',
+                  metaTone: avg10Trend.tone
+                });
+              }
+            }
+          }
+        }
+
         summaryEl.innerHTML = cards.map(card => `
           <div class="ffd-history-card ${card.tone}">
             <span>${escapeFFDHistoryHTML(card.label)}</span>
             <strong>${escapeFFDHistoryHTML(card.value)}</strong>
-            ${card.meta ? `<small>${escapeFFDHistoryHTML(card.meta)}</small>` : ''}
+            ${card.meta ? `<small class="${card.metaTone || ''}" ${card.metaTone ? 'style="font-weight: bold;"' : ''}>${escapeFFDHistoryHTML(card.meta)}</small>` : ''}
           </div>
         `).join('');
+
+        summaryEl.style.gridTemplateColumns = `repeat(${cards.length}, 1fr)`;
       };
 
       const renderFFDHistoryChart = (canvasId, bundle, isFullscreen = false) => {
@@ -6954,8 +7027,15 @@ function addHydrometLayersToMap(map) {
             comparisonError
           });
 
+          let dailySituation = null;
+          try {
+            dailySituation = await fetchDailySituation(ffdHistoryName);
+          } catch (e) {
+            console.warn('SQLite daily situation fetch failed:', e);
+          }
+
           renderFFDHistoryChart('ffd-history-canvas', chartBundle);
-          renderFFDHistorySummary(chartBundle);
+          renderFFDHistorySummary(chartBundle, dailySituation);
           ffdHistoryLastSeries = chartBundle;
 
           if (selectedRange) {
@@ -7802,9 +7882,63 @@ function addHydrometLayersToMap(map) {
           }
         };
 
-        if (damData.hasOwnProperty(props.name)) {
+        if (props.name === 'Skardu') {
+          fetchDailySituation('Skardu').then(data => {
+            if (data && data.skardu_temp && data.skardu_temp.length > 0) {
+              showSkarduTemperature(data);
+            }
+          });
+        } else if (damData.hasOwnProperty(props.name)) {
           const dam = damData[props.name];
-          showDamFluidMeter(props.name, dam.percentage, dam.level, dam);
+          fetchDailySituation(props.name).then(data => {
+            if (data && data.reservoir_levels && data.reservoir_levels.length > 0) {
+              const latestLevel = data.reservoir_levels.find(r => r.recorded_date === data.latest_date);
+              if (latestLevel) {
+                const yesterdayLevel = data.reservoir_levels.find(r => r.recorded_date === data.yesterday_date);
+                const latestStorage = data.reservoir_storages ? data.reservoir_storages.find(r => r.recorded_date === data.latest_date) : null;
+                const yesterdayStorage = data.reservoir_storages ? data.reservoir_storages.find(r => r.recorded_date === data.yesterday_date) : null;
+
+                const mol = latestLevel.mol_ft || 0;
+                const mcl = latestLevel.mcl_ft || dam.fullCapacity;
+                const currentVal = latestLevel.today;
+                
+                const maxMaf = latestStorage ? latestStorage.max_maf : (dam.fullCapacity || 1);
+                
+                let pct = 0;
+                if (latestStorage && maxMaf > 0) {
+                  pct = (latestStorage.today / maxMaf) * 100;
+                } else if (mcl > mol) {
+                  pct = ((currentVal - mol) / (mcl - mol)) * 100;
+                }
+                pct = Math.max(0, Math.min(100, pct));
+                
+                const mergedDam = {
+                  ...dam,
+                  level: currentVal,
+                  percentage: pct,
+                  yesterdayLevel: yesterdayLevel ? yesterdayLevel.today : null,
+                  lastYearLevel: latestLevel.last_year,
+                  avg5YearLevel: latestLevel.avg_last_5_years,
+                  avg10YearLevel: latestLevel.avg_last_10_years,
+                  variationPercent: latestLevel.variation_percent,
+                  variationTrend: latestLevel.variation_trend,
+                  
+                  todayStorage: latestStorage ? latestStorage.today : null,
+                  yesterdayStorage: yesterdayStorage ? yesterdayStorage.today : null,
+                  lastYearStorage: latestStorage ? latestStorage.last_year : null,
+                  avg5YearStorage: latestStorage ? latestStorage.avg_last_5_years : null,
+                  avg10YearStorage: latestStorage ? latestStorage.avg_last_10_years : null,
+                  maxStorage: maxMaf
+                };
+                
+                showDamFluidMeter(props.name, pct, currentVal, mergedDam);
+              } else {
+                showDamFluidMeter(props.name, dam.percentage, dam.level, dam);
+              }
+            } else {
+              showDamFluidMeter(props.name, dam.percentage, dam.level, dam);
+            }
+          });
         }
 
         if (props.name) {
@@ -15783,6 +15917,10 @@ function alignFFDHistoryPanelToFluidMeter() {
     return;
   }
 
+  if (!fluidContainer.style.left || fluidContainer.style.left === 'auto') {
+    dockFluidMeter(fluidContainer, true);
+  }
+
   const fluidRect = fluidContainer.getBoundingClientRect();
   const mapContainer = getMapDockContainer();
   const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
@@ -15798,7 +15936,7 @@ function alignFFDHistoryPanelToFluidMeter() {
   historyPanel.style.bottom = '16px';
 }
 
-function dockFluidMeter(container) {
+function dockFluidMeter(container, avoidAligningHistory = false) {
   if (!container) return;
 
   const metrics = getFluidMeterDockMetrics();
@@ -15815,7 +15953,9 @@ function dockFluidMeter(container) {
   container.setAttribute('data-original-right', container.style.right);
   container.setAttribute('data-original-transform', 'none');
 
-  alignFFDHistoryPanelToFluidMeter();
+  if (!avoidAligningHistory) {
+    alignFFDHistoryPanelToFluidMeter();
+  }
 }
 
 function setupFluidMeterDockObserver() {
@@ -16100,29 +16240,58 @@ function renderDamInsights(damName, percentage, details = {}) {
     addMetricCard('Last Year', lastYearFill, deltaLastYear);
     addMetricCard('5-Year Avg', normalFill, deltaNormal);
   } else if (country === 'Pakistan') {
-    const lastYearFill = toNumericOrNull(details.lastYearLevel);
-    const avg5YearFill = toNumericOrNull(details.avg5YearLevel);
-    const deltaLastYearFill = currentFill !== null && lastYearFill !== null ? currentFill - lastYearFill : null;
-    const deltaAvg5Fill = currentFill !== null && avg5YearFill !== null ? currentFill - avg5YearFill : null;
+    if (details.todayStorage !== undefined && details.todayStorage !== null) {
+      const maxStorage = toNumericOrNull(details.maxStorage) || 1.0;
+      const currentFillPct = (toNumericOrNull(details.todayStorage) / maxStorage) * 100;
+      
+      if (details.yesterdayStorage !== null && details.yesterdayStorage !== undefined) {
+        const yesterdayFillPct = (toNumericOrNull(details.yesterdayStorage) / maxStorage) * 100;
+        const delta = currentFillPct - yesterdayFillPct;
+        addMetricCard('Yesterday', yesterdayFillPct, delta);
+      } else {
+        addMetricCard('Yesterday', null, null);
+      }
+      
+      if (details.avg5YearStorage !== null && details.avg5YearStorage !== undefined) {
+        const avg5YearFillPct = (toNumericOrNull(details.avg5YearStorage) / maxStorage) * 100;
+        const delta = currentFillPct - avg5YearFillPct;
+        addMetricCard('5-Year Avg', avg5YearFillPct, delta);
+      }
+      
+      if (details.avg10YearStorage !== null && details.avg10YearStorage !== undefined) {
+        const avg10YearFillPct = (toNumericOrNull(details.avg10YearStorage) / maxStorage) * 100;
+        const delta = currentFillPct - avg10YearFillPct;
+        addMetricCard('10-Year Avg', avg10YearFillPct, delta);
+      }
+    } else {
+      const yesterdayLevelFill = (toNumericOrNull(details.yesterdayLevel) && details.fullCapacity) ? (toNumericOrNull(details.yesterdayLevel) / details.fullCapacity) * 100 : null;
+      const avg5YearFill = (toNumericOrNull(details.avg5YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg5YearLevel) / details.fullCapacity) * 100 : null;
+      const avg10YearFill = (toNumericOrNull(details.avg10YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg10YearLevel) / details.fullCapacity) * 100 : null;
 
-    addMetricCard('Last Year', lastYearFill, deltaLastYearFill);
-    addMetricCard('5-Year Avg', avg5YearFill, deltaAvg5Fill);
+      const deltaYesterday = (currentFill !== null && yesterdayLevelFill !== null) ? currentFill - yesterdayLevelFill : null;
+      const deltaAvg5 = (currentFill !== null && avg5YearFill !== null) ? currentFill - avg5YearFill : null;
+      const deltaAvg10 = (currentFill !== null && avg10YearFill !== null) ? currentFill - avg10YearFill : null;
+
+      addMetricCard('Yesterday', yesterdayLevelFill, deltaYesterday);
+      addMetricCard('5-Year Avg', avg5YearFill, deltaAvg5);
+      addMetricCard('10-Year Avg', avg10YearFill, deltaAvg10);
+    }
   } else {
     addMetricCard('Current Fill', currentFill, 0);
     addMetricCard('Capacity', fullCapacity, null);
   }
 
   insightsChart.innerHTML = `
-    <div class="dam-metric-cards">
+    <div class="dam-metric-cards" style="grid-template-columns: repeat(${cards.length}, minmax(0, 1fr));">
       ${cards.map((card) => `
         <div class="dam-metric-card">
           <div class="dam-metric-title">${escapeHtmlValue(card.title)}</div>
           <div class="dam-metric-row">
-            <span class="dam-metric-label">% Filled</span>
+            <span class="dam-metric-label">Filled</span>
             <span class="dam-metric-value dam-metric-value-filled">${escapeHtmlValue(card.filled)}</span>
           </div>
           <div class="dam-metric-row">
-            <span class="dam-metric-label">% Change</span>
+            <span class="dam-metric-label">Change</span>
             <span class="dam-metric-value dam-metric-value-change ${escapeHtmlValue(card.changeTone)}">
               <span class="dam-change-arrow">${escapeHtmlValue(card.changeArrow)}</span>
               <span class="dam-change-text">${escapeHtmlValue(card.changeValue)}</span>
@@ -16155,16 +16324,28 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
   meta.textContent = region ? `${country} · ${region}` : country;
   liveBadge.textContent = 'LIVE';
 
+  const labelEl = container.querySelector('.reservoir-level-label');
+  if (labelEl) {
+    labelEl.textContent = 'Reservoir Level (ft)';
+  }
+
   const numericLevel = toNumericOrNull(reservoirLevel);
   const capacity = toNumericOrNull(details.fullCapacity);
 
-  const currentText = numericLevel === null ? 'N/A' : numericLevel.toFixed(0);
-  const totalText = capacity === null ? 'N/A' : capacity.toFixed(0);
+  const currentText = numericLevel === null ? 'N/A' : numericLevel.toFixed(2);
+  const totalText = capacity === null ? 'N/A' : capacity.toFixed(2);
+  const yesterdayText = details.yesterdayLevel ? parseFloat(details.yesterdayLevel).toFixed(2) : 'N/A';
+
   reservoirValue.innerHTML = `
     <div class="reservoir-level-grid">
       <div class="reservoir-level-row reservoir-level-row-current">
         <span class="reservoir-level-number reservoir-level-number-current">${escapeHtmlValue(currentText)}</span>
         <span class="reservoir-level-pill reservoir-level-pill-current">Current</span>
+      </div>
+      <span class="reservoir-level-divider" aria-hidden="true"></span>
+      <div class="reservoir-level-row reservoir-level-row-yesterday">
+        <span class="reservoir-level-number reservoir-level-number-yesterday">${escapeHtmlValue(yesterdayText)}</span>
+        <span class="reservoir-level-pill reservoir-level-pill-yesterday">Yesterday</span>
       </div>
       <span class="reservoir-level-divider" aria-hidden="true"></span>
       <div class="reservoir-level-row reservoir-level-row-total">
@@ -16196,10 +16377,10 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
       fillPercentage: percentage,
       options: {
         fontFamily: "Oxygen",
-        fontSize: "22px",
+        fontSize: "18px",
         drawPercentageSign: true,
         drawBubbles: true,
-        size: 150,
+        size: 130,
         borderWidth: 3,
         backgroundColor: "#262626",
         foregroundColor: "white",
@@ -16222,6 +16403,194 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
   } catch (error) {
     console.error('Error creating fluid meter:', error);
   }
+}
+
+const fetchDailySituation = async (station) => {
+  try {
+    const host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
+    const response = await fetch(`http://${host}:5000/api/daily-situation?station=${encodeURIComponent(station)}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.success) {
+      return data;
+    }
+  } catch (error) {
+    console.error("Failed to fetch daily situation data:", error);
+  }
+  return null;
+};
+
+function showSkarduTemperature(data) {
+  const container = document.getElementById('fluidMeterContainer');
+  const title = document.getElementById('meterTitle');
+  const meta = document.getElementById('meterMeta');
+  const liveBadge = document.getElementById('meterLive');
+  const meterDiv = document.getElementById('fluid-meter');
+  const reservoirValue = document.getElementById('reservoirValue');
+
+  if (!container || !title || !meta || !liveBadge || !meterDiv || !reservoirValue) {
+    console.error('Fluid meter HTML elements not found.');
+    return;
+  }
+
+  title.textContent = "Skardu";
+  meta.textContent = "PAKISTAN · GILGIT-BALTISTAN";
+  liveBadge.textContent = "LIVE";
+
+  const temps = data.skardu_temp || [];
+  const latestTemps = temps.filter(t => t.recorded_date === data.latest_date);
+  const maxTempObj = latestTemps.find(t => t.metric === 'Maximum') || {};
+  const minTempObj = latestTemps.find(t => t.metric === 'Minimum') || {};
+
+  const todayMax = maxTempObj.today !== undefined ? maxTempObj.today : null;
+  const todayMin = minTempObj.today !== undefined ? minTempObj.today : null;
+
+  const labelEl = container.querySelector('.reservoir-level-label');
+  if (labelEl) {
+    labelEl.textContent = 'Daily Temperature (°C)';
+  }
+
+  const currentText = todayMax === null ? 'N/A' : `${todayMax.toFixed(1)}°`;
+  const totalText = todayMin === null ? 'N/A' : `${todayMin.toFixed(1)}°`;
+  reservoirValue.innerHTML = `
+    <div class="reservoir-level-grid">
+      <div class="reservoir-level-row reservoir-level-row-current">
+        <span class="reservoir-level-number reservoir-level-number-current">${escapeHtmlValue(currentText)}</span>
+        <span class="reservoir-level-pill reservoir-level-pill-current" style="background-color: #ef4444; color: white;">Max</span>
+      </div>
+      <span class="reservoir-level-divider" aria-hidden="true"></span>
+      <div class="reservoir-level-row reservoir-level-row-total">
+        <span class="reservoir-level-number reservoir-level-number-total">${escapeHtmlValue(totalText)}</span>
+        <span class="reservoir-level-pill reservoir-level-pill-total" style="background-color: #3b82f6; color: white;">Min</span>
+      </div>
+    </div>
+  `;
+
+  meterDiv.innerHTML = '';
+
+  container.style.display = 'block';
+  setupFluidMeterDockObserver();
+  dockFluidMeter(container);
+  makeDraggable();
+
+  renderSkarduInsights(data);
+
+  try {
+    currentFluidMeter = new FluidMeter();
+    const fillPercent = todayMax !== null ? Math.max(0, Math.min(100, todayMax)) : 50;
+    currentFluidMeter.init({
+      targetContainer: meterDiv,
+      fillPercentage: fillPercent,
+      options: {
+        fontFamily: "Oxygen",
+        fontSize: "18px",
+        drawPercentageSign: false,
+        suffix: "°C",
+        drawBubbles: true,
+        size: 130,
+        borderWidth: 3,
+        backgroundColor: "#262626",
+        foregroundColor: "white",
+        foregroundFluidLayer: {
+          fillStyle: "#FF5733",
+          angularSpeed: 90,
+          maxAmplitude: 11,
+          frequency: 25,
+          horizontalSpeed: -200
+        },
+        backgroundFluidLayer: {
+          fillStyle: "#FFC300",
+          angularSpeed: 100,
+          maxAmplitude: 13,
+          frequency: 23,
+          horizontalSpeed: 230
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error creating temperature fluid meter:', error);
+  }
+}
+
+function renderSkarduInsights(data) {
+  const insightsRoot = document.getElementById('damInsights');
+  const insightsStrip = document.getElementById('damInsightsStrip');
+  const insightsChart = document.getElementById('damInsightsChart');
+  const barsTitle = document.getElementById('damBarsTitle');
+
+  if (!insightsRoot || !insightsStrip || !insightsChart || !barsTitle) {
+    return;
+  }
+
+  insightsRoot.style.display = 'block';
+  insightsStrip.style.display = 'none';
+  insightsStrip.innerHTML = '';
+  barsTitle.style.display = 'none';
+  barsTitle.textContent = '';
+
+  const temps = data.skardu_temp || [];
+  const latestTemps = temps.filter(t => t.recorded_date === data.latest_date);
+  const maxTempObj = latestTemps.find(t => t.metric === 'Maximum') || {};
+  const minTempObj = latestTemps.find(t => t.metric === 'Minimum') || {};
+
+  const cards = [];
+
+  const getSkarduChange = (trend, percent) => {
+    if (percent === null || percent === undefined) {
+      return { arrow: '', value: 'N/A', tone: 'neutral' };
+    }
+    const delta = parseFloat(percent);
+    const arrow = delta > 0 ? '▲' : (delta < 0 ? '▼' : '▶');
+    return {
+      arrow,
+      value: `${Math.abs(delta).toFixed(1)}%`,
+      tone: delta > 0 ? 'up' : (delta < 0 ? 'down' : 'neutral')
+    };
+  };
+
+  const addSkarduCard = (title, label, value, trend, percent) => {
+    const change = getSkarduChange(trend, percent);
+    cards.push({
+      title,
+      label,
+      value: value !== null && value !== undefined ? `${value.toFixed(1)}°C` : 'N/A',
+      changeArrow: change.arrow,
+      changeValue: change.value,
+      changeTone: change.tone
+    });
+  };
+
+  if (maxTempObj.today !== undefined) {
+    addSkarduCard('Max - Last Year', 'Last Year', maxTempObj.last_year, maxTempObj.variation_trend, maxTempObj.variation_percent);
+    addSkarduCard('Max - 5Yr Avg', '5-Yr Avg', maxTempObj.avg_last_5_years, maxTempObj.variation_trend, maxTempObj.variation_percent);
+  }
+  if (minTempObj.today !== undefined) {
+    addSkarduCard('Min - Last Year', 'Last Year', minTempObj.last_year, minTempObj.variation_trend, minTempObj.variation_percent);
+    addSkarduCard('Min - 5Yr Avg', '5-Yr Avg', minTempObj.avg_last_5_years, minTempObj.variation_trend, minTempObj.variation_percent);
+  }
+
+  insightsChart.innerHTML = `
+    <div class="dam-metric-cards" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+      ${cards.map((card) => `
+        <div class="dam-metric-card" style="padding: 10px;">
+          <div class="dam-metric-title" style="font-size: 11px; font-weight: bold; color: #94a3b8; margin-bottom: 6px;">${escapeHtmlValue(card.title)}</div>
+          <div class="dam-metric-row" style="margin-bottom: 4px;">
+            <span class="dam-metric-label" style="font-size: 11px; color: #cbd5e1;">${escapeHtmlValue(card.label)}</span>
+            <span class="dam-metric-value dam-metric-value-filled" style="font-size: 12px; font-weight: bold; color: #f8fafc;">${escapeHtmlValue(card.value)}</span>
+          </div>
+          <div class="dam-metric-row">
+            <span class="dam-metric-label" style="font-size: 11px; color: #cbd5e1;">% Change</span>
+            <span class="dam-metric-value dam-metric-value-change ${escapeHtmlValue(card.changeTone)}" style="font-size: 12px; font-weight: bold;">
+              <span class="dam-change-arrow">${escapeHtmlValue(card.changeArrow)}</span>
+              <span class="dam-change-text">${escapeHtmlValue(card.changeValue)}</span>
+            </span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function closeFluidMeter() {
@@ -16505,8 +16874,8 @@ function FluidMeter() {
   }
 
   function drawText() {
-    var text = options.drawPercentageSign ?
-      currentFillPercentage.toFixed(0) + "%" : currentFillPercentage.toFixed(0);
+    var suffix = options.suffix !== undefined ? options.suffix : (options.drawPercentageSign ? "%" : "");
+    var text = currentFillPercentage.toFixed(0) + suffix;
 
     context.save();
     context.font = getFontSize();
@@ -16552,6 +16921,7 @@ function FluidMeter() {
         options.foregroundColor = env.options.foregroundColor || options.foregroundColor;
         options.drawText = env.options.drawText === false ? false : true;
         options.drawPercentageSign = env.options.drawPercentageSign === false ? false : true;
+        options.suffix = env.options.suffix !== undefined ? env.options.suffix : undefined;
         options.fontSize = env.options.fontSize || options.fontSize;
         options.fontFamily = env.options.fontFamily || options.fontFamily;
         options.fontFillStyle = env.options.fontFillStyle || options.fontFillStyle;
