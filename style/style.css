@@ -3542,7 +3542,7 @@ body {
     display: grid;
   grid-template-columns: 130px minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .reservoir-level {
@@ -4018,6 +4018,11 @@ body {
     margin: 0 auto;
     max-width: 100%;
     pointer-events: none; /* Prevent canvas from interfering with drag */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    min-height: 130px;
 }
 
 @media (max-width: 1100px) {

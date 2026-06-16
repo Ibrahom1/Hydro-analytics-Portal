@@ -16442,11 +16442,19 @@ function showSkarduTemperature(data) {
 
   const temps = data.skardu_temp || [];
   const latestTemps = temps.filter(t => t.recorded_date === data.latest_date);
+  const yesterdayTemps = temps.filter(t => t.recorded_date === data.yesterday_date);
+
   const maxTempObj = latestTemps.find(t => t.metric === 'Maximum') || {};
   const minTempObj = latestTemps.find(t => t.metric === 'Minimum') || {};
 
+  const yestMaxTempObj = yesterdayTemps.find(t => t.metric === 'Maximum') || {};
+  const yestMinTempObj = yesterdayTemps.find(t => t.metric === 'Minimum') || {};
+
   const todayMax = maxTempObj.today !== undefined ? maxTempObj.today : null;
   const todayMin = minTempObj.today !== undefined ? minTempObj.today : null;
+
+  const yestMax = yestMaxTempObj.today !== undefined ? yestMaxTempObj.today : null;
+  const yestMin = yestMinTempObj.today !== undefined ? yestMinTempObj.today : null;
 
   const labelEl = container.querySelector('.reservoir-level-label');
   if (labelEl) {
@@ -16455,21 +16463,83 @@ function showSkarduTemperature(data) {
 
   const currentText = todayMax === null ? 'N/A' : `${todayMax.toFixed(1)}°`;
   const totalText = todayMin === null ? 'N/A' : `${todayMin.toFixed(1)}°`;
+  const yestMaxText = yestMax === null ? 'N/A' : `${yestMax.toFixed(1)}°`;
+  const yestMinText = yestMin === null ? 'N/A' : `${yestMin.toFixed(1)}°`;
+
   reservoirValue.innerHTML = `
     <div class="reservoir-level-grid">
-      <div class="reservoir-level-row reservoir-level-row-current">
-        <span class="reservoir-level-number reservoir-level-number-current">${escapeHtmlValue(currentText)}</span>
-        <span class="reservoir-level-pill reservoir-level-pill-current" style="background-color: #ef4444; color: white;">Max</span>
+      <!-- Max Today -->
+      <div class="reservoir-level-row">
+        <span class="reservoir-level-number" style="color: #f87171;">${escapeHtmlValue(currentText)}</span>
+        <span class="reservoir-level-pill" style="background-color: #ef4444; color: white;">Max Today</span>
       </div>
-      <span class="reservoir-level-divider" aria-hidden="true"></span>
-      <div class="reservoir-level-row reservoir-level-row-total">
-        <span class="reservoir-level-number reservoir-level-number-total">${escapeHtmlValue(totalText)}</span>
-        <span class="reservoir-level-pill reservoir-level-pill-total" style="background-color: #3b82f6; color: white;">Min</span>
+      <!-- Max Yesterday -->
+      <div class="reservoir-level-row">
+        <span class="reservoir-level-number" style="color: #fca5a5;">${escapeHtmlValue(yestMaxText)}</span>
+        <span class="reservoir-level-pill" style="background-color: #991b1b; color: white;">Max Yesterday</span>
+      </div>
+      
+      <span class="reservoir-level-divider" style="margin: 2px 0;" aria-hidden="true"></span>
+      
+      <!-- Min Today -->
+      <div class="reservoir-level-row">
+        <span class="reservoir-level-number" style="color: #60a5fa;">${escapeHtmlValue(totalText)}</span>
+        <span class="reservoir-level-pill" style="background-color: #3b82f6; color: white;">Min Today</span>
+      </div>
+      <!-- Min Yesterday -->
+      <div class="reservoir-level-row">
+        <span class="reservoir-level-number" style="color: #93c5fd;">${escapeHtmlValue(yestMinText)}</span>
+        <span class="reservoir-level-pill" style="background-color: #1e40af; color: white;">Min Yesterday</span>
       </div>
     </div>
   `;
 
-  meterDiv.innerHTML = '';
+  meterDiv.innerHTML = `
+    <style>
+      @keyframes thermo-pulse {
+        0%, 100% {
+          filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.4)) drop-shadow(0 0 4px rgba(239, 68, 68, 0.2));
+        }
+        50% {
+          filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.5));
+        }
+      }
+      .thermo-pulse-element {
+        animation: thermo-pulse 2s infinite ease-in-out;
+      }
+    </style>
+    <div style="position: relative; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+      <svg width="130" height="130" viewBox="0 0 120 120" style="transform: rotate(-90deg); display: block;">
+        <defs>
+          <linearGradient id="tempGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#3b82f6" />
+            <stop offset="50%" stop-color="#f97316" />
+            <stop offset="100%" stop-color="#ef4444" />
+          </linearGradient>
+        </defs>
+        <!-- Background track -->
+        <circle cx="60" cy="60" r="46" stroke="#1e293b" stroke-width="6" fill="transparent" />
+        <!-- Animated Temperature Circle Arc -->
+        <circle cx="60" cy="60" r="46" stroke="url(#tempGrad)" stroke-width="6" fill="transparent" 
+                stroke-dasharray="289" stroke-dashoffset="289" stroke-linecap="round" id="temp-gauge-fill" />
+      </svg>
+      <!-- Center Display -->
+      <div style="position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; transform: translateY(-2px);">
+        <span style="font-family: 'Oxygen', sans-serif; font-weight: 800; font-size: 20px; color: #f8fafc; margin-bottom: 2px;">
+          ${todayMax !== null ? Math.round(todayMax) : '--'}°C
+        </span>
+        <svg width="16" height="30" viewBox="0 0 16 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Outer Case -->
+          <path d="M8 2C6.34 2 5 3.34 5 5V18.27C3.17 19.5 2 21.6 2 24C2 27.31 4.69 30 8 30C11.31 30 14 27.31 14 24C14 21.6 12.83 19.5 11 18.27V5C11 3.34 9.66 2 8 2Z" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" />
+          <!-- Bulb with glow animation -->
+          <circle cx="8" cy="24" r="3.5" fill="#ef4444" class="thermo-pulse-element" />
+          <!-- Animated rising mercury column -->
+          <path d="M8 20.5V6" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" id="thermo-mercury" 
+                stroke-dasharray="15" stroke-dashoffset="15" class="thermo-pulse-element" />
+        </svg>
+      </div>
+    </div>
+  `;
 
   container.style.display = 'block';
   setupFluidMeterDockObserver();
@@ -16478,41 +16548,25 @@ function showSkarduTemperature(data) {
 
   renderSkarduInsights(data);
 
-  try {
-    currentFluidMeter = new FluidMeter();
-    const fillPercent = todayMax !== null ? Math.max(0, Math.min(100, todayMax)) : 50;
-    currentFluidMeter.init({
-      targetContainer: meterDiv,
-      fillPercentage: fillPercent,
-      options: {
-        fontFamily: "Oxygen",
-        fontSize: "18px",
-        drawPercentageSign: false,
-        suffix: "°C",
-        drawBubbles: true,
-        size: 130,
-        borderWidth: 3,
-        backgroundColor: "#262626",
-        foregroundColor: "white",
-        foregroundFluidLayer: {
-          fillStyle: "#FF5733",
-          angularSpeed: 90,
-          maxAmplitude: 11,
-          frequency: 25,
-          horizontalSpeed: -200
-        },
-        backgroundFluidLayer: {
-          fillStyle: "#FFC300",
-          angularSpeed: 100,
-          maxAmplitude: 13,
-          frequency: 23,
-          horizontalSpeed: 230
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error creating temperature fluid meter:', error);
-  }
+  currentFluidMeter = null;
+
+  // Start animated sweep
+  const tempPercent = todayMax !== null ? Math.max(0, Math.min(100, (todayMax + 10) / 50 * 100)) : 50;
+  const targetOffset = 289 - (289 * tempPercent) / 100;
+  const mercuryOffset = 15 - (15 * tempPercent) / 100;
+
+  setTimeout(() => {
+    const fill = document.getElementById('temp-gauge-fill');
+    if (fill) {
+      fill.style.transition = 'stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1)';
+      fill.style.strokeDashoffset = String(targetOffset);
+    }
+    const mercury = document.getElementById('thermo-mercury');
+    if (mercury) {
+      mercury.style.transition = 'stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1)';
+      mercury.style.strokeDashoffset = String(mercuryOffset);
+    }
+  }, 100);
 }
 
 function renderSkarduInsights(data) {
