@@ -16379,6 +16379,7 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
         fontFamily: "Oxygen",
         fontSize: "18px",
         drawPercentageSign: true,
+        precision: 2,
         drawBubbles: true,
         size: 130,
         borderWidth: 3,
@@ -16653,7 +16654,8 @@ function FluidMeter() {
     size: 300,
     borderWidth: 25,
     backgroundColor: "#e2e2e2",
-    foregroundColor: "#fafafa"
+    foregroundColor: "#fafafa",
+    precision: 0
   };
 
   var currentFillPercentage = 0;
@@ -16804,8 +16806,14 @@ function FluidMeter() {
 
     if (currentFillPercentage < fillPercentage) {
       currentFillPercentage += 15 * dt;
+      if (currentFillPercentage > fillPercentage) {
+        currentFillPercentage = fillPercentage;
+      }
     } else if (currentFillPercentage > fillPercentage) {
       currentFillPercentage -= 15 * dt;
+      if (currentFillPercentage < fillPercentage) {
+        currentFillPercentage = fillPercentage;
+      }
     }
 
     layer.initialHeight = meterBottom - fluidAmount;
@@ -16875,7 +16883,8 @@ function FluidMeter() {
 
   function drawText() {
     var suffix = options.suffix !== undefined ? options.suffix : (options.drawPercentageSign ? "%" : "");
-    var text = currentFillPercentage.toFixed(0) + suffix;
+    var precision = options.precision !== undefined ? options.precision : 0;
+    var text = currentFillPercentage.toFixed(precision) + suffix;
 
     context.save();
     context.font = getFontSize();
@@ -16922,6 +16931,7 @@ function FluidMeter() {
         options.drawText = env.options.drawText === false ? false : true;
         options.drawPercentageSign = env.options.drawPercentageSign === false ? false : true;
         options.suffix = env.options.suffix !== undefined ? env.options.suffix : undefined;
+        options.precision = env.options.precision !== undefined ? env.options.precision : 0;
         options.fontSize = env.options.fontSize || options.fontSize;
         options.fontFamily = env.options.fontFamily || options.fontFamily;
         options.fontFillStyle = env.options.fontFillStyle || options.fontFillStyle;
