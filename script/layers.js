@@ -16797,6 +16797,7 @@ function FluidMeter() {
     context.clearRect(0, 0, options.size, options.size);
     drawMeterBackground();
     drawFluid(dt);
+    drawGlassReflection();
     if (options.drawText) {
       drawText();
     }
@@ -16805,23 +16806,90 @@ function FluidMeter() {
 
   function drawMeterBackground() {
     context.save();
-    context.fillStyle = options.backgroundColor;
+    var cx = options.size / 2;
+    var cy = options.size / 2;
+    var r = getMeterRadius() / 2 - options.borderWidth;
+    
+    // Create a 3D-like spherical depth radial gradient
+    var grad = context.createRadialGradient(
+      cx - r * 0.15, 
+      cy - r * 0.15, 
+      r * 0.1, 
+      cx, 
+      cy, 
+      r
+    );
+    grad.addColorStop(0, '#102233');
+    grad.addColorStop(0.5, '#08141f');
+    grad.addColorStop(1, '#02070d');
+    
+    context.fillStyle = grad;
     context.beginPath();
-    context.arc(options.size / 2, options.size / 2, getMeterRadius() / 2 - options.borderWidth, 0, 2 * Math.PI);
+    context.arc(cx, cy, r, 0, 2 * Math.PI);
     context.closePath();
     context.fill();
     context.restore();
   }
 
+  function drawGlassReflection() {
+    var cx = options.size / 2;
+    var cy = options.size / 2;
+    var r = getMeterRadius() / 2 - options.borderWidth;
+
+    context.save();
+    context.beginPath();
+    context.arc(cx, cy, r, 0, 2 * Math.PI);
+    context.clip();
+
+    // Create a 3D glass highlight reflection (specular glow) at the top-left
+    var grad = context.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+    grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.08)');
+    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+    
+    context.fillStyle = grad;
+    context.beginPath();
+    context.ellipse(cx - r * 0.2, cy - r * 0.2, r * 0.85, r * 0.65, Math.PI / 4, 0, 2 * Math.PI);
+    context.fill();
+    context.restore();
+  }
+
   function drawMeterForeground() {
+    var cx = options.size / 2;
+    var cy = options.size / 2;
+    var r = getMeterRadius() / 2 - options.borderWidth / 2;
+
+    // 1. Draw background track ring
     context.save();
     context.lineWidth = options.borderWidth;
-    context.strokeStyle = options.foregroundColor;
+    context.strokeStyle = 'rgba(15, 23, 42, 0.6)';
     context.beginPath();
-    context.arc(options.size / 2, options.size / 2, getMeterRadius() / 2 - options.borderWidth / 2, 0, 2 * Math.PI);
-    context.closePath();
+    context.arc(cx, cy, r, 0, 2 * Math.PI);
     context.stroke();
     context.restore();
+
+    // 2. Draw active progress arc with glow
+    if (fillPercentage > 0) {
+      context.save();
+      context.lineWidth = options.borderWidth;
+      
+      var grad = context.createLinearGradient(0, 0, options.size, options.size);
+      grad.addColorStop(0, '#06b6d4');
+      grad.addColorStop(1, '#3b82f6');
+      
+      context.strokeStyle = grad;
+      context.lineCap = 'round';
+      
+      context.shadowColor = '#06b6d4';
+      context.shadowBlur = 4;
+      
+      context.beginPath();
+      var startAngle = -Math.PI / 2;
+      var endAngle = startAngle + (2 * Math.PI * currentFillPercentage) / 100;
+      context.arc(cx, cy, r, startAngle, endAngle);
+      context.stroke();
+      context.restore();
+    }
   }
 
   function drawFluid(dt) {
@@ -16885,8 +16953,35 @@ function FluidMeter() {
     context.lineTo(x, options.size);
     context.lineTo(0, options.size);
     context.closePath();
-    context.fillStyle = layer.fillStyle;
+    
+    // Create rich linear gradients for fluid layers
+    var grad = context.createLinearGradient(0, layer.initialHeight, 0, options.size);
+    if (layer === foregroundFluidLayer) {
+      grad.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
+      grad.addColorStop(1, 'rgba(14, 116, 144, 0.3)');
+    } else {
+      grad.addColorStop(0, 'rgba(14, 116, 144, 0.5)');
+      grad.addColorStop(1, 'rgba(8, 47, 73, 0.2)');
+    }
+    context.fillStyle = grad;
     context.fill();
+
+    // Draw a subtle highlighted crest line on the foreground wave
+    if (layer === foregroundFluidLayer) {
+      context.save();
+      context.beginPath();
+      context.moveTo(0, layer.initialHeight);
+      x = 0;
+      while (x < options.size) {
+        y = layer.initialHeight + amplitude * Math.sin((x + layer.horizontalPosition) / layer.frequency);
+        context.lineTo(x, y);
+        x++;
+      }
+      context.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      context.lineWidth = 1.5;
+      context.stroke();
+      context.restore();
+    }
     context.restore();
   }
 
@@ -16915,10 +17010,22 @@ function FluidMeter() {
       var bubble = bubblesLayer.bubbles[i];
 
       context.beginPath();
-      context.strokeStyle = 'white';
-      context.arc(bubble.x, bubble.y, bubble.r, 2 * Math.PI, false);
-      context.stroke();
-      context.closePath();
+      // Draw a soft-glowing volumetric bubble using a radial gradient
+      var radGrad = context.createRadialGradient(
+        bubble.x - bubble.r * 0.3,
+        bubble.y - bubble.r * 0.3,
+        bubble.r * 0.1,
+        bubble.x,
+        bubble.y,
+        bubble.r
+      );
+      radGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+      radGrad.addColorStop(0.4, 'rgba(56, 189, 248, 0.5)');
+      radGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      
+      context.fillStyle = radGrad;
+      context.arc(bubble.x, bubble.y, bubble.r, 0, 2 * Math.PI);
+      context.fill();
 
       var currentSpeed = bubblesLayer.current * dt;
       bubble.velX = Math.abs(bubble.velX) < Math.abs(bubblesLayer.current) ? bubble.velX + currentSpeed : bubblesLayer.current;
