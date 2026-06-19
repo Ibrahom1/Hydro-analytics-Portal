@@ -2753,7 +2753,12 @@
               </div>
               <div class="ffd-history-body">
                 <div class="ffd-history-toolbar">
-                  <div id="ffd-history-status" class="ffd-history-status">Showing: Last 7 days</div>
+                  <select id="ffd-history-status" class="ffd-history-status" style="background: #1e293b; border: 1px solid #334155; color: #f8fafc; padding: 4px 8px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; outline: none;">
+                    <option value="7">Showing: Last 7 days</option>
+                    <option value="14">Showing: Last 14 days</option>
+                    <option value="30">Showing: Last 30 days</option>
+                    <option value="custom" id="ffd-history-status-custom" style="display: none;"></option>
+                  </select>
                   <div class="ffd-history-compare" aria-label="Comparison range">
                     <span>Compare</span>
                     <button type="button" data-ffd-compare="month">Prev month</button>

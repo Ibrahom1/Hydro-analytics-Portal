@@ -3622,6 +3622,16 @@ body {
   color: #cbd5e1;
 }
 
+.reservoir-level-number-last-year {
+  color: #c4b5fd;
+}
+
+.reservoir-level-pill-last-year {
+  border: 1px solid rgba(167, 139, 250, 0.6);
+  background: linear-gradient(160deg, rgba(109, 40, 217, 0.55), rgba(91, 33, 182, 0.65));
+  color: #ddd6fe;
+}
+
 .reservoir-level-pill-total {
   border: 1px solid rgba(255, 187, 117, 0.65);
   background: linear-gradient(160deg, rgba(122, 63, 9, 0.55), rgba(102, 46, 8, 0.65));

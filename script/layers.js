@@ -6298,9 +6298,26 @@ function addHydrometLayersToMap(map) {
       };
 
       const setFFDHistoryStatus = (text) => {
-        const statusEl = document.getElementById('ffd-history-status');
-        if (statusEl) {
-          statusEl.textContent = text;
+        const selectEl = document.getElementById('ffd-history-status');
+        const customOpt = document.getElementById('ffd-history-status-custom');
+        
+        if (selectEl && selectEl.tagName === 'SELECT') {
+          if (text.startsWith('Showing: Last') && text.includes('days')) {
+            const match = text.match(/Last (\d+) days/);
+            if (match) {
+              selectEl.value = match[1];
+              if (customOpt) customOpt.style.display = 'none';
+            }
+          } else {
+            if (customOpt) {
+              customOpt.textContent = text;
+              customOpt.value = 'custom';
+              customOpt.style.display = 'block';
+              selectEl.value = 'custom';
+            }
+          }
+        } else if (selectEl) {
+          selectEl.textContent = text;
         }
       };
 
@@ -7125,6 +7142,24 @@ function addHydrometLayersToMap(map) {
         bindStopEvents(resetBtn);
         bindStopEvents(dateToggleBtn);
         bindStopEvents(controlsSection);
+        
+        const statusSelectEl = document.getElementById('ffd-history-status');
+        if (statusSelectEl && statusSelectEl.tagName === 'SELECT') {
+          bindStopEvents(statusSelectEl);
+          statusSelectEl.addEventListener('change', async (e) => {
+            if (e.target.value === 'custom') return;
+            const days = parseInt(e.target.value, 10);
+            if (!isNaN(days)) {
+              ffdHistoryConfig.defaultDays = days;
+              if (startInput) startInput.value = '';
+              if (endInput) endInput.value = '';
+              const customOpt = document.getElementById('ffd-history-status-custom');
+              if (customOpt) customOpt.style.display = 'none';
+              await loadFFDHistoryData();
+            }
+          });
+        }
+
         compareButtons.forEach((button) => {
           bindStopEvents(button);
           button.addEventListener('click', async () => {
@@ -13409,11 +13444,6 @@ document.getElementById("di_ht").addEventListener("change", function () {
     );
   });
 
-
-
-
-
-
   ///Inundation 6 sept Extent
   map1.addSource("Flood06Sep25", {
     type: "vector",
@@ -16244,12 +16274,12 @@ function renderDamInsights(damName, percentage, details = {}) {
       const maxStorage = toNumericOrNull(details.maxStorage) || 1.0;
       const currentFillPct = (toNumericOrNull(details.todayStorage) / maxStorage) * 100;
       
-      if (details.yesterdayStorage !== null && details.yesterdayStorage !== undefined) {
-        const yesterdayFillPct = (toNumericOrNull(details.yesterdayStorage) / maxStorage) * 100;
-        const delta = currentFillPct - yesterdayFillPct;
-        addMetricCard('Yesterday', yesterdayFillPct, delta);
+      if (details.lastYearStorage !== null && details.lastYearStorage !== undefined) {
+        const lastYearFillPct = (toNumericOrNull(details.lastYearStorage) / maxStorage) * 100;
+        const delta = currentFillPct - lastYearFillPct;
+        addMetricCard('Last Year', lastYearFillPct, delta);
       } else {
-        addMetricCard('Yesterday', null, null);
+        addMetricCard('Last Year', null, null);
       }
       
       if (details.avg5YearStorage !== null && details.avg5YearStorage !== undefined) {
@@ -16264,15 +16294,15 @@ function renderDamInsights(damName, percentage, details = {}) {
         addMetricCard('10-Year Avg', avg10YearFillPct, delta);
       }
     } else {
-      const yesterdayLevelFill = (toNumericOrNull(details.yesterdayLevel) && details.fullCapacity) ? (toNumericOrNull(details.yesterdayLevel) / details.fullCapacity) * 100 : null;
+      const lastYearLevelFill = (toNumericOrNull(details.lastYearLevel) && details.fullCapacity) ? (toNumericOrNull(details.lastYearLevel) / details.fullCapacity) * 100 : null;
       const avg5YearFill = (toNumericOrNull(details.avg5YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg5YearLevel) / details.fullCapacity) * 100 : null;
       const avg10YearFill = (toNumericOrNull(details.avg10YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg10YearLevel) / details.fullCapacity) * 100 : null;
 
-      const deltaYesterday = (currentFill !== null && yesterdayLevelFill !== null) ? currentFill - yesterdayLevelFill : null;
+      const deltaLastYear = (currentFill !== null && lastYearLevelFill !== null) ? currentFill - lastYearLevelFill : null;
       const deltaAvg5 = (currentFill !== null && avg5YearFill !== null) ? currentFill - avg5YearFill : null;
       const deltaAvg10 = (currentFill !== null && avg10YearFill !== null) ? currentFill - avg10YearFill : null;
 
-      addMetricCard('Yesterday', yesterdayLevelFill, deltaYesterday);
+      addMetricCard('Last Year', lastYearLevelFill, deltaLastYear);
       addMetricCard('5-Year Avg', avg5YearFill, deltaAvg5);
       addMetricCard('10-Year Avg', avg10YearFill, deltaAvg10);
     }
@@ -16334,19 +16364,42 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
 
   const currentText = numericLevel === null ? 'N/A' : numericLevel.toFixed(2);
   const totalText = capacity === null ? 'N/A' : capacity.toFixed(2);
-  const yesterdayText = details.yesterdayLevel ? parseFloat(details.yesterdayLevel).toFixed(2) : 'N/A';
+  
+  let pastText = 'N/A';
+  let pastLabel = 'Last Year';
+  let pastClass = 'last-year';
+  
+  if (details.lastYearLevel !== undefined && details.lastYearLevel !== null) {
+    const parsed = parseFloat(details.lastYearLevel);
+    if (!isNaN(parsed)) {
+      pastText = parsed.toFixed(2);
+    }
+  }
+
+  if (pastText === 'N/A') {
+    if (details.yesterdayLevel !== undefined && details.yesterdayLevel !== null) {
+      const parsedYest = parseFloat(details.yesterdayLevel);
+      if (!isNaN(parsedYest)) {
+        pastText = parsedYest.toFixed(2);
+        pastLabel = 'Yesterday';
+        pastClass = 'yesterday';
+      }
+    }
+  }
+
+  const pastRowHtml = pastText !== 'N/A' ? `
+      <span class="reservoir-level-divider" aria-hidden="true"></span>
+      <div class="reservoir-level-row reservoir-level-row-${pastClass}">
+        <span class="reservoir-level-number reservoir-level-number-${pastClass}">${escapeHtmlValue(pastText)}</span>
+        <span class="reservoir-level-pill reservoir-level-pill-${pastClass}">${pastLabel}</span>
+      </div>` : '';
 
   reservoirValue.innerHTML = `
     <div class="reservoir-level-grid">
       <div class="reservoir-level-row reservoir-level-row-current">
         <span class="reservoir-level-number reservoir-level-number-current">${escapeHtmlValue(currentText)}</span>
         <span class="reservoir-level-pill reservoir-level-pill-current">Current</span>
-      </div>
-      <span class="reservoir-level-divider" aria-hidden="true"></span>
-      <div class="reservoir-level-row reservoir-level-row-yesterday">
-        <span class="reservoir-level-number reservoir-level-number-yesterday">${escapeHtmlValue(yesterdayText)}</span>
-        <span class="reservoir-level-pill reservoir-level-pill-yesterday">Yesterday</span>
-      </div>
+      </div>${pastRowHtml}
       <span class="reservoir-level-divider" aria-hidden="true"></span>
       <div class="reservoir-level-row reservoir-level-row-total">
         <span class="reservoir-level-number reservoir-level-number-total">${escapeHtmlValue(totalText)}</span>
