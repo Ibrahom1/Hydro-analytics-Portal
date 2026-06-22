@@ -6945,7 +6945,22 @@ function addHydrometLayersToMap(map) {
                     return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString()} cusecs${suffix}`;
                   }
                 }
-              }
+              },
+              zoom: isFullscreen ? {
+                zoom: {
+                  wheel: {
+                    enabled: true,
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'x',
+                },
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                }
+              } : false
             },
             scales: {
               x: {
@@ -16040,6 +16055,7 @@ function makeDraggable() {
 
   isDraggableSetup = true;
 }
+
 
 function dragStart(e) {
   const container = document.getElementById('fluidMeterContainer');
