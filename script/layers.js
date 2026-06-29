@@ -12446,6 +12446,10 @@ document.getElementById("di_ht").addEventListener("change", function () {
     map1.addControl(new LayerReorderControl(), 'top-right');
     window.__layerReorderControlAdded = true;
   }
+  if (!window.__dayNightToggleControlAdded) {
+    map1.addControl(new DayNightToggleControl(), 'top-right');
+    window.__dayNightToggleControlAdded = true;
+  }
   /******************* END TIME-ENABLED LAYER SUPPORT (v2) *******************/
 
 
@@ -14617,7 +14621,7 @@ function runStyleLoadPipeline() {
     }, 800);
   }
 
-  refreshKarachiLightPreset(map1);
+  // refreshKarachiLightPreset(map1); // Disabled auto dusk/day mode
   applyPendingBasemapConfig(map1);
   restoreImpactOnStyleLoad();
 
@@ -14852,8 +14856,8 @@ MapboxStyleSwitcherControl.DEFAULT_STYLES = [
 ];
 map1.addControl(new mapboxgl.FullscreenControl());
 map1.addControl(new MapboxStyleSwitcherControl());
-refreshKarachiLightPreset(map1);
-setInterval(() => refreshKarachiLightPreset(map1), 5 * 60 * 1000);
+// refreshKarachiLightPreset(map1);
+// setInterval(() => refreshKarachiLightPreset(map1), 5 * 60 * 1000);
 //-----------------------------------------------------Mapbox gl js BasemapSwitcher COntrol END-----------------------------------------------------------------------------------------------//
 
 // restoreLayerVisibility(map1, map1Layers);
@@ -14906,6 +14910,50 @@ class RainToggleControl {
   }
 }
 //-----------------------------------------------------Mapbox gl js Rain Control END-----------------------------------------------------------------------------------------------//
+//-----------------------------------------------------Mapbox gl js Day Night Toggle Control START--------------------------------------------------------------------------------------//
+class DayNightToggleControl {
+  constructor() {
+    this._isNight = false;
+  }
+
+  onAdd(map) {
+    this._map = map;
+    this._container = document.createElement('div');
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    
+    this._button = document.createElement('button');
+    this._button.className = 'mapboxgl-ctrl-icon';
+    this._button.title = 'Toggle Day/Night Mode';
+    
+    this._icon = document.createElement('img');
+    this._icon.src = 'media/UI/controlicons/day.gif';
+    this._icon.style.width = '100%';
+    this._icon.style.height = '100%';
+    
+    this._button.appendChild(this._icon);
+    
+    this._button.addEventListener('click', () => {
+      this._isNight = !this._isNight;
+      
+      if (this._isNight) {
+        this._icon.src = 'media/UI/controlicons/night.gif';
+        applyBasemapConfig(this._map, { lightPreset: 'dusk' });
+      } else {
+        this._icon.src = 'media/UI/controlicons/day.gif';
+        applyBasemapConfig(this._map, { lightPreset: 'day' });
+      }
+    });
+    
+    this._container.appendChild(this._button);
+    return this._container;
+  }
+
+  onRemove() {
+    this._container.parentNode.removeChild(this._container);
+    this._map = undefined;
+  }
+}
+//-----------------------------------------------------Mapbox gl js Day Night Toggle Control END----------------------------------------------------------------------------------------//
 //-----------------------------------------------------Mapbox gl js Layer Reorder Control START-----------------------------------------------------------------------------------------//
 class LayerReorderControl {
   constructor() {
