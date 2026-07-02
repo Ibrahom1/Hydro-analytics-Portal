@@ -2814,16 +2814,25 @@
               </div>
             </div>
 
-            <!-- Impact Exposure Summary Panel -->
+            <!-- Unified Impact Exposure Summary & Report Panel -->
             <div id="impact-summary-panel" class="impact-summary-panel" aria-live="polite">
               <div class="impact-summary-header">
                 <div>
-                  <div class="impact-summary-title">Total exposed summary</div>
+                  <div id="impact-summary-title" class="impact-summary-title">Total exposed summary</div>
                   <div id="impact-summary-date" class="impact-summary-date">-</div>
                 </div>
-                <button id="impact-summary-close" type="button" class="impact-summary-close" title="Close">×</button>
+                <div class="impact-summary-actions">
+                  <button id="impact-view-toggle" type="button" class="impact-action-btn" title="View Exposure Report" style="display: none;">
+                    <svg id="icon-list-view" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    <svg id="icon-grid-view" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  </button>
+                  <button id="impact-summary-close" type="button" class="impact-action-btn" title="Close">×</button>
+                </div>
               </div>
-              <div id="impact-summary-grid" class="impact-summary-grid"></div>
+              <div class="impact-panel-content">
+                <div id="impact-summary-grid" class="impact-summary-grid"></div>
+                <div id="impact-exposure-view" class="impact-exposure-view" style="display: none;"></div>
+              </div>
             </div>
 
             <!-- AHP lAYER LEGEND -->

@@ -3876,8 +3876,13 @@ function getImpactUiRefs() {
     status: document.getElementById('impact-modal-status'),
     summaryPanel: document.getElementById('impact-summary-panel'),
     summaryDate: document.getElementById('impact-summary-date'),
+    summaryTitle: document.getElementById('impact-summary-title'),
     summaryGrid: document.getElementById('impact-summary-grid'),
-    summaryClose: document.getElementById('impact-summary-close')
+    summaryClose: document.getElementById('impact-summary-close'),
+    viewToggleBtn: document.getElementById('impact-view-toggle'),
+    iconListView: document.getElementById('icon-list-view'),
+    iconGridView: document.getElementById('icon-grid-view'),
+    exposureView: document.getElementById('impact-exposure-view')
   };
 }
 
@@ -3909,6 +3914,16 @@ function escapeImpactHtml(value) {
 function parseImpactMetric(value) {
   const parsed = Number.parseInt(String(value ?? '').replace(/,/g, ''), 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function deriveImpactLevelFromColor(rawColor) {
+  const c = String(rawColor ?? '').trim().toLowerCase();
+  if (c === 'purple' || c === '#a855f7') return 'Very High';
+  if (c === 'red' || c === '#ef4444') return 'High';
+  if (c === 'yellow' || c === 'orange' || c === '#f59e0b' || c === '#f97316') return 'Medium';
+  if (c === 'green' || c === '#22c55e') return 'Low';
+  if (c === 'blue' || c === '#3b82f6') return 'Low';
+  return 'High'; // default fallback
 }
 
 function normalizeImpactColor(rawColor) {
@@ -3983,13 +3998,22 @@ function closeImpactSummaryPanel() {
 }
 
 function clearImpactSummaryPanel(message = 'No impact exposure loaded.') {
-  const { summaryDate, summaryGrid } = getImpactUiRefs();
-  if (summaryDate) {
-    summaryDate.textContent = '-';
+  const refs = getImpactUiRefs();
+  if (refs.summaryDate) {
+    refs.summaryDate.textContent = '-';
   }
-  if (summaryGrid) {
-    summaryGrid.innerHTML = `<div class="impact-summary-empty">${escapeImpactHtml(message)}</div>`;
+  if (refs.summaryGrid) {
+    refs.summaryGrid.innerHTML = `<div class="impact-summary-empty">${escapeImpactHtml(message)}</div>`;
   }
+  
+  // Reset view to summary
+  currentImpactView = 'exposure'; // Set to opposite to trigger the toggle back to summary
+  toggleImpactView();
+  
+  if (refs.viewToggleBtn) {
+    refs.viewToggleBtn.style.display = 'none';
+  }
+  
   closeImpactSummaryPanel();
 }
 
@@ -4046,6 +4070,7 @@ function normalizeImpactRows(payload) {
       const normalized = {
         id,
         color: normalizeImpactColor(row?.color),
+        level: deriveImpactLevelFromColor(row?.color),
         schools: parseImpactMetric(row?.schools),
         railway_stations: parseImpactMetric(row?.railway_stations),
         population: parseImpactMetric(row?.population),
@@ -4097,6 +4122,7 @@ function joinImpactRowsToFeatures(featureCollection, rowMap) {
           ...props,
           impact_id: joinId,
           impact_color: row.color,
+          impact_level: row.level,
           impact_schools: row.schools,
           impact_railway_stations: row.railway_stations,
           impact_population: row.population,
@@ -4474,6 +4500,7 @@ function removeImpactVisuals(keepCache = false) {
     impactTotals = null;
     impactSelectedDate = '';
     impactSelectedFeatureId = '';
+    clearExposureReport();
   }
 }
 
@@ -4734,6 +4761,8 @@ async function loadImpactForDate(dateValue) {
     renderImpactFeatures(joinedFeatureCollection);
     renderImpactSummaryPanel(impactTotals, impactSelectedDate);
 
+    triggerExposureReportAnalysis(joinedFeatureCollection, dateValue);
+
     setImpactModalStatus(
       `Loaded ${joinedFeatureCollection.features.length} features for ${impactSelectedDate}.`,
       'success'
@@ -4760,6 +4789,322 @@ function restoreImpactOnStyleLoad() {
   }
 }
 
+// ============================== Exposure Report (Tehsil Intersection) ==============================
+
+let exposureReportOpen = false;
+let exposureReportData = null;
+
+function getLevelPriority(level) {
+  const l = String(level ?? '').toLowerCase();
+  if (l.includes('very high')) return 4;
+  if (l.includes('high')) return 3;
+  if (l.includes('medium')) return 2;
+  if (l.includes('low')) return 1;
+  return 0;
+}
+
+function computeExposedTehsils(joinedFeatureCollection) {
+  const features = joinedFeatureCollection?.features || [];
+  if (!features.length) return null;
+
+  // Build buffered exposure polygons from each feature for intersection testing
+  const exposurePolygons = [];
+  for (const feature of features) {
+    const geomType = feature?.geometry?.type;
+    if (!geomType) continue;
+
+    try {
+      let poly = null;
+      if (geomType === 'LineString' || geomType === 'MultiLineString') {
+        // Buffer lines by ~0.5km to create a testable polygon
+        poly = turf.buffer(feature, 0.5, { units: 'kilometers' });
+      } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+        poly = feature;
+      } else if (geomType === 'Point' || geomType === 'MultiPoint') {
+        poly = turf.buffer(feature, 1, { units: 'kilometers' });
+      }
+      if (poly) {
+        exposurePolygons.push({
+          polygon: poly,
+          color: feature.properties?.impact_color || '#ef4444',
+          level: feature.properties?.impact_level || 'Unknown'
+        });
+      }
+    } catch (err) {
+      console.warn('Turf buffer failed for feature:', err);
+    }
+  }
+
+  if (!exposurePolygons.length) return null;
+
+  // Query tehsil boundary polygons from the loaded vector tiles
+  let tehsilFeatures = [];
+  try {
+    tehsilFeatures = map1.querySourceFeatures('tehsilBoundary', {
+      sourceLayer: 'tehsil_boundary'
+    });
+  } catch (err) {
+    console.warn('Failed to query tehsil boundaries:', err);
+    return null;
+  }
+
+  if (!tehsilFeatures.length) {
+    console.warn('No tehsil features returned from querySourceFeatures');
+    return null;
+  }
+
+  // Deduplicate tehsil features by name (vector tiles can return duplicates across tiles)
+  const uniqueTehsils = new Map();
+  for (const tf of tehsilFeatures) {
+    const name = tf.properties?.name || tf.properties?.Name || tf.properties?.NAME;
+    if (!name) continue;
+    // Keep the first complete geometry for each name
+    if (!uniqueTehsils.has(name)) {
+      uniqueTehsils.set(name, tf);
+    }
+  }
+
+  // Intersect each tehsil with exposure polygons
+  const tehsilResults = new Map(); // name -> { name, district, province, color, level, priority }
+
+  for (const [tehsilName, tehsilFeature] of uniqueTehsils) {
+    const tehsilGeom = tehsilFeature.geometry;
+    if (!tehsilGeom) continue;
+
+    for (const exposure of exposurePolygons) {
+      try {
+        const intersects = turf.booleanIntersects(exposure.polygon, tehsilFeature);
+        if (intersects) {
+          const existing = tehsilResults.get(tehsilName);
+          const priority = getLevelPriority(exposure.level);
+
+          if (!existing || priority > existing.priority) {
+            tehsilResults.set(tehsilName, {
+              name: tehsilName,
+              district: tehsilFeature.properties?.district || tehsilFeature.properties?.District || tehsilFeature.properties?.DISTRICT || 'Unknown',
+              province: tehsilFeature.properties?.province || tehsilFeature.properties?.Province || tehsilFeature.properties?.PROVINCE || 'Unknown',
+              color: exposure.color,
+              level: exposure.level,
+              priority: priority
+            });
+          }
+        }
+      } catch (err) {
+        // Geometry might be invalid — skip silently
+      }
+    }
+  }
+
+  if (!tehsilResults.size) return null;
+
+  // Group by province -> district -> tehsils
+  const grouped = {};
+  for (const tehsil of tehsilResults.values()) {
+    if (!grouped[tehsil.province]) {
+      grouped[tehsil.province] = {};
+    }
+    if (!grouped[tehsil.province][tehsil.district]) {
+      grouped[tehsil.province][tehsil.district] = [];
+    }
+    grouped[tehsil.province][tehsil.district].push(tehsil);
+  }
+
+  // Sort tehsils within each district by priority descending
+  for (const province of Object.values(grouped)) {
+    for (const district of Object.keys(province)) {
+      province[district].sort((a, b) => b.priority - a.priority);
+    }
+  }
+
+  return {
+    totalTehsils: tehsilResults.size,
+    grouped: grouped
+  };
+}
+
+function renderExposureReport(data, dateStr) {
+  const refs = getImpactUiRefs();
+  const viewContainer = refs.exposureView;
+  if (!viewContainer) return;
+
+  if (!data || !data.totalTehsils) {
+    viewContainer.innerHTML = `
+      <div class="exposure-report-empty">No tehsil intersections found for this exposure data.</div>
+    `;
+    exposureReportData = null;
+    return;
+  }
+
+  exposureReportData = data;
+
+  // Build province sections
+  let provinceSectionsHtml = '';
+  let cardIndex = 0;
+  const sortedProvinces = Object.keys(data.grouped).sort();
+
+  for (const provinceName of sortedProvinces) {
+    const districts = data.grouped[provinceName];
+    const districtCount = Object.keys(districts).length;
+
+    let allCardsHtml = '';
+    const sortedDistricts = Object.keys(districts).sort();
+
+    for (const districtName of sortedDistricts) {
+      const tehsils = districts[districtName];
+      for (const tehsil of tehsils) {
+        const delay = Math.min(cardIndex * 30, 500);
+        allCardsHtml += `
+          <div class="xr-card" style="border-left-color: ${escapeImpactHtml(tehsil.color)}; animation-delay: ${delay}ms;" title="${escapeImpactHtml(tehsil.name)} — ${escapeImpactHtml(districtName)}">
+            <span class="xr-card-name">${escapeImpactHtml(tehsil.name)}</span>
+            <span class="xr-card-district">District ${escapeImpactHtml(districtName)}</span>
+            <span class="xr-card-level-pill">${escapeImpactHtml(tehsil.level)} Risk</span>
+          </div>
+        `;
+        cardIndex++;
+      }
+    }
+
+    let tehsilCount = 0;
+    for (const d of Object.values(districts)) tehsilCount += d.length;
+
+    provinceSectionsHtml += `
+      <div class="xr-province">
+        <div class="xr-province-head">
+          <span class="xr-province-name">${escapeImpactHtml(provinceName)}</span>
+          <span class="xr-province-meta">${districtCount} Dist · ${tehsilCount} Tehsil${tehsilCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="xr-cards-flow">${allCardsHtml}</div>
+      </div>
+    `;
+  }
+
+  viewContainer.innerHTML = `
+    <div class="xr-summary-bar">
+      <span class="xr-summary-count">${data.totalTehsils}</span>
+      <span class="xr-summary-label">Tehsils Exposed</span>
+    </div>
+    <div class="exposure-report-body">
+      ${provinceSectionsHtml}
+    </div>
+  `;
+
+  // Make toggle button visible now that data is ready
+  if (refs.viewToggleBtn) {
+    refs.viewToggleBtn.style.display = 'flex';
+  }
+}
+
+function showExposureReportLoading(dateStr) {
+  const refs = getImpactUiRefs();
+  const viewContainer = refs.exposureView;
+  if (!viewContainer) return;
+
+  viewContainer.innerHTML = `
+    <div class="exposure-report-loading">
+      <div class="exposure-report-loading-spinner"></div>
+      <span>Analyzing tehsil intersections...</span>
+    </div>
+  `;
+
+  // Hide the toggle button while loading
+  if (refs.viewToggleBtn) {
+    refs.viewToggleBtn.style.display = 'none';
+  }
+}
+
+function clearExposureReport() {
+  exposureReportData = null;
+  const refs = getImpactUiRefs();
+  const viewContainer = refs.exposureView;
+  if (viewContainer) {
+    viewContainer.innerHTML = '';
+  }
+  if (refs.viewToggleBtn) {
+    refs.viewToggleBtn.style.display = 'none';
+  }
+}
+
+function triggerExposureReportAnalysis(joinedFeatureCollection, dateStr) {
+  // Close the sidebar automatically
+  const sidebar = document.getElementById('app-sidebar');
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  if (sidebar && !sidebar.classList.contains('is-closed')) {
+    sidebar.classList.add('is-closed');
+    if (toggleBtn) {
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      toggleBtn.classList.add('is-hidden');
+      toggleBtn.classList.remove('is-hidden');
+    }
+  }
+
+  // Show loading state
+  showExposureReportLoading(dateStr);
+
+  const runAnalysis = () => {
+    try {
+      const result = computeExposedTehsils(joinedFeatureCollection);
+      renderExposureReport(result, dateStr);
+    } catch (err) {
+      console.error('Exposure report analysis failed:', err);
+      renderExposureReport(null, dateStr);
+    }
+  };
+
+  // The map might never reach 'idle' if there are animated layers (e.g., radar, pulse).
+  // Polling for source features is much safer.
+  let attempts = 0;
+  const maxAttempts = 10; // 10 * 400ms = 4 seconds max wait
+  
+  const checkTilesAndRun = () => {
+    attempts++;
+    let hasFeatures = false;
+    try {
+      const features = map1.querySourceFeatures('tehsilBoundary', { sourceLayer: 'tehsil_boundary' });
+      if (features && features.length > 0) {
+        hasFeatures = true;
+      }
+    } catch (e) {
+      // Source might not be ready yet
+    }
+
+    if (hasFeatures || attempts >= maxAttempts) {
+      runAnalysis();
+    } else {
+      setTimeout(checkTilesAndRun, 400);
+    }
+  };
+
+  // Start polling
+  setTimeout(checkTilesAndRun, 400);
+}
+
+// ============================== End Exposure Report ==============================
+
+let currentImpactView = 'summary'; // 'summary' or 'exposure'
+
+function toggleImpactView() {
+  const refs = getImpactUiRefs();
+  if (!refs.summaryGrid || !refs.exposureView || !refs.iconListView || !refs.iconGridView || !refs.summaryTitle) return;
+
+  if (currentImpactView === 'summary') {
+    // Switch to Exposure Report
+    currentImpactView = 'exposure';
+    refs.summaryGrid.style.display = 'none';
+    refs.exposureView.style.display = 'block';
+    refs.iconListView.style.display = 'none';
+    refs.iconGridView.style.display = 'block';
+    refs.summaryTitle.textContent = 'Exposure Report';
+  } else {
+    // Switch to Summary Grid
+    currentImpactView = 'summary';
+    refs.summaryGrid.style.display = 'grid'; // will be styled as grid or flex
+    refs.exposureView.style.display = 'none';
+    refs.iconListView.style.display = 'block';
+    refs.iconGridView.style.display = 'none';
+    refs.summaryTitle.textContent = 'Total exposed summary';
+  }
+}
+
 function initImpactControls() {
   if (impactControlsInitialized) return;
 
@@ -4774,6 +5119,7 @@ function initImpactControls() {
   refs.closeBtn?.addEventListener('click', closeImpactModal);
   refs.cancelBtn?.addEventListener('click', closeImpactModal);
   refs.summaryClose?.addEventListener('click', closeImpactSummaryPanel);
+  refs.viewToggleBtn?.addEventListener('click', toggleImpactView);
 
   refs.modal.addEventListener('click', (event) => {
     const target = event.target;

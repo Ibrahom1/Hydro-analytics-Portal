@@ -1339,20 +1339,24 @@ body {
   top: 55px;
   right: 96px;
   left: auto;
-  width: min(470px, calc(100vw - 140px));
-  max-height: calc(100% - 125px);
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(37, 37, 37, 0.94);
+  width: min(420px, calc(100vw - 140px));
+  max-height: calc(100% - 100px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 32, 35, 0.85);
   color: #e2e8f0;
-  box-shadow: 0 22px 36px rgba(0, 0, 0, 0.42);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   transform: translateX(120%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: transform 0.28s ease, opacity 0.2s ease, visibility 0s linear 0.2s;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, visibility 0s linear 0.25s;
   z-index: 10010;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .impact-summary-panel.open {
@@ -1360,97 +1364,125 @@ body {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: transform 0.28s ease, opacity 0.2s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
 
 .impact-summary-header {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px 18px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(120deg, #665fd8 0%, #857ee6 100%);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.impact-summary-header > div:first-child {
+  text-align: left;
 }
 
 .impact-summary-title {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
-  color: #f4f5ff;
-  line-height: 1;
+  color: #ffffff;
+  line-height: 1.2;
 }
 
 .impact-summary-date {
-  margin-top: 5px;
-  font-size: 17px;
-  color: #f0f2ff;
-  font-weight: 600;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 400;
 }
 
-.impact-summary-header > div {
-  text-align: center;
+.impact-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -2px;
 }
 
-.impact-summary-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+.impact-action-btn {
   border: 0;
-  background: transparent;
-  color: #eef2ff;
-  border-radius: 8px;
-  width: 30px;
-  height: 30px;
-  font-size: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
   cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
-.impact-summary-close:hover {
-  background: rgba(148, 163, 184, 0.2);
+.impact-action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
+.impact-panel-content {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.impact-panel-content::-webkit-scrollbar { width: 4px; }
+.impact-panel-content::-webkit-scrollbar-track { background: transparent; }
+.impact-panel-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
+.impact-panel-content::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* Grid view */
 .impact-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  padding: 14px;
-  overflow: auto;
-  max-height: calc(100% - 145px);
+  padding: 4px 20px 20px;
 }
 
+/* Base card styling */
 .impact-summary-card {
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  padding: 10px;
-  min-height: 112px;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  padding: 12px 14px;
+  min-height: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.impact-summary-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .impact-summary-card.key-population {
   grid-column: 1 / -1;
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.2);
 }
 
 .impact-summary-card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 6px;
   justify-content: center;
   width: 100%;
 }
 
 .impact-summary-card-icon {
-  width: 46px;
-  height: 46px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1458,73 +1490,36 @@ body {
 }
 
 .impact-summary-card-icon img {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
 }
 
 .impact-summary-card-label {
-  font-size: 15px;
-  text-transform: none;
-  letter-spacing: 0.03em;
-  color: #3d4656;
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .impact-summary-card.key-railway-stations .impact-summary-card-label {
-  font-size: 13px;
+  font-size: 10px;
   white-space: nowrap;
 }
 
 .impact-summary-card-value {
-  font-size: 44px;
+  font-size: 32px;
   font-weight: 700;
-  color: #121929;
+  color: #ffffff;
   line-height: 1;
   width: 100%;
   text-align: center;
 }
 
-.impact-summary-card.key-schools {
-  background: #dbe5f1;
-}
-
-.impact-summary-card.key-railway-stations {
-  background: #e5e3de;
-}
-
-.impact-summary-card.key-population {
-  background: #dce3ee;
-}
-
-.impact-summary-card.key-hospitals {
-  background: #f3e4e8;
-}
-
-.impact-summary-card.key-bridges {
-  background: #d8ece5;
-}
-
-.impact-summary-card.key-airports {
-  background: #efdfeb;
-}
-
-.impact-summary-card.key-settlements {
-  background: #f7e7cf;
-}
-
 .impact-summary-card.key-population .impact-summary-card-value {
-  color: #3e3f95;
-}
-
-.impact-summary-card.key-hospitals .impact-summary-card-value,
-.impact-summary-card.key-airports .impact-summary-card-value {
-  color: #7e2437;
-}
-
-.impact-summary-card.key-bridges .impact-summary-card-value {
-  color: #1f6d5c;
+  color: #60a5fa;
 }
 
 .impact-summary-empty {
@@ -1535,6 +1530,270 @@ body {
   font-size: 16px;
   color: #e2e8f0;
   text-align: center;
+}
+
+/* ====== Exposure Report Panel ====== */
+.exposure-report-panel {
+  position: absolute;
+  top: 55px;
+  left: 10px;
+  right: auto;
+  width: min(440px, calc(100vw - 20px));
+  max-height: calc(100% - 100px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 32, 35, 0.85);
+  color: #e2e8f0;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transform: translateX(-120%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, visibility 0s linear 0.25s;
+  z-index: 10010;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.exposure-report-panel.open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+.exposure-report-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  padding: 18px 20px 14px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.exposure-report-header > div {
+  text-align: left;
+}
+
+.exposure-report-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.exposure-report-date {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.exposure-report-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.exposure-report-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* Summary Bar — dark inner box */
+.xr-summary-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 20px 16px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.xr-summary-count {
+  font-size: 26px;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.xr-summary-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Scrollable body */
+.exposure-report-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+}
+
+.exposure-report-body::-webkit-scrollbar { width: 4px; }
+.exposure-report-body::-webkit-scrollbar-track { background: transparent; }
+.exposure-report-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
+.exposure-report-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* Province section */
+.xr-province {
+  margin-bottom: 8px;
+}
+
+.xr-province-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  background: transparent;
+}
+
+.xr-province-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.xr-province-meta {
+  font-size: 11px;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+/* Flowing cards container — 2 column grid */
+.xr-cards-flow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 4px 20px 16px;
+}
+
+/* Individual tehsil card */
+.xr-card {
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left-width: 3px;
+  border-left-style: solid;
+  /* border-left-color set inline via JS */
+  cursor: default;
+  animation: xrCardPop 0.3s ease both;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.xr-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes xrCardPop {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.xr-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.xr-card-district {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+
+.xr-card-level-pill {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 4px 10px;
+  line-height: 1;
+}
+
+/* Empty / Loading states */
+.exposure-report-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.exposure-report-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 20px;
+  color: #94a3b8;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.exposure-report-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(148, 163, 184, 0.3);
+  border-top-color: #94a3b8;
+  border-radius: 50%;
+  animation: exposureReportSpin 0.7s linear infinite;
+}
+
+@keyframes exposureReportSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .exposure-report-panel {
+    width: min(360px, calc(100vw - 20px));
+  }
+}
+
+@media (max-width: 900px) {
+  .exposure-report-panel {
+    width: min(320px, calc(100vw - 20px));
+    max-height: calc(100% - 70px);
+  }
+  .exposure-report-title { font-size: 17px; }
 }
 
 @media (max-width: 900px) {
