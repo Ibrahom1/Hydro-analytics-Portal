@@ -1499,7 +1499,7 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #94a3b8;
+  color: #ffffff;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -1673,6 +1673,28 @@ body {
   justify-content: space-between;
   padding: 8px 20px;
   background: transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.xr-province-head:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.xr-province-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xr-chevron {
+  color: #94a3b8;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.xr-province.collapsed .xr-chevron {
+  transform: rotate(-90deg);
 }
 
 .xr-province-name {
@@ -1687,12 +1709,32 @@ body {
   color: #94a3b8;
 }
 
+/* Collapsible Wrapper using Grid Trick for smooth dynamic height animation */
+.xr-cards-collapse-wrapper {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.xr-province.collapsed .xr-cards-collapse-wrapper {
+  grid-template-rows: 0fr;
+}
+
 /* Flowing cards container — 2 column grid */
 .xr-cards-flow {
+  overflow: hidden; /* Important for grid trick */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 4px 20px 16px;
+  opacity: 1;
+  transition: opacity 0.3s ease, padding 0.3s ease;
+}
+
+.xr-province.collapsed .xr-cards-flow {
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
 }
 
 /* Individual tehsil card */

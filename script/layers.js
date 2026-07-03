@@ -4803,9 +4803,9 @@ function getLevelPriority(level) {
   return 0;
 }
 
-function computeExposedTehsils(joinedFeatureCollection) {
+function computeExposedTehsilsAsync(joinedFeatureCollection) {
   const features = joinedFeatureCollection?.features || [];
-  if (!features.length) return null;
+  if (!features.length) return Promise.resolve(null);
 
   // Build buffered exposure polygons from each feature for intersection testing
   const exposurePolygons = [];
@@ -4835,7 +4835,7 @@ function computeExposedTehsils(joinedFeatureCollection) {
     }
   }
 
-  if (!exposurePolygons.length) return null;
+  if (!exposurePolygons.length) return Promise.resolve(null);
 
   // Query tehsil boundary polygons from the loaded vector tiles
   let tehsilFeatures = [];
@@ -4845,12 +4845,12 @@ function computeExposedTehsils(joinedFeatureCollection) {
     });
   } catch (err) {
     console.warn('Failed to query tehsil boundaries:', err);
-    return null;
+    return Promise.resolve(null);
   }
 
   if (!tehsilFeatures.length) {
     console.warn('No tehsil features returned from querySourceFeatures');
-    return null;
+    return Promise.resolve(null);
   }
 
   // Deduplicate tehsil features by name (vector tiles can return duplicates across tiles)
@@ -4864,62 +4864,85 @@ function computeExposedTehsils(joinedFeatureCollection) {
     }
   }
 
-  // Intersect each tehsil with exposure polygons
-  const tehsilResults = new Map(); // name -> { name, district, province, color, level, priority }
+  // Intersect each tehsil with exposure polygons asynchronously
+  return new Promise((resolve) => {
+    const tehsilResults = new Map(); // name -> { name, district, province, color, level, priority }
+    const uniqueTehsilArray = Array.from(uniqueTehsils.entries());
+    let currentIndex = 0;
 
-  for (const [tehsilName, tehsilFeature] of uniqueTehsils) {
-    const tehsilGeom = tehsilFeature.geometry;
-    if (!tehsilGeom) continue;
+    function processChunk() {
+      const startTime = performance.now();
+      
+      // Process chunks for up to 25ms to maintain ~40fps UI responsiveness
+      while (currentIndex < uniqueTehsilArray.length && (performance.now() - startTime) < 25) {
+        const [tehsilName, tehsilFeature] = uniqueTehsilArray[currentIndex];
+        const tehsilGeom = tehsilFeature.geometry;
+        
+        if (tehsilGeom) {
+          for (const exposure of exposurePolygons) {
+            try {
+              const intersects = turf.booleanIntersects(exposure.polygon, tehsilFeature);
+              if (intersects) {
+                const existing = tehsilResults.get(tehsilName);
+                const priority = getLevelPriority(exposure.level);
 
-    for (const exposure of exposurePolygons) {
-      try {
-        const intersects = turf.booleanIntersects(exposure.polygon, tehsilFeature);
-        if (intersects) {
-          const existing = tehsilResults.get(tehsilName);
-          const priority = getLevelPriority(exposure.level);
+                if (!existing || priority > existing.priority) {
+                  tehsilResults.set(tehsilName, {
+                    name: tehsilName,
+                    district: tehsilFeature.properties?.district || tehsilFeature.properties?.District || tehsilFeature.properties?.DISTRICT || 'Unknown',
+                    province: tehsilFeature.properties?.province || tehsilFeature.properties?.Province || tehsilFeature.properties?.PROVINCE || 'Unknown',
+                    color: exposure.color,
+                    level: exposure.level,
+                    priority: priority
+                  });
+                }
+              }
+            } catch (err) {
+              // Geometry might be invalid — skip silently
+            }
+          }
+        }
+        currentIndex++;
+      }
 
-          if (!existing || priority > existing.priority) {
-            tehsilResults.set(tehsilName, {
-              name: tehsilName,
-              district: tehsilFeature.properties?.district || tehsilFeature.properties?.District || tehsilFeature.properties?.DISTRICT || 'Unknown',
-              province: tehsilFeature.properties?.province || tehsilFeature.properties?.Province || tehsilFeature.properties?.PROVINCE || 'Unknown',
-              color: exposure.color,
-              level: exposure.level,
-              priority: priority
+      if (currentIndex < uniqueTehsilArray.length) {
+        // Yield to the browser main thread
+        setTimeout(processChunk, 0);
+      } else {
+        // Finished all intersections, format data and resolve
+        if (tehsilResults.size === 0) {
+          resolve(null);
+          return;
+        }
+
+        const grouped = {};
+        for (const res of tehsilResults.values()) {
+          const prov = res.province;
+          const dist = res.district;
+          if (!grouped[prov]) grouped[prov] = {};
+          if (!grouped[prov][dist]) grouped[prov][dist] = [];
+          grouped[prov][dist].push(res);
+        }
+
+        for (const prov of Object.keys(grouped)) {
+          for (const dist of Object.keys(grouped[prov])) {
+            grouped[prov][dist].sort((a, b) => {
+              if (a.priority !== b.priority) return b.priority - a.priority;
+              return a.name.localeCompare(b.name);
             });
           }
         }
-      } catch (err) {
-        // Geometry might be invalid — skip silently
+
+        resolve({
+          totalTehsils: tehsilResults.size,
+          grouped: grouped
+        });
       }
     }
-  }
 
-  if (!tehsilResults.size) return null;
-
-  // Group by province -> district -> tehsils
-  const grouped = {};
-  for (const tehsil of tehsilResults.values()) {
-    if (!grouped[tehsil.province]) {
-      grouped[tehsil.province] = {};
-    }
-    if (!grouped[tehsil.province][tehsil.district]) {
-      grouped[tehsil.province][tehsil.district] = [];
-    }
-    grouped[tehsil.province][tehsil.district].push(tehsil);
-  }
-
-  // Sort tehsils within each district by priority descending
-  for (const province of Object.values(grouped)) {
-    for (const district of Object.keys(province)) {
-      province[district].sort((a, b) => b.priority - a.priority);
-    }
-  }
-
-  return {
-    totalTehsils: tehsilResults.size,
-    grouped: grouped
-  };
+    // Start processing chunks
+    processChunk();
+  });
 }
 
 function renderExposureReport(data, dateStr) {
@@ -4969,11 +4992,16 @@ function renderExposureReport(data, dateStr) {
 
     provinceSectionsHtml += `
       <div class="xr-province">
-        <div class="xr-province-head">
-          <span class="xr-province-name">${escapeImpactHtml(provinceName)}</span>
+        <div class="xr-province-head" onclick="this.parentElement.classList.toggle('collapsed')">
+          <div class="xr-province-title">
+            <svg class="xr-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span class="xr-province-name">${escapeImpactHtml(provinceName)}</span>
+          </div>
           <span class="xr-province-meta">${districtCount} Dist · ${tehsilCount} Tehsil${tehsilCount !== 1 ? 's' : ''}</span>
         </div>
-        <div class="xr-cards-flow">${allCardsHtml}</div>
+        <div class="xr-cards-collapse-wrapper">
+          <div class="xr-cards-flow">${allCardsHtml}</div>
+        </div>
       </div>
     `;
   }
@@ -5040,9 +5068,9 @@ function triggerExposureReportAnalysis(joinedFeatureCollection, dateStr) {
   // Show loading state
   showExposureReportLoading(dateStr);
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
     try {
-      const result = computeExposedTehsils(joinedFeatureCollection);
+      const result = await computeExposedTehsilsAsync(joinedFeatureCollection);
       renderExposureReport(result, dateStr);
     } catch (err) {
       console.error('Exposure report analysis failed:', err);
@@ -5105,6 +5133,45 @@ function toggleImpactView() {
   }
 }
 
+function setupImpactPanelDraggable() {
+  const panel = document.getElementById('impact-summary-panel');
+  const header = panel.querySelector('.impact-summary-header');
+  
+  if (!panel || !header) return;
+
+  header.style.cursor = 'move';
+  
+  let isDragging = false;
+
+  const onMouseMove = (e) => {
+    if (!isDragging) return;
+    
+    // Convert to absolute positioning based on current offset
+    const currentLeft = panel.offsetLeft;
+    const currentTop = panel.offsetTop;
+    
+    panel.style.left = `${currentLeft + e.movementX}px`;
+    panel.style.top = `${currentTop + e.movementY}px`;
+    panel.style.right = 'auto'; // Remove right anchor
+    panel.style.bottom = 'auto';
+  };
+
+  const onMouseUp = () => {
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  };
+
+  header.addEventListener('mousedown', (e) => {
+    // Ignore clicks on buttons/icons
+    if (e.target.closest('button, svg, path, .impact-action-btn')) return;
+    
+    isDragging = true;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}
+
 function initImpactControls() {
   if (impactControlsInitialized) return;
 
@@ -5114,6 +5181,7 @@ function initImpactControls() {
   impactControlsInitialized = true;
   ensureImpactDefaultDate();
   clearImpactSummaryPanel();
+  setupImpactPanelDraggable();
 
   refs.openBtn.addEventListener('click', openImpactModal);
   refs.closeBtn?.addEventListener('click', closeImpactModal);
