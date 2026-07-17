@@ -27,15 +27,20 @@ print("Found tables:")
 for table in tables:
     print(f" - {table}")
 
-# Export each table to CSV
+# Export each table to CSV (always sorted by recorded_date then id)
 for table in tables:
-    query = f'SELECT * FROM "{table}"'
+    # Use recorded_date for ordering if the column exists, otherwise fall back to id
+    col_info = pd.read_sql_query(f'PRAGMA table_info("{table}")', conn)
+    if "recorded_date" in col_info["name"].values:
+        query = f'SELECT * FROM "{table}" ORDER BY "recorded_date" ASC, "id" ASC'
+    else:
+        query = f'SELECT * FROM "{table}" ORDER BY "id" ASC'
     df = pd.read_sql_query(query, conn)
 
     csv_path = os.path.join(output_folder, f"{table}.csv")
     df.to_csv(csv_path, index=False)
 
-    print(f"Exported {table} → {csv_path}")
+    print(f"Exported {table} -> {csv_path}")
 
 conn.close()
 

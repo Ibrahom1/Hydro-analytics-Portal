@@ -8,39 +8,894 @@ id,report_id,row_order,river_group,station,today,last_year,avg_last_5_years,avg_
 7,1,7,River Indus,Kotri,6.9,4.7,5.2,9.6,32.0,increase,25-50,2026-03-31
 8,1,8,River Chenab,Trimmu,10.4,6.2,8.0,25.8,30.0,increase,25-50,2026-03-31
 9,1,9,River Chenab,Panjnad,17.1,2.2,7.8,16.1,119.0,increase,>50,2026-03-31
-10,2,1,River Indus,Khairabad Bridge,186.1,164.0,99.6,128.3,87.0,increase,>50,2026-06-08
-11,2,2,River Indus,Jinnah (Mean 24 hrs),171.0,183.7,132.0,155.5,30.0,increase,25-50,2026-06-08
-12,2,3,River Indus,Chashma (Mean 24 hrs),165.2,187.3,141.3,161.1,17.0,increase,0-25,2026-06-08
-13,2,4,River Indus,Taunsa,133.6,168.8,134.0,142.5,0.0,decrease,0-25,2026-06-08
-14,2,5,River Indus,Guddu,75.2,135.2,100.8,106.8,-25.0,decrease,0-25,2026-06-08
-15,2,6,River Indus,Sukkur,50.6,113.0,76.0,77.4,-33.0,decrease,25-50,2026-06-08
-16,2,7,River Indus,Kotri,11.5,58.6,33.4,30.1,-66.0,decrease,>50,2026-06-08
-17,2,8,River Chenab,Trimmu,23.1,12.8,20.9,24.7,11.0,increase,0-25,2026-06-08
-18,2,9,River Chenab,Panjnad,11.8,12.5,10.9,15.7,9.0,increase,0-25,2026-06-08
-19,3,1,River Indus,Khairabad Bridge,172.4,171.5,107.1,132.1,61.0,increase,>50,2026-06-09
-20,3,2,River Indus,Jinnah (Mean 24 hrs),167.1,192.7,138.5,163.3,21.0,increase,0-25,2026-06-09
-21,3,3,River Indus,Chashma (Mean 24 hrs),168.2,186.4,144.5,167.2,16.0,increase,0-25,2026-06-09
-22,3,4,River Indus,Taunsa,133.6,168.8,128.6,142.6,4.0,increase,0-25,2026-06-09
-23,3,5,River Indus,Guddu,78.7,132.0,101.8,108.2,-23.0,decrease,0-25,2026-06-09
-24,3,6,River Indus,Sukkur,50.6,101.6,76.0,77.7,-33.0,decrease,25-50,2026-06-09
-25,3,7,River Indus,Kotri,11.5,58.6,35.1,31.1,-67.0,decrease,>50,2026-06-09
-26,3,8,River Chenab,Trimmu,21.2,12.8,20.6,25.0,3.0,increase,0-25,2026-06-09
-27,3,9,River Chenab,Panjnad,12.3,12.5,10.3,14.3,19.0,increase,0-25,2026-06-09
-28,4,1,River Indus,Khairabad Bridge,184.4,169.4,106.9,130.7,73.0,increase,>50,2026-06-10
-29,4,2,River Indus,Jinnah (Mean 24 hrs),172.0,185.8,137.5,165.2,25.0,increase,0-25,2026-06-10
-30,4,3,River Indus,Chashma (Mean 24 hrs),172.0,191.4,147.9,173.1,16.0,increase,0-25,2026-06-10
-31,4,4,River Indus,Taunsa,133.6,167.0,129.3,144.0,3.0,increase,0-25,2026-06-10
-32,4,5,River Indus,Guddu,81.1,127.8,102.2,109.3,-21.0,decrease,0-25,2026-06-10
-33,4,6,River Indus,Sukkur,50.6,94.5,75.5,78.4,-33.0,decrease,25-50,2026-06-10
-34,4,7,River Indus,Kotri,11.9,58.6,34.4,31.1,-65.0,decrease,>50,2026-06-10
-35,4,8,River Chenab,Trimmu,22.1,13.1,20.9,25.9,6.0,increase,0-25,2026-06-10
-36,4,9,River Chenab,Panjnad,11.8,9.5,10.0,13.5,18.0,increase,0-25,2026-06-10
-37,5,1,River Indus,Khairabad Bridge,197.3,172.6,118.6,141.4,66.0,increase,>50,2026-06-11
-38,5,2,River Indus,Jinnah (Mean 24 hrs),193.7,189.3,139.3,164.3,39.0,increase,25-50,2026-06-11
-39,5,3,River Indus,Chashma (Mean 24 hrs),191.6,188.9,148.6,169.7,29.0,increase,25-50,2026-06-11
-40,5,4,River Indus,Taunsa,145.1,155.9,127.8,145.8,14.0,increase,0-25,2026-06-11
-41,5,5,River Indus,Guddu,90.4,128.4,100.4,109.6,-10.0,decrease,0-25,2026-06-11
-42,5,6,River Indus,Sukkur,53.6,90.1,76.0,78.9,-29.0,decrease,25-50,2026-06-11
-43,5,7,River Indus,Kotri,12.4,59.2,33.0,30.5,-63.0,decrease,>50,2026-06-11
-44,5,8,River Chenab,Trimmu,21.2,15.0,21.0,26.1,1.0,increase,0-25,2026-06-11
-45,5,9,River Chenab,Panjnad,13.6,10.1,10.0,13.0,36.0,increase,25-50,2026-06-11
+10,63,1,River Indus,Khairabad Bridge,87.1,34.0,28.3,29.5,208.0,increase,>50,2026-04-01
+11,63,2,River Indus,Jinnah (Mean 24 hrs),62.6,35.7,45.0,47.1,39.0,increase,25-50,2026-04-01
+12,63,3,River Indus,Chashma (Mean 24 hrs),57.7,30.7,45.0,42.7,28.0,increase,25-50,2026-04-01
+13,63,4,River Indus,Taunsa,31.8,23.0,30.7,31.7,4.0,increase,0-25,2026-04-01
+14,63,5,River Indus,Guddu,38.4,16.8,30.7,37.4,25.0,increase,0-25,2026-04-01
+15,63,6,River Indus,Sukkur,31.1,13.8,25.7,29.9,21.0,increase,0-25,2026-04-01
+16,63,7,River Indus,Kotri,7.5,4.7,5.3,9.5,42.0,increase,25-50,2026-04-01
+17,63,8,River Chenab,Trimmu,9.3,6.2,8.6,22.9,8.0,increase,0-25,2026-04-01
+18,63,9,River Chenab,Panjnad,17.2,2.4,7.7,16.6,123.0,increase,>50,2026-04-01
+19,64,1,River Indus,Khairabad Bridge,63.5,28.4,27.8,29.8,128.0,increase,>50,2026-04-02
+20,64,2,River Indus,Jinnah (Mean 24 hrs),82.7,38.8,46.2,48.9,79.0,increase,>50,2026-04-02
+21,64,3,River Indus,Chashma (Mean 24 hrs),75.9,27.1,42.3,42.1,79.0,increase,>50,2026-04-02
+22,64,4,River Indus,Taunsa,34.6,23.0,29.1,30.7,19.0,increase,0-25,2026-04-02
+23,64,5,River Indus,Guddu,38.5,16.6,32.1,36.9,20.0,increase,0-25,2026-04-02
+24,64,6,River Indus,Sukkur,33.4,15.0,26.9,32.0,24.0,increase,0-25,2026-04-02
+25,64,7,River Indus,Kotri,7.5,4.7,5.2,9.5,44.0,increase,25-50,2026-04-02
+26,64,8,River Chenab,Trimmu,8.2,6.2,8.5,21.2,-4.0,decrease,0-25,2026-04-02
+27,64,9,River Chenab,Panjnad,17.2,2.5,7.7,18.7,123.0,increase,>50,2026-04-02
+28,65,1,River Indus,Khairabad Bridge,49.5,30.6,26.6,30.5,86.0,increase,>50,2026-04-03
+29,65,2,River Indus,Jinnah (Mean 24 hrs),59.7,35.2,36.6,43.2,63.0,increase,>50,2026-04-03
+30,65,3,River Indus,Chashma (Mean 24 hrs),60.6,27.2,35.7,37.0,70.0,increase,>50,2026-04-03
+31,65,4,River Indus,Taunsa,44.9,30.5,33.3,33.6,35.0,increase,25-50,2026-04-03
+32,65,5,River Indus,Guddu,38.5,16.6,31.3,37.5,23.0,increase,0-25,2026-04-03
+33,65,6,River Indus,Sukkur,36.1,16.5,28.6,33.5,26.0,increase,25-50,2026-04-03
+34,65,7,River Indus,Kotri,6.8,4.6,5.1,9.0,33.0,increase,25-50,2026-04-03
+35,65,8,River Chenab,Trimmu,8.8,5.0,7.8,20.3,13.0,increase,0-25,2026-04-03
+36,65,9,River Chenab,Panjnad,17.2,1.6,7.9,21.1,118.0,increase,>50,2026-04-03
+37,66,1,River Indus,Khairabad Bridge,48.3,33.9,25.9,37.1,86.0,increase,>50,2026-04-04
+38,66,2,River Indus,Jinnah (Mean 24 hrs),42.8,39.9,35.6,41.5,20.0,increase,0-25,2026-04-04
+39,66,3,River Indus,Chashma (Mean 24 hrs),55.3,28.3,31.7,38.1,74.0,increase,>50,2026-04-04
+40,66,4,River Indus,Taunsa,42.3,30.5,34.4,33.8,23.0,increase,0-25,2026-04-04
+41,66,5,River Indus,Guddu,38.5,16.6,31.9,41.2,21.0,increase,0-25,2026-04-04
+42,66,6,River Indus,Sukkur,36.1,16.5,29.3,34.5,23.0,increase,0-25,2026-04-04
+43,66,7,River Indus,Kotri,6.8,4.6,5.2,8.8,31.0,increase,25-50,2026-04-04
+44,66,8,River Chenab,Trimmu,8.2,5.1,7.7,20.1,6.0,increase,0-25,2026-04-04
+45,66,9,River Chenab,Panjnad,11.4,1.6,8.1,19.4,41.0,increase,25-50,2026-04-04
+46,30,1,River Indus,Khairabad Bridge,127.1,35.4,28.2,38.8,351.0,increase,>50,2026-04-05
+47,30,2,River Indus,Jinnah (Mean 24 hrs),47.0,30.9,32.9,47.6,43.0,increase,25-50,2026-04-05
+48,30,3,River Indus,Chashma (Mean 24 hrs),70.6,29.9,31.2,40.0,126.0,increase,>50,2026-04-05
+49,30,4,River Indus,Taunsa,41.1,30.5,33.2,32.9,24.0,increase,0-25,2026-04-05
+50,30,5,River Indus,Guddu,38.5,16.6,31.2,41.1,23.0,increase,0-25,2026-04-05
+51,30,6,River Indus,Sukkur,36.0,16.5,29.5,37.0,22.0,increase,0-25,2026-04-05
+52,30,7,River Indus,Kotri,6.6,4.7,5.4,8.5,22.0,increase,0-25,2026-04-05
+53,30,8,River Chenab,Trimmu,12.3,6.1,8.5,19.3,45.0,increase,25-50,2026-04-05
+54,30,9,River Chenab,Panjnad,9.7,1.9,8.3,18.0,17.0,increase,0-25,2026-04-05
+55,67,1,River Indus,Khairabad Bridge,80.8,32.7,27.2,35.8,197.0,increase,>50,2026-04-06
+56,67,2,River Indus,Jinnah (Mean 24 hrs),91.4,41.0,39.0,50.5,134.0,increase,>50,2026-04-06
+57,67,3,River Indus,Chashma (Mean 24 hrs),106.7,36.9,32.5,47.1,228.0,increase,>50,2026-04-06
+58,67,4,River Indus,Taunsa,41.1,31.8,32.4,32.1,27.0,increase,25-50,2026-04-06
+59,67,5,River Indus,Guddu,36.9,16.6,31.5,40.4,17.0,increase,0-25,2026-04-06
+60,67,6,River Indus,Sukkur,35.7,16.5,29.7,38.4,20.0,increase,0-25,2026-04-06
+61,67,7,River Indus,Kotri,6.6,4.7,5.3,8.7,25.0,increase,0-25,2026-04-06
+62,67,8,River Chenab,Trimmu,13.2,5.1,9.3,16.4,42.0,increase,25-50,2026-04-06
+63,67,9,River Chenab,Panjnad,9.7,2.0,7.6,16.6,28.0,increase,25-50,2026-04-06
+64,68,1,River Indus,Khairabad Bridge,86.7,34.2,24.9,32.0,248.0,increase,>50,2026-04-08
+65,68,2,River Indus,Jinnah (Mean 24 hrs),54.8,32.6,38.9,46.9,41.0,increase,25-50,2026-04-08
+66,68,3,River Indus,Chashma (Mean 24 hrs),43.8,30.0,37.6,41.8,16.0,increase,0-25,2026-04-08
+67,68,4,River Indus,Taunsa,97.9,31.8,30.3,38.3,223.0,increase,>50,2026-04-08
+68,68,5,River Indus,Guddu,38.7,21.9,31.0,38.5,25.0,increase,0-25,2026-04-08
+69,68,6,River Indus,Sukkur,35.0,17.6,29.1,36.1,20.0,increase,0-25,2026-04-08
+70,68,7,River Indus,Kotri,7.5,4.6,5.4,10.1,39.0,increase,25-50,2026-04-08
+71,68,8,River Chenab,Trimmu,12.3,5.1,9.1,14.4,35.0,increase,25-50,2026-04-08
+72,68,9,River Chenab,Panjnad,9.0,1.6,7.0,15.1,28.0,increase,25-50,2026-04-08
+73,69,1,River Indus,Khairabad Bridge,139.7,38.5,24.9,30.4,461.0,increase,>50,2026-04-09
+74,69,2,River Indus,Jinnah (Mean 24 hrs),95.9,45.6,42.7,49.6,125.0,increase,>50,2026-04-09
+75,69,3,River Indus,Chashma (Mean 24 hrs),96.7,29.8,34.9,40.8,177.0,increase,>50,2026-04-09
+76,69,4,River Indus,Taunsa,97.9,34.4,33.5,38.5,192.0,increase,>50,2026-04-09
+77,69,5,River Indus,Guddu,42.2,26.1,31.6,38.0,33.0,increase,25-50,2026-04-09
+78,69,6,River Indus,Sukkur,37.0,18.8,28.6,35.3,30.0,increase,25-50,2026-04-09
+79,69,7,River Indus,Kotri,8.5,4.6,5.7,11.3,50.0,increase,25-50,2026-04-09
+80,69,8,River Chenab,Trimmu,15.0,6.1,9.0,14.2,66.0,increase,>50,2026-04-09
+81,69,9,River Chenab,Panjnad,9.0,1.4,6.9,14.1,30.0,increase,25-50,2026-04-09
+82,70,1,River Indus,Khairabad Bridge,102.8,54.4,28.6,32.1,259.0,increase,>50,2026-04-10
+83,70,2,River Indus,Jinnah (Mean 24 hrs),119.0,58.0,44.1,48.5,170.0,increase,>50,2026-04-10
+84,70,3,River Indus,Chashma (Mean 24 hrs),138.7,43.4,36.7,40.8,278.0,increase,>50,2026-04-10
+85,70,4,River Indus,Taunsa,63.1,31.8,33.5,37.1,88.0,increase,>50,2026-04-10
+86,70,5,River Indus,Guddu,68.2,27.1,31.0,37.5,120.0,increase,>50,2026-04-10
+87,70,6,River Indus,Sukkur,40.8,21.5,28.7,34.5,42.0,increase,25-50,2026-04-10
+88,70,7,River Indus,Kotri,9.0,4.6,6.0,12.1,51.0,increase,>50,2026-04-10
+89,70,8,River Chenab,Trimmu,18.7,6.1,11.2,18.4,67.0,increase,>50,2026-04-10
+90,70,9,River Chenab,Panjnad,14.3,1.4,6.8,13.1,112.0,increase,>50,2026-04-10
+91,71,1,River Indus,Khairabad Bridge,84.0,60.2,29.8,34.3,182.0,increase,>50,2026-04-11
+92,71,2,River Indus,Jinnah (Mean 24 hrs),73.0,63.8,44.4,51.3,64.0,increase,>50,2026-04-11
+93,71,3,River Indus,Chashma (Mean 24 hrs),90.4,60.5,40.7,44.3,122.0,increase,>50,2026-04-11
+94,71,4,River Indus,Taunsa,66.9,31.9,32.9,37.0,103.0,increase,>50,2026-04-11
+95,71,5,River Indus,Guddu,87.8,27.0,30.3,38.4,189.0,increase,>50,2026-04-11
+96,71,6,River Indus,Sukkur,65.6,23.0,29.0,34.2,126.0,increase,>50,2026-04-11
+97,71,7,River Indus,Kotri,8.8,4.6,6.0,13.1,48.0,increase,25-50,2026-04-11
+98,71,8,River Chenab,Trimmu,19.4,5.1,7.5,16.1,159.0,increase,>50,2026-04-11
+99,71,9,River Chenab,Panjnad,15.1,1.8,7.1,12.3,111.0,increase,>50,2026-04-11
+100,72,1,River Indus,Khairabad Bridge,63.1,61.5,29.6,33.5,113.0,increase,>50,2026-04-12
+101,72,2,River Indus,Jinnah (Mean 24 hrs),63.8,66.7,44.5,53.9,44.0,increase,25-50,2026-04-12
+102,72,3,River Indus,Chashma (Mean 24 hrs),62.8,54.1,42.3,49.5,49.0,increase,25-50,2026-04-12
+103,72,4,River Indus,Taunsa,100.0,31.9,32.9,37.9,204.0,increase,>50,2026-04-12
+104,72,5,River Indus,Guddu,80.6,27.0,30.4,38.1,165.0,increase,>50,2026-04-12
+105,72,6,River Indus,Sukkur,79.9,23.7,28.9,36.3,176.0,increase,>50,2026-04-12
+106,72,7,River Indus,Kotri,8.7,4.6,5.9,13.5,46.0,increase,25-50,2026-04-12
+107,72,8,River Chenab,Trimmu,21.1,5.1,12.1,18.7,75.0,increase,>50,2026-04-12
+108,72,9,River Chenab,Panjnad,15.1,1.6,7.2,11.8,109.0,increase,>50,2026-04-12
+109,73,1,River Indus,Khairabad Bridge,56.6,58.5,28.6,32.6,98.0,increase,>50,2026-04-13
+110,73,2,River Indus,Jinnah (Mean 24 hrs),53.9,59.6,43.2,54.1,25.0,increase,0-25,2026-04-13
+111,73,3,River Indus,Chashma (Mean 24 hrs),57.9,65.1,40.9,49.2,42.0,increase,25-50,2026-04-13
+112,73,4,River Indus,Taunsa,72.8,31.9,33.8,38.9,116.0,increase,>50,2026-04-13
+113,73,5,River Indus,Guddu,75.4,27.8,30.5,37.0,147.0,increase,>50,2026-04-13
+114,73,6,River Indus,Sukkur,70.4,23.7,28.2,35.5,149.0,increase,>50,2026-04-13
+115,73,7,River Indus,Kotri,8.1,4.6,5.8,13.1,39.0,increase,25-50,2026-04-13
+116,73,8,River Chenab,Trimmu,23.7,6.1,12.4,17.6,90.0,increase,>50,2026-04-13
+117,73,9,River Chenab,Panjnad,15.2,1.4,6.2,11.6,146.0,increase,>50,2026-04-13
+118,23,1,River Indus,Khairabad Bridge,58.3,57.0,50.2,47.4,16.0,increase,0-25,2026-04-16
+119,23,2,River Indus,Jinnah (Mean 24 hrs),49.4,52.7,62.1,64.7,-20.0,decrease,0-25,2026-04-16
+120,23,3,River Indus,Chashma (Mean 24 hrs),39.0,49.6,56.9,59.3,-32.0,decrease,25-50,2026-04-16
+121,23,4,River Indus,Taunsa,45.9,38.0,35.5,42.7,29.0,increase,25-50,2026-04-16
+122,23,5,River Indus,Guddu,79.6,27.8,33.4,39.4,138.0,increase,>50,2026-04-16
+123,23,6,River Indus,Sukkur,69.4,24.9,28.3,33.9,145.0,increase,>50,2026-04-16
+124,23,7,River Indus,Kotri,13.0,4.6,5.4,10.1,140.0,increase,>50,2026-04-16
+125,23,8,River Chenab,Trimmu,12.3,9.5,13.9,15.2,-12.0,decrease,0-25,2026-04-16
+126,23,9,River Chenab,Panjnad,20.1,1.6,8.3,14.2,143.0,increase,>50,2026-04-16
+127,24,1,River Indus,Khairabad Bridge,54.7,58.7,62.9,55.6,-13.0,decrease,0-25,2026-04-17
+128,24,2,River Indus,Jinnah (Mean 24 hrs),40.8,60.7,67.5,69.8,-40.0,decrease,25-50,2026-04-17
+129,24,3,River Indus,Chashma (Mean 24 hrs),47.8,54.1,62.9,65.8,-24.0,decrease,0-25,2026-04-17
+130,24,4,River Indus,Taunsa,43.4,38.0,35.5,43.1,22.0,increase,0-25,2026-04-17
+131,24,5,River Indus,Guddu,79.6,27.8,32.4,39.4,146.0,increase,>50,2026-04-17
+132,24,6,River Indus,Sukkur,64.2,24.9,29.0,35.0,122.0,increase,>50,2026-04-17
+133,24,7,River Indus,Kotri,24.0,4.4,5.3,9.7,349.0,increase,>50,2026-04-17
+134,24,8,River Chenab,Trimmu,9.7,10.5,14.9,16.6,-35.0,decrease,25-50,2026-04-17
+135,24,9,River Chenab,Panjnad,20.9,1.6,5.3,11.9,296.0,increase,>50,2026-04-17
+136,74,1,River Indus,Khairabad Bridge,60.7,62.4,55.9,54.2,9.0,increase,0-25,2026-04-18
+137,74,2,River Indus,Jinnah (Mean 24 hrs),63.0,63.0,71.4,71.4,-12.0,decrease,0-25,2026-04-18
+138,74,3,River Indus,Chashma (Mean 24 hrs),44.9,55.6,67.9,68.6,-34.0,decrease,25-50,2026-04-18
+139,74,4,River Indus,Taunsa,40.8,38.0,43.1,47.7,-5.0,decrease,0-25,2026-04-18
+140,74,5,River Indus,Guddu,56.9,29.0,33.7,40.4,69.0,increase,>50,2026-04-18
+141,74,6,River Indus,Sukkur,60.1,24.9,29.5,28.4,104.0,increase,>50,2026-04-18
+142,74,7,River Indus,Kotri,34.9,4.4,5.3,10.6,561.0,increase,>50,2026-04-18
+143,74,8,River Chenab,Trimmu,7.5,9.7,13.3,15.7,-44.0,decrease,25-50,2026-04-18
+144,74,9,River Chenab,Panjnad,21.2,2.2,8.2,12.6,160.0,increase,>50,2026-04-18
+145,75,1,River Indus,Khairabad Bridge,71.1,56.5,45.6,53.2,56.0,increase,>50,2026-04-19
+146,75,2,River Indus,Jinnah (Mean 24 hrs),62.2,56.5,60.0,69.1,4.0,increase,0-25,2026-04-19
+147,75,3,River Indus,Chashma (Mean 24 hrs),61.0,48.5,61.6,67.8,-1.0,decrease,0-25,2026-04-19
+148,75,4,River Indus,Taunsa,40.8,38.0,52.7,55.0,-23.0,decrease,0-25,2026-04-19
+149,75,5,River Indus,Guddu,52.9,29.0,32.5,40.2,63.0,increase,>50,2026-04-19
+150,75,6,River Indus,Sukkur,51.1,25.1,29.6,29.1,72.0,increase,>50,2026-04-19
+151,75,7,River Indus,Kotri,29.6,4.4,5.2,10.4,467.0,increase,>50,2026-04-19
+152,75,8,River Chenab,Trimmu,6.7,7.9,14.9,17.0,-55.0,decrease,>50,2026-04-19
+153,75,9,River Chenab,Panjnad,21.7,3.4,8.0,12.0,170.0,increase,>50,2026-04-19
+154,25,1,River Indus,Khairabad Bridge,76.0,63.1,54.7,56.7,39.0,increase,25-50,2026-04-20
+155,25,2,River Indus,Jinnah (Mean 24 hrs),73.2,66.2,58.4,70.4,25.0,increase,0-25,2026-04-20
+156,25,3,River Indus,Chashma (Mean 24 hrs),68.3,48.0,51.9,69.6,32.0,increase,25-50,2026-04-20
+157,25,4,River Indus,Taunsa,47.2,39.4,56.0,56.9,-16.0,decrease,0-25,2026-04-20
+158,25,5,River Indus,Guddu,47.9,29.0,32.6,41.0,47.0,increase,25-50,2026-04-20
+159,25,6,River Indus,Sukkur,48.3,25.8,29.8,29.8,62.0,increase,>50,2026-04-20
+160,25,7,River Indus,Kotri,29.5,5.0,5.3,10.1,458.0,increase,>50,2026-04-20
+161,25,8,River Chenab,Trimmu,5.0,8.2,15.7,17.1,-68.0,decrease,>50,2026-04-20
+162,25,9,River Chenab,Panjnad,18.8,4.5,8.7,12.5,116.0,increase,>50,2026-04-20
+163,76,1,River Indus,Khairabad Bridge,80.5,57.7,56.9,55.7,41.0,increase,25-50,2026-04-21
+164,76,2,River Indus,Jinnah (Mean 24 hrs),82.3,64.3,58.7,68.8,40.0,increase,25-50,2026-04-21
+165,76,3,River Indus,Chashma (Mean 24 hrs),75.4,54.0,56.8,67.8,33.0,increase,25-50,2026-04-21
+166,76,4,River Indus,Taunsa,50.4,43.7,51.9,55.7,-3.0,decrease,0-25,2026-04-21
+167,76,5,River Indus,Guddu,45.1,29.0,39.2,44.4,15.0,increase,0-25,2026-04-21
+168,76,6,River Indus,Sukkur,44.2,26.3,29.5,29.6,50.0,increase,25-50,2026-04-21
+169,76,7,River Indus,Kotri,31.5,5.0,5.3,10.0,498.0,increase,>50,2026-04-21
+170,76,8,River Chenab,Trimmu,5.4,9.0,18.6,18.6,-71.0,decrease,>50,2026-04-21
+171,76,9,River Chenab,Panjnad,13.5,3.7,8.7,13.0,54.0,increase,>50,2026-04-21
+172,77,1,River Indus,Khairabad Bridge,60.7,49.1,48.3,49.9,26.0,increase,25-50,2026-04-23
+173,77,2,River Indus,Jinnah (Mean 24 hrs),75.2,59.6,62.9,68.9,20.0,increase,0-25,2026-04-23
+174,77,3,River Indus,Chashma (Mean 24 hrs),68.3,46.9,62.0,65.3,10.0,increase,0-25,2026-04-23
+175,77,4,River Indus,Taunsa,58.0,52.2,49.5,57.2,17.0,increase,0-25,2026-04-23
+176,77,5,River Indus,Guddu,40.5,29.0,44.1,49.7,-8.0,decrease,0-25,2026-04-23
+177,77,6,River Indus,Sukkur,36.0,26.3,39.1,42.1,-8.0,decrease,0-25,2026-04-23
+178,77,7,River Indus,Kotri,30.2,5.0,5.3,9.2,473.0,increase,>50,2026-04-23
+179,77,8,River Chenab,Trimmu,5.8,10.4,16.5,18.1,-65.0,decrease,>50,2026-04-23
+180,77,9,River Chenab,Panjnad,8.6,3.7,9.6,13.8,-11.0,decrease,0-25,2026-04-23
+181,78,1,River Indus,Khairabad Bridge,62.2,46.9,44.2,47.1,41.0,increase,25-50,2026-04-24
+182,78,2,River Indus,Jinnah (Mean 24 hrs),71.6,78.5,60.7,68.5,18.0,increase,0-25,2026-04-24
+183,78,3,River Indus,Chashma (Mean 24 hrs),56.7,50.9,53.5,62.2,6.0,increase,0-25,2026-04-24
+184,78,4,River Indus,Taunsa,70.9,52.2,58.1,62.4,22.0,increase,0-25,2026-04-24
+185,78,5,River Indus,Guddu,36.7,29.0,39.2,47.3,-6.0,decrease,0-25,2026-04-24
+186,78,6,River Indus,Sukkur,36.0,26.4,40.4,44.3,-11.0,decrease,0-25,2026-04-24
+187,78,7,River Indus,Kotri,28.1,5.0,5.3,9.0,433.0,increase,>50,2026-04-24
+188,78,8,River Chenab,Trimmu,8.5,11.8,18.3,19.0,-53.0,decrease,>50,2026-04-24
+189,78,9,River Chenab,Panjnad,8.6,3.7,10.6,14.6,-19.0,decrease,0-25,2026-04-24
+190,79,1,River Indus,Khairabad Bridge,74.1,44.6,42.4,44.7,75.0,increase,>50,2026-04-25
+191,79,2,River Indus,Jinnah (Mean 24 hrs),84.7,74.3,55.1,66.5,54.0,increase,>50,2026-04-25
+192,79,3,River Indus,Chashma (Mean 24 hrs),66.1,70.6,54.2,62.7,22.0,increase,0-25,2026-04-25
+193,79,4,River Indus,Taunsa,67.8,53.3,58.6,62.1,16.0,increase,0-25,2026-04-25
+194,79,5,River Indus,Guddu,39.3,32.2,39.4,48.9,0.0,decrease,0-25,2026-04-25
+195,79,6,River Indus,Sukkur,34.4,27.0,35.4,42.1,-3.0,decrease,0-25,2026-04-25
+196,79,7,River Indus,Kotri,20.0,5.0,5.3,9.0,276.0,increase,>50,2026-04-25
+197,79,8,River Chenab,Trimmu,8.3,11.9,20.1,20.0,-59.0,decrease,>50,2026-04-25
+198,79,9,River Chenab,Panjnad,8.8,5.3,11.4,14.4,-23.0,decrease,0-25,2026-04-25
+199,80,1,River Indus,Khairabad Bridge,84.9,44.3,40.5,44.3,110.0,increase,>50,2026-04-26
+200,80,2,River Indus,Jinnah (Mean 24 hrs),101.6,69.2,51.4,64.3,98.0,increase,>50,2026-04-26
+201,80,3,River Indus,Chashma (Mean 24 hrs),88.5,61.2,53.8,61.6,65.0,increase,>50,2026-04-26
+202,80,4,River Indus,Taunsa,67.8,53.3,52.7,58.7,29.0,increase,25-50,2026-04-26
+203,80,5,River Indus,Guddu,39.3,34.8,41.6,49.8,-5.0,decrease,0-25,2026-04-26
+204,80,6,River Indus,Sukkur,34.4,29.1,34.2,42.0,1.0,increase,0-25,2026-04-26
+205,80,7,River Indus,Kotri,18.3,5.0,5.3,9.0,245.0,increase,>50,2026-04-26
+206,80,8,River Chenab,Trimmu,7.3,12.4,20.5,20.6,-64.0,decrease,>50,2026-04-26
+207,80,9,River Chenab,Panjnad,8.8,5.2,11.4,14.9,-23.0,decrease,0-25,2026-04-26
+208,26,1,River Indus,Khairabad Bridge,76.4,46.0,37.7,44.4,103.0,increase,>50,2026-04-27
+209,26,2,River Indus,Jinnah (Mean 24 hrs),98.3,77.1,54.9,66.7,79.0,increase,>50,2026-04-27
+210,26,3,River Indus,Chashma (Mean 24 hrs),95.2,59.0,48.1,59.5,98.0,increase,>50,2026-04-27
+211,26,4,River Indus,Taunsa,67.8,55.5,53.4,58.9,27.0,increase,25-50,2026-04-27
+212,26,5,River Indus,Guddu,41.4,36.5,47.1,52.9,-12.0,decrease,0-25,2026-04-27
+213,26,6,River Indus,Sukkur,34.4,29.1,35.1,42.7,-2.0,decrease,0-25,2026-04-27
+214,26,7,River Indus,Kotri,14.2,5.0,5.3,9.0,166.0,increase,>50,2026-04-27
+215,26,8,River Chenab,Trimmu,8.2,12.4,20.8,19.7,-61.0,decrease,>50,2026-04-27
+216,26,9,River Chenab,Panjnad,8.8,4.8,11.3,14.6,-22.0,decrease,0-25,2026-04-27
+217,27,1,River Indus,Khairabad Bridge,72.0,48.9,40.6,44.7,78.0,increase,>50,2026-04-28
+218,27,2,River Indus,Jinnah (Mean 24 hrs),94.6,80.5,59.5,73.2,59.0,increase,>50,2026-04-28
+219,27,3,River Indus,Chashma (Mean 24 hrs),84.2,72.6,56.1,71.3,50.0,increase,25-50,2026-04-28
+220,27,4,River Indus,Taunsa,67.8,55.5,53.6,58.5,26.0,increase,25-50,2026-04-28
+221,27,5,River Indus,Guddu,45.4,38.2,48.1,53.2,-6.0,decrease,0-25,2026-04-28
+222,27,6,River Indus,Sukkur,36.1,31.0,38.7,45.1,-7.0,decrease,0-25,2026-04-28
+223,27,7,River Indus,Kotri,10.4,5.0,8.9,10.8,18.0,increase,0-25,2026-04-28
+224,27,8,River Chenab,Trimmu,12.2,11.9,18.0,18.0,-32.0,decrease,25-50,2026-04-28
+225,27,9,River Chenab,Panjnad,8.8,4.8,10.4,14.1,-15.0,decrease,0-25,2026-04-28
+226,28,1,River Indus,Khairabad Bridge,69.9,55.3,50.0,49.1,40.0,increase,25-50,2026-04-29
+227,28,2,River Indus,Jinnah (Mean 24 hrs),96.8,76.1,61.9,74.1,56.0,increase,>50,2026-04-29
+228,28,3,River Indus,Chashma (Mean 24 hrs),78.6,70.6,58.0,71.1,36.0,increase,25-50,2026-04-29
+229,28,4,River Indus,Taunsa,75.0,56.7,54.1,60.4,39.0,increase,25-50,2026-04-29
+230,28,5,River Indus,Guddu,46.9,38.7,42.8,49.5,9.0,increase,0-25,2026-04-29
+231,28,6,River Indus,Sukkur,39.1,32.3,40.1,45.3,-2.0,decrease,0-25,2026-04-29
+232,28,7,River Indus,Kotri,7.3,5.0,9.9,11.6,-27.0,decrease,25-50,2026-04-29
+233,28,8,River Chenab,Trimmu,11.2,10.2,16.8,17.4,-33.0,decrease,25-50,2026-04-29
+234,28,9,River Chenab,Panjnad,8.8,5.1,10.7,13.3,-17.0,decrease,0-25,2026-04-29
+235,29,1,River Indus,Khairabad Bridge,69.8,55.5,51.2,49.8,36.0,increase,25-50,2026-04-30
+236,29,2,River Indus,Jinnah (Mean 24 hrs),91.2,83.7,65.6,78.0,39.0,increase,25-50,2026-04-30
+237,29,3,River Indus,Chashma (Mean 24 hrs),81.5,71.6,61.7,74.5,32.0,increase,25-50,2026-04-30
+238,29,4,River Indus,Taunsa,81.0,56.7,53.3,60.7,52.0,increase,>50,2026-04-30
+239,29,5,River Indus,Guddu,46.9,38.7,42.4,48.7,11.0,increase,0-25,2026-04-30
+240,29,6,River Indus,Sukkur,41.3,33.1,38.0,37.4,9.0,increase,0-25,2026-04-30
+241,29,7,River Indus,Kotri,7.1,5.0,10.2,12.5,-31.0,decrease,25-50,2026-04-30
+242,29,8,River Chenab,Trimmu,15.1,10.7,17.1,18.2,-12.0,decrease,0-25,2026-04-30
+243,29,9,River Chenab,Panjnad,8.3,5.1,11.1,13.0,-25.0,decrease,0-25,2026-04-30
+244,82,1,River Indus,Khairabad Bridge,74.2,65.5,49.7,52.4,49.0,increase,25-50,2026-05-01
+245,82,2,River Indus,Jinnah (Mean 24 hrs),93.3,91.1,72.6,83.0,29.0,increase,25-50,2026-05-01
+246,82,3,River Indus,Chashma (Mean 24 hrs),81.4,76.5,69.6,79.2,17.0,increase,0-25,2026-05-01
+247,82,4,River Indus,Taunsa,79.8,56.8,52.3,60.6,53.0,increase,>50,2026-05-01
+248,82,5,River Indus,Guddu,46.9,40.1,42.7,48.2,10.0,increase,0-25,2026-05-01
+249,82,6,River Indus,Sukkur,42.5,35.2,37.6,42.6,13.0,increase,0-25,2026-05-01
+250,82,7,River Indus,Kotri,6.0,5.0,9.0,12.9,-33.0,decrease,25-50,2026-05-01
+251,82,8,River Chenab,Trimmu,17.9,10.7,17.6,19.1,2.0,increase,0-25,2026-05-01
+252,82,9,River Chenab,Panjnad,8.3,5.1,11.4,12.4,-27.0,decrease,25-50,2026-05-01
+253,31,1,River Indus,Khairabad Bridge,71.9,76.4,50.8,53.0,41.0,increase,25-50,2026-05-02
+254,31,2,River Indus,Jinnah (Mean 24 hrs),97.3,102.2,76.5,86.8,27.0,increase,25-50,2026-05-02
+255,31,3,River Indus,Chashma (Mean 24 hrs),93.5,90.6,71.3,83.1,31.0,increase,25-50,2026-05-02
+256,31,4,River Indus,Taunsa,79.8,57.2,55.3,62.8,44.0,increase,25-50,2026-05-02
+257,31,5,River Indus,Guddu,46.9,40.1,42.3,49.1,11.0,increase,0-25,2026-05-02
+258,31,6,River Indus,Sukkur,43.1,35.2,37.7,42.1,14.0,increase,0-25,2026-05-02
+259,31,7,River Indus,Kotri,6.4,5.1,8.1,13.1,-21.0,decrease,0-25,2026-05-02
+260,31,8,River Chenab,Trimmu,15.7,12.1,17.6,19.8,-11.0,decrease,0-25,2026-05-02
+261,31,9,River Chenab,Panjnad,8.8,5.0,9.5,10.4,-7.0,decrease,0-25,2026-05-02
+262,32,1,River Indus,Khairabad Bridge,70.3,85.2,54.0,55.2,30.0,increase,25-50,2026-05-03
+263,32,2,River Indus,Jinnah (Mean 24 hrs),95.1,109.2,75.8,88.1,25.0,increase,0-25,2026-05-03
+264,32,3,River Indus,Chashma (Mean 24 hrs),89.3,100.7,71.7,83.2,25.0,increase,0-25,2026-05-03
+265,32,4,River Indus,Taunsa,79.8,57.2,56.1,64.8,42.0,increase,25-50,2026-05-03
+266,32,5,River Indus,Guddu,48.5,39.1,41.8,47.9,16.0,increase,0-25,2026-05-03
+267,32,6,River Indus,Sukkur,42.9,35.7,37.4,41.6,15.0,increase,0-25,2026-05-03
+268,32,7,River Indus,Kotri,6.4,5.1,8.1,13.3,-21.0,decrease,0-25,2026-05-03
+269,32,8,River Chenab,Trimmu,18.3,12.1,19.4,20.4,-6.0,decrease,0-25,2026-05-03
+270,32,9,River Chenab,Panjnad,10.0,4.8,8.4,10.1,19.0,increase,0-25,2026-05-03
+271,33,1,River Indus,Khairabad Bridge,71.9,81.4,54.5,56.5,32.0,increase,25-50,2026-05-04
+272,33,2,River Indus,Jinnah (Mean 24 hrs),97.0,109.8,76.8,90.5,26.0,increase,25-50,2026-05-04
+273,33,3,River Indus,Chashma (Mean 24 hrs),89.3,109.2,76.6,88.1,17.0,increase,0-25,2026-05-04
+274,33,4,River Indus,Taunsa,84.2,71.4,61.4,70.8,37.0,increase,25-50,2026-05-04
+275,33,5,River Indus,Guddu,50.1,39.1,40.7,47.1,23.0,increase,0-25,2026-05-04
+276,33,6,River Indus,Sukkur,42.9,35.4,36.8,41.3,17.0,increase,0-25,2026-05-04
+277,33,7,River Indus,Kotri,6.7,5.1,9.2,13.8,-27.0,decrease,25-50,2026-05-04
+278,33,8,River Chenab,Trimmu,22.0,13.2,20.9,21.8,5.0,increase,0-25,2026-05-04
+279,33,9,River Chenab,Panjnad,10.6,4.8,8.6,10.3,23.0,increase,0-25,2026-05-04
+280,81,1,River Indus,Khairabad Bridge,71.9,76.9,57.0,57.9,26.0,increase,25-50,2026-05-05
+281,81,2,River Indus,Jinnah (Mean 24 hrs),100.5,107.4,77.5,91.3,30.0,increase,25-50,2026-05-05
+282,81,3,River Indus,Chashma (Mean 24 hrs),89.4,95.7,73.5,87.1,22.0,increase,0-25,2026-05-05
+283,81,4,River Indus,Taunsa,84.3,68.7,59.2,69.9,42.0,increase,25-50,2026-05-05
+284,81,5,River Indus,Guddu,50.1,39.1,42.2,47.9,19.0,increase,0-25,2026-05-05
+285,81,6,River Indus,Sukkur,44.2,35.1,35.6,40.9,24.0,increase,0-25,2026-05-05
+286,81,7,River Indus,Kotri,7.8,5.3,9.7,13.7,-20.0,decrease,0-25,2026-05-05
+287,81,8,River Chenab,Trimmu,25.4,16.2,21.2,23.0,20.0,increase,0-25,2026-05-05
+288,81,9,River Chenab,Panjnad,10.4,4.8,8.2,10.6,26.0,increase,25-50,2026-05-05
+289,83,1,River Indus,Khairabad Bridge,66.1,77.3,58.8,61.2,12.0,increase,0-25,2026-05-06
+290,83,2,River Indus,Jinnah (Mean 24 hrs),97.4,101.5,84.8,95.3,15.0,increase,0-25,2026-05-06
+291,83,3,River Indus,Chashma (Mean 24 hrs),91.4,99.1,83.0,94.9,10.0,increase,0-25,2026-05-06
+292,83,4,River Indus,Taunsa,83.5,73.8,62.8,72.1,33.0,increase,25-50,2026-05-06
+293,83,5,River Indus,Guddu,46.8,39.1,40.3,47.2,16.0,increase,0-25,2026-05-06
+294,83,6,River Indus,Sukkur,45.0,34.8,35.7,40.6,26.0,increase,25-50,2026-05-06
+295,83,7,River Indus,Kotri,9.5,5.3,8.9,12.8,7.0,increase,0-25,2026-05-06
+296,83,8,River Chenab,Trimmu,24.1,30.7,23.3,23.8,3.0,increase,0-25,2026-05-06
+297,83,9,River Chenab,Panjnad,10.5,5.0,8.6,10.6,22.0,increase,0-25,2026-05-06
+298,34,1,River Indus,Khairabad Bridge,64.6,78.4,59.0,61.2,10.0,increase,0-25,2026-05-07
+299,34,2,River Indus,Jinnah (Mean 24 hrs),91.7,106.5,89.9,98.2,2.0,increase,0-25,2026-05-07
+300,34,3,River Indus,Chashma (Mean 24 hrs),81.3,97.9,89.4,97.6,-9.0,decrease,0-25,2026-05-07
+301,34,4,River Indus,Taunsa,83.5,77.3,66.6,74.0,25.0,increase,0-25,2026-05-07
+302,34,5,River Indus,Guddu,52.2,40.4,40.7,48.9,28.0,increase,25-50,2026-05-07
+303,34,6,River Indus,Sukkur,43.1,34.8,35.8,40.7,20.0,increase,0-25,2026-05-07
+304,34,7,River Indus,Kotri,9.9,5.4,8.1,11.7,23.0,increase,0-25,2026-05-07
+305,34,8,River Chenab,Trimmu,23.6,27.2,23.2,24.0,2.0,increase,0-25,2026-05-07
+306,34,9,River Chenab,Panjnad,10.9,6.8,8.7,10.7,25.0,increase,0-25,2026-05-07
+307,35,1,River Indus,Khairabad Bridge,83.5,101.8,61.1,60.3,37.0,increase,25-50,2026-05-08
+308,35,2,River Indus,Jinnah (Mean 24 hrs),87.0,124.4,90.5,96.5,-4.0,decrease,0-25,2026-05-08
+309,35,3,River Indus,Chashma (Mean 24 hrs),90.9,95.3,86.9,94.1,5.0,increase,0-25,2026-05-08
+310,35,4,River Indus,Taunsa,82.0,77.3,68.8,76.3,19.0,increase,0-25,2026-05-08
+311,35,5,River Indus,Guddu,54.0,41.7,42.3,51.8,28.0,increase,25-50,2026-05-08
+312,35,6,River Indus,Sukkur,44.5,35.2,36.2,41.9,23.0,increase,0-25,2026-05-08
+313,35,7,River Indus,Kotri,9.9,5.8,8.0,10.6,25.0,increase,0-25,2026-05-08
+314,35,8,River Chenab,Trimmu,20.7,26.0,24.4,24.2,-15.0,decrease,0-25,2026-05-08
+315,35,9,River Chenab,Panjnad,11.5,6.8,9.0,11.4,28.0,increase,25-50,2026-05-08
+316,85,1,River Indus,Khairabad Bridge,91.8,108.5,65.5,64.2,40.0,increase,25-50,2026-05-09
+317,85,2,River Indus,Jinnah (Mean 24 hrs),107.7,135.0,89.4,95.9,20.0,increase,0-25,2026-05-09
+318,85,3,River Indus,Chashma (Mean 24 hrs),107.6,127.5,89.5,97.9,20.0,increase,0-25,2026-05-09
+319,85,4,River Indus,Taunsa,82.8,81.6,70.0,78.4,18.0,increase,0-25,2026-05-09
+320,85,5,River Indus,Guddu,53.7,44.1,42.6,52.1,26.0,increase,25-50,2026-05-09
+321,85,6,River Indus,Sukkur,45.2,36.2,37.0,43.5,22.0,increase,0-25,2026-05-09
+322,85,7,River Indus,Kotri,9.9,5.9,7.4,9.8,34.0,increase,25-50,2026-05-09
+323,85,8,River Chenab,Trimmu,20.8,17.2,22.8,23.7,-9.0,decrease,0-25,2026-05-09
+324,85,9,River Chenab,Panjnad,11.4,6.8,8.6,11.8,32.0,increase,25-50,2026-05-09
+325,87,1,River Indus,Khairabad Bridge,120.6,112.8,64.0,65.8,88.0,increase,>50,2026-05-10
+326,87,2,River Indus,Jinnah (Mean 24 hrs),108.8,138.3,88.8,97.2,23.0,increase,0-25,2026-05-10
+327,87,3,River Indus,Chashma (Mean 24 hrs),105.5,133.5,87.3,93.9,21.0,increase,0-25,2026-05-10
+328,87,4,River Indus,Taunsa,92.1,88.7,73.8,80.2,25.0,increase,0-25,2026-05-10
+329,87,5,River Indus,Guddu,53.7,45.0,42.3,51.8,27.0,increase,25-50,2026-05-10
+330,87,6,River Indus,Sukkur,45.4,39.5,37.0,44.6,23.0,increase,0-25,2026-05-10
+331,87,7,River Indus,Kotri,9.9,6.2,7.0,9.3,41.0,increase,25-50,2026-05-10
+332,87,8,River Chenab,Trimmu,19.8,14.9,21.7,23.4,-9.0,decrease,0-25,2026-05-10
+333,87,9,River Chenab,Panjnad,11.4,7.9,9.3,11.6,23.0,increase,0-25,2026-05-10
+334,89,1,River Indus,Khairabad Bridge,109.2,149.2,74.3,68.2,47.0,increase,25-50,2026-05-11
+335,89,2,River Indus,Jinnah (Mean 24 hrs),107.7,140.9,93.7,102.2,15.0,increase,0-25,2026-05-11
+336,89,3,River Indus,Chashma (Mean 24 hrs),110.0,143.8,90.6,100.9,21.0,increase,0-25,2026-05-11
+337,89,4,River Indus,Taunsa,92.1,92.9,76.1,80.7,21.0,increase,0-25,2026-05-11
+338,89,5,River Indus,Guddu,54.0,47.2,43.2,51.8,25.0,increase,0-25,2026-05-11
+339,89,6,River Indus,Sukkur,46.2,40.4,37.0,44.5,25.0,increase,0-25,2026-05-11
+340,89,7,River Indus,Kotri,10.0,6.2,6.7,9.3,49.0,increase,25-50,2026-05-11
+341,89,8,River Chenab,Trimmu,18.8,23.6,23.8,24.8,-21.0,decrease,0-25,2026-05-11
+342,89,9,River Chenab,Panjnad,11.5,7.9,7.9,10.9,46.0,increase,25-50,2026-05-11
+343,36,1,River Indus,Khairabad Bridge,111.8,157.6,85.6,75.4,31.0,increase,25-50,2026-05-12
+344,36,2,River Indus,Jinnah (Mean 24 hrs),122.7,141.0,100.5,103.6,22.0,increase,0-25,2026-05-12
+345,36,3,River Indus,Chashma (Mean 24 hrs),110.0,138.9,98.5,103.9,12.0,increase,0-25,2026-05-12
+346,36,4,River Indus,Taunsa,90.6,92.9,76.9,81.9,18.0,increase,0-25,2026-05-12
+347,36,5,River Indus,Guddu,54.6,49.3,45.2,54.1,21.0,increase,0-25,2026-05-12
+348,36,6,River Indus,Sukkur,46.2,42.0,37.7,44.3,23.0,increase,0-25,2026-05-12
+349,36,7,River Indus,Kotri,10.2,6.2,6.9,9.5,48.0,increase,25-50,2026-05-12
+350,36,8,River Chenab,Trimmu,17.7,24.8,25.1,26.7,-29.0,decrease,25-50,2026-05-12
+351,36,9,River Chenab,Panjnad,11.8,9.4,7.8,10.4,51.0,increase,>50,2026-05-12
+352,90,1,River Indus,Khairabad Bridge,119.4,136.4,80.3,73.9,49.0,increase,25-50,2026-05-13
+353,90,2,River Indus,Jinnah (Mean 24 hrs),132.3,146.1,105.4,107.8,26.0,increase,25-50,2026-05-13
+354,90,3,River Indus,Chashma (Mean 24 hrs),124.6,143.9,114.8,111.5,9.0,increase,0-25,2026-05-13
+355,90,4,River Indus,Taunsa,92.9,102.8,78.7,84.1,18.0,increase,0-25,2026-05-13
+356,90,5,River Indus,Guddu,54.7,53.1,47.6,55.3,15.0,increase,0-25,2026-05-13
+357,90,6,River Indus,Sukkur,48.8,45.8,38.8,45.1,26.0,increase,25-50,2026-05-13
+358,90,7,River Indus,Kotri,10.1,6.2,6.9,11.5,47.0,increase,25-50,2026-05-13
+359,90,8,River Chenab,Trimmu,16.8,24.8,25.8,27.2,-35.0,decrease,25-50,2026-05-13
+360,90,9,River Chenab,Panjnad,12.3,10.0,7.9,10.6,55.0,increase,>50,2026-05-13
+361,37,1,River Indus,Khairabad Bridge,115.8,99.6,81.7,76.8,42.0,increase,25-50,2026-05-14
+362,37,2,River Indus,Jinnah (Mean 24 hrs),140.5,147.0,110.8,111.1,27.0,increase,25-50,2026-05-14
+363,37,3,River Indus,Chashma (Mean 24 hrs),129.1,138.4,110.3,111.3,17.0,increase,0-25,2026-05-14
+364,37,4,River Indus,Taunsa,92.1,108.5,83.0,88.2,11.0,increase,0-25,2026-05-14
+365,37,5,River Indus,Guddu,58.9,61.2,50.5,57.0,17.0,increase,0-25,2026-05-14
+366,37,6,River Indus,Sukkur,49.1,48.2,40.9,46.8,20.0,increase,0-25,2026-05-14
+367,37,7,River Indus,Kotri,10.2,6.2,7.0,9.8,45.0,increase,25-50,2026-05-14
+368,37,8,River Chenab,Trimmu,16.8,26.1,26.6,28.6,-37.0,decrease,25-50,2026-05-14
+369,37,9,River Chenab,Panjnad,12.3,10.0,8.0,10.5,54.0,increase,>50,2026-05-14
+370,91,1,River Indus,Khairabad Bridge,118.9,103.2,72.0,73.2,65.0,increase,>50,2026-05-15
+371,91,2,River Indus,Jinnah (Mean 24 hrs),128.4,120.0,105.4,109.5,22.0,increase,0-25,2026-05-15
+372,91,3,River Indus,Chashma (Mean 24 hrs),118.6,126.8,119.4,116.3,-1.0,decrease,0-25,2026-05-15
+373,91,4,River Indus,Taunsa,92.1,108.5,88.0,90.2,5.0,increase,0-25,2026-05-15
+374,91,5,River Indus,Guddu,60.7,61.7,50.6,57.2,20.0,increase,0-25,2026-05-15
+375,91,6,River Indus,Sukkur,50.4,51.0,42.2,47.6,19.0,increase,0-25,2026-05-15
+376,91,7,River Indus,Kotri,10.3,6.2,7.0,10.1,47.0,increase,25-50,2026-05-15
+377,91,8,River Chenab,Trimmu,19.3,23.0,25.5,28.1,-24.0,decrease,0-25,2026-05-15
+378,91,9,River Chenab,Panjnad,12.3,6.9,7.9,10.7,55.0,increase,>50,2026-05-15
+379,92,1,River Indus,Khairabad Bridge,119.8,96.4,76.5,78.4,57.0,increase,>50,2026-05-17
+380,92,2,River Indus,Jinnah (Mean 24 hrs),117.1,125.3,99.6,109.2,18.0,increase,0-25,2026-05-17
+381,92,3,River Indus,Chashma (Mean 24 hrs),116.9,128.2,106.8,111.0,9.0,increase,0-25,2026-05-17
+382,92,4,River Indus,Taunsa,99.0,106.1,94.6,93.7,5.0,increase,0-25,2026-05-17
+383,92,5,River Indus,Guddu,62.1,61.4,49.9,58.4,25.0,increase,0-25,2026-05-17
+384,92,6,River Indus,Sukkur,53.4,50.3,43.3,47.3,23.0,increase,0-25,2026-05-17
+385,92,7,River Indus,Kotri,11.5,6.2,7.0,10.5,65.0,increase,>50,2026-05-17
+386,92,8,River Chenab,Trimmu,25.0,16.9,25.4,28.9,-1.0,decrease,0-25,2026-05-17
+387,92,9,River Chenab,Panjnad,10.3,9.1,9.6,12.2,8.0,increase,0-25,2026-05-17
+388,38,1,River Indus,Khairabad Bridge,132.0,142.0,87.2,83.7,51.0,increase,>50,2026-05-18
+389,38,2,River Indus,Jinnah (Mean 24 hrs),118.5,127.1,109.2,117.4,8.0,increase,0-25,2026-05-18
+390,38,3,River Indus,Chashma (Mean 24 hrs),110.4,118.4,113.6,118.0,-3.0,decrease,0-25,2026-05-18
+391,38,4,River Indus,Taunsa,100.3,106.1,93.8,95.8,7.0,increase,0-25,2026-05-18
+392,38,5,River Indus,Guddu,62.6,63.5,54.8,61.8,14.0,increase,0-25,2026-05-18
+393,38,6,River Indus,Sukkur,54.1,52.6,44.1,47.9,23.0,increase,0-25,2026-05-18
+394,38,7,River Indus,Kotri,11.3,6.8,7.3,10.7,55.0,increase,>50,2026-05-18
+395,38,8,River Chenab,Trimmu,25.0,16.9,26.7,29.6,-6.0,decrease,0-25,2026-05-18
+396,38,9,River Chenab,Panjnad,9.5,9.1,9.8,12.9,-3.0,decrease,0-25,2026-05-18
+397,39,1,River Indus,Khairabad Bridge,123.2,179.0,98.1,92.8,26.0,increase,25-50,2026-05-20
+398,39,2,River Indus,Jinnah (Mean 24 hrs),115.4,165.6,121.9,125.5,-5.0,decrease,0-25,2026-05-20
+399,39,3,River Indus,Chashma (Mean 24 hrs),114.6,159.3,124.2,124.4,-8.0,decrease,0-25,2026-05-20
+400,39,4,River Indus,Taunsa,99.7,113.3,99.0,100.7,1.0,increase,0-25,2026-05-20
+401,39,5,River Indus,Guddu,62.9,66.6,60.8,65.5,3.0,increase,0-25,2026-05-20
+402,39,6,River Indus,Sukkur,54.4,56.2,47.7,50.8,14.0,increase,0-25,2026-05-20
+403,39,7,River Indus,Kotri,11.3,8.4,7.9,11.1,43.0,increase,25-50,2026-05-20
+404,39,8,River Chenab,Trimmu,17.4,17.1,26.5,27.8,-34.0,decrease,25-50,2026-05-20
+405,39,9,River Chenab,Panjnad,11.5,10.1,10.0,13.4,15.0,increase,0-25,2026-05-20
+406,62,1,River Indus,Khairabad Bridge,125.8,147.7,98.1,92.3,28.0,increase,25-50,2026-05-21
+407,62,2,River Indus,Jinnah (Mean 24 hrs),138.2,184.5,125.5,129.4,10.0,increase,0-25,2026-05-21
+408,62,3,River Indus,Chashma (Mean 24 hrs),123.0,189.9,134.2,131.7,-8.0,decrease,0-25,2026-05-21
+409,62,4,River Indus,Taunsa,99.6,136.6,105.3,104.2,-5.0,decrease,0-25,2026-05-21
+410,62,5,River Indus,Guddu,64.1,66.7,62.0,67.5,3.0,increase,0-25,2026-05-21
+411,62,6,River Indus,Sukkur,54.4,57.4,50.6,52.8,8.0,increase,0-25,2026-05-21
+412,62,7,River Indus,Kotri,12.2,12.2,8.8,11.7,39.0,increase,25-50,2026-05-21
+413,62,8,River Chenab,Trimmu,16.3,17.1,26.5,28.1,-38.0,decrease,25-50,2026-05-21
+414,62,9,River Chenab,Panjnad,12.7,9.0,9.7,13.7,30.0,increase,25-50,2026-05-21
+415,93,1,River Indus,Khairabad Bridge,130.5,179.0,94.6,97.2,38.0,increase,25-50,2026-05-22
+416,93,2,River Indus,Jinnah (Mean 24 hrs),129.8,197.6,128.7,131.8,1.0,increase,0-25,2026-05-22
+417,93,3,River Indus,Chashma (Mean 24 hrs),129.1,182.8,133.7,131.6,-3.0,decrease,0-25,2026-05-22
+418,93,4,River Indus,Taunsa,99.6,140.0,109.1,106.8,-9.0,decrease,0-25,2026-05-22
+419,93,5,River Indus,Guddu,65.1,66.7,63.1,68.6,3.0,increase,0-25,2026-05-22
+420,93,6,River Indus,Sukkur,54.4,57.0,50.2,53.1,8.0,increase,0-25,2026-05-22
+421,93,7,River Indus,Kotri,13.0,12.7,9.3,11.8,40.0,increase,25-50,2026-05-22
+422,93,8,River Chenab,Trimmu,14.5,21.2,27.9,28.7,-48.0,decrease,25-50,2026-05-22
+423,93,9,River Chenab,Panjnad,13.2,8.3,10.3,13.7,28.0,increase,25-50,2026-05-22
+424,94,1,River Indus,Khairabad Bridge,131.1,178.6,108.4,109.3,21.0,increase,0-25,2026-05-23
+425,94,2,River Indus,Jinnah (Mean 24 hrs),138.6,202.2,126.9,132.5,9.0,increase,0-25,2026-05-23
+426,94,3,River Indus,Chashma (Mean 24 hrs),131.0,210.1,137.3,137.8,-5.0,decrease,0-25,2026-05-23
+427,94,4,River Indus,Taunsa,101.0,156.9,116.6,113.2,-13.0,decrease,0-25,2026-05-23
+428,94,5,River Indus,Guddu,66.4,67.7,64.6,70.7,3.0,increase,0-25,2026-05-23
+429,94,6,River Indus,Sukkur,53.1,60.0,51.8,54.6,3.0,increase,0-25,2026-05-23
+430,94,7,River Indus,Kotri,13.2,13.8,9.7,11.8,36.0,increase,25-50,2026-05-23
+431,94,8,River Chenab,Trimmu,17.5,22.4,28.0,27.1,-37.0,decrease,25-50,2026-05-23
+432,94,9,River Chenab,Panjnad,13.2,8.3,10.1,13.3,30.0,increase,25-50,2026-05-23
+433,40,1,River Indus,Khairabad Bridge,127.9,176.3,101.0,98.9,27.0,increase,25-50,2026-05-24
+434,40,2,River Indus,Jinnah (Mean 24 hrs),136.9,200.2,122.8,133.0,11.0,increase,0-25,2026-05-24
+435,40,3,River Indus,Chashma (Mean 24 hrs),134.0,201.5,130.4,133.2,3.0,increase,0-25,2026-05-24
+436,40,4,River Indus,Taunsa,111.7,168.2,115.8,114.6,-4.0,decrease,0-25,2026-05-24
+437,40,5,River Indus,Guddu,66.8,84.4,68.9,73.5,-3.0,decrease,0-25,2026-05-24
+438,40,6,River Indus,Sukkur,52.2,59.7,53.1,55.9,-2.0,decrease,0-25,2026-05-24
+439,40,7,River Indus,Kotri,14.1,13.9,10.0,12.1,41.0,increase,25-50,2026-05-24
+440,40,8,River Chenab,Trimmu,20.6,22.2,27.7,26.5,-26.0,decrease,25-50,2026-05-24
+441,40,9,River Chenab,Panjnad,10.3,8.3,10.3,13.4,0.0,increase,0-25,2026-05-24
+442,41,1,River Indus,Khairabad Bridge,119.0,136.9,96.5,100.3,23.0,increase,0-25,2026-05-25
+443,41,2,River Indus,Jinnah (Mean 24 hrs),131.5,199.8,126.8,134.9,4.0,increase,0-25,2026-05-25
+444,41,3,River Indus,Chashma (Mean 24 hrs),126.1,204.0,134.9,139.0,-7.0,decrease,0-25,2026-05-25
+445,41,4,River Indus,Taunsa,111.7,167.7,116.7,115.1,-4.0,decrease,0-25,2026-05-25
+446,41,5,River Indus,Guddu,66.6,102.7,73.7,76.3,-10.0,decrease,0-25,2026-05-25
+447,41,6,River Indus,Sukkur,50.6,63.3,54.1,56.4,-6.0,decrease,0-25,2026-05-25
+448,41,7,River Indus,Kotri,14.6,15.8,10.6,10.8,37.0,increase,25-50,2026-05-25
+449,41,8,River Chenab,Trimmu,21.5,21.8,28.6,28.1,-25.0,decrease,0-25,2026-05-25
+450,41,9,River Chenab,Panjnad,8.8,9.3,9.9,13.3,-11.0,decrease,0-25,2026-05-25
+451,95,1,River Indus,Khairabad Bridge,140.2,198.2,110.8,106.9,27.0,increase,25-50,2026-05-26
+452,95,2,River Indus,Jinnah (Mean 24 hrs),131.6,191.0,128.4,136.3,3.0,increase,0-25,2026-05-26
+453,95,3,River Indus,Chashma (Mean 24 hrs),120.5,188.8,134.3,141.9,-10.0,decrease,0-25,2026-05-26
+454,95,4,River Indus,Taunsa,111.7,167.7,115.0,114.2,-3.0,decrease,0-25,2026-05-26
+455,95,5,River Indus,Guddu,65.3,117.1,81.8,81.2,-20.0,decrease,0-25,2026-05-26
+456,95,6,River Indus,Sukkur,54.0,74.1,56.7,57.8,-5.0,decrease,0-25,2026-05-26
+457,95,7,River Indus,Kotri,15.5,16.1,11.1,11.2,40.0,increase,25-50,2026-05-26
+458,95,8,River Chenab,Trimmu,22.6,16.6,27.1,27.9,-17.0,decrease,0-25,2026-05-26
+459,95,9,River Chenab,Panjnad,8.4,10.8,11.6,14.1,-28.0,decrease,25-50,2026-05-26
+460,96,1,River Indus,Khairabad Bridge,168.9,201.4,108.5,104.5,56.0,increase,>50,2026-05-27
+461,96,2,River Indus,Jinnah (Mean 24 hrs),132.5,216.4,134.1,139.1,-1.0,decrease,0-25,2026-05-27
+462,96,3,River Indus,Chashma (Mean 24 hrs),125.9,218.1,147.7,147.4,-15.0,decrease,0-25,2026-05-27
+463,96,4,River Indus,Taunsa,117.5,170.4,115.6,116.7,2.0,increase,0-25,2026-05-27
+464,96,5,River Indus,Guddu,65.3,130.4,83.3,83.7,-22.0,decrease,0-25,2026-05-27
+465,96,6,River Indus,Sukkur,53.7,91.2,63.7,61.2,-16.0,decrease,0-25,2026-05-27
+466,96,7,River Indus,Kotri,15.3,16.3,11.6,13.6,33.0,increase,25-50,2026-05-27
+467,96,8,River Chenab,Trimmu,23.5,17.7,27.5,29.6,-15.0,decrease,0-25,2026-05-27
+468,96,9,River Chenab,Panjnad,8.4,10.5,11.4,13.2,-26.0,decrease,25-50,2026-05-27
+469,97,1,River Indus,Khairabad Bridge,160.7,194.8,110.4,103.5,46.0,increase,25-50,2026-05-28
+470,97,2,River Indus,Jinnah (Mean 24 hrs),142.2,223.3,134.6,137.2,6.0,increase,0-25,2026-05-28
+471,97,3,River Indus,Chashma (Mean 24 hrs),131.0,225.1,143.5,143.1,-9.0,decrease,0-25,2026-05-28
+472,97,4,River Indus,Taunsa,117.5,172.1,123.7,123.1,-5.0,decrease,0-25,2026-05-28
+473,97,5,River Indus,Guddu,73.2,127.0,82.8,85.5,-12.0,decrease,0-25,2026-05-28
+474,97,6,River Indus,Sukkur,53.7,103.4,65.8,63.6,-18.0,decrease,0-25,2026-05-28
+475,97,7,River Indus,Kotri,15.3,16.7,12.2,13.9,25.0,increase,0-25,2026-05-28
+476,97,8,River Chenab,Trimmu,23.5,18.9,29.5,32.1,-20.0,decrease,0-25,2026-05-28
+477,97,9,River Chenab,Panjnad,10.4,11.1,10.3,12.1,1.0,increase,0-25,2026-05-28
+478,42,1,River Indus,Khairabad Bridge,164.8,207.4,108.6,109.7,52.0,increase,>50,2026-05-29
+479,42,2,River Indus,Jinnah (Mean 24 hrs),139.5,221.8,137.3,136.8,2.0,increase,0-25,2026-05-29
+480,42,3,River Indus,Chashma (Mean 24 hrs),130.2,222.1,146.9,142.2,-11.0,decrease,0-25,2026-05-29
+481,42,4,River Indus,Taunsa,115.5,173.5,124.3,124.3,-7.0,decrease,0-25,2026-05-29
+482,42,5,River Indus,Guddu,73.2,129.0,83.7,85.5,-13.0,decrease,0-25,2026-05-29
+483,42,6,River Indus,Sukkur,57.1,105.5,65.8,65.9,-13.0,decrease,0-25,2026-05-29
+484,42,7,River Indus,Kotri,15.3,18.2,12.9,14.5,19.0,increase,0-25,2026-05-29
+485,42,8,River Chenab,Trimmu,22.6,20.9,30.4,32.1,-26.0,decrease,25-50,2026-05-29
+486,42,9,River Chenab,Panjnad,11.7,11.9,10.9,12.8,7.0,increase,0-25,2026-05-29
+487,98,1,River Indus,Khairabad Bridge,138.3,195.8,118.6,114.0,17.0,increase,0-25,2026-05-30
+488,98,2,River Indus,Jinnah (Mean 24 hrs),139.3,220.8,138.1,140.6,1.0,increase,0-25,2026-05-30
+489,98,3,River Indus,Chashma (Mean 24 hrs),136.3,228.7,147.6,141.5,-8.0,decrease,0-25,2026-05-30
+490,98,4,River Indus,Taunsa,111.4,174.2,125.1,126.1,-11.0,decrease,0-25,2026-05-30
+491,98,5,River Indus,Guddu,77.1,130.6,87.6,87.3,-12.0,decrease,0-25,2026-05-30
+492,98,6,River Indus,Sukkur,60.7,101.0,64.7,65.5,-6.0,decrease,0-25,2026-05-30
+493,98,7,River Indus,Kotri,15.3,21.2,13.9,15.2,10.0,increase,0-25,2026-05-30
+494,98,8,River Chenab,Trimmu,21.6,21.8,30.1,32.2,-28.0,decrease,25-50,2026-05-30
+495,98,9,River Chenab,Panjnad,13.2,12.2,10.7,13.3,23.0,increase,0-25,2026-05-30
+496,99,1,River Indus,Khairabad Bridge,161.5,191.0,121.4,116.8,33.0,increase,25-50,2026-05-31
+497,99,2,River Indus,Jinnah (Mean 24 hrs),137.2,211.0,137.0,142.2,0.0,increase,0-25,2026-05-31
+498,99,3,River Indus,Chashma (Mean 24 hrs),131.2,214.1,151.2,147.7,-13.0,decrease,0-25,2026-05-31
+499,99,4,River Indus,Taunsa,111.4,173.9,125.1,124.8,-11.0,decrease,0-25,2026-05-31
+500,99,5,River Indus,Guddu,80.1,139.9,96.6,95.1,-17.0,decrease,0-25,2026-05-31
+501,99,6,River Indus,Sukkur,63.3,101.0,66.7,65.9,-5.0,decrease,0-25,2026-05-31
+502,99,7,River Indus,Kotri,14.6,22.6,14.6,15.4,0.0,increase,0-25,2026-05-31
+503,99,8,River Chenab,Trimmu,20.7,20.6,29.0,32.1,-29.0,decrease,25-50,2026-05-31
+504,99,9,River Chenab,Panjnad,13.5,12.5,13.1,15.1,3.0,increase,0-25,2026-05-31
+505,16,1,River Indus,Khairabad Bridge,163.1,172.6,104.7,108.7,56.0,increase,>50,2026-06-01
+506,16,2,River Indus,Jinnah (Mean 24 hrs),140.7,199.8,136.8,145.5,3.0,increase,0-25,2026-06-01
+507,16,3,River Indus,Chashma (Mean 24 hrs),141.8,206.4,150.3,154.6,-6.0,decrease,0-25,2026-06-01
+508,16,4,River Indus,Taunsa,111.8,173.2,125.6,125.3,-11.0,decrease,0-25,2026-06-01
+509,16,5,River Indus,Guddu,78.5,139.6,99.6,98.3,-21.0,decrease,0-25,2026-06-01
+510,16,6,River Indus,Sukkur,63.3,109.2,73.3,71.5,-14.0,decrease,0-25,2026-06-01
+511,16,7,River Indus,Kotri,14.5,29.1,16.5,16.2,-12.0,decrease,0-25,2026-06-01
+512,16,8,River Chenab,Trimmu,19.8,21.5,27.8,31.3,-29.0,decrease,25-50,2026-06-01
+513,16,9,River Chenab,Panjnad,13.7,10.6,13.7,16.2,0.0,decrease,0-25,2026-06-01
+514,17,1,River Indus,Khairabad Bridge,140.3,190.3,111.4,114.5,26.0,increase,25-50,2026-06-02
+515,17,2,River Indus,Jinnah (Mean 24 hrs),151.3,192.4,135.5,147.3,12.0,increase,0-25,2026-06-02
+516,17,3,River Indus,Chashma (Mean 24 hrs),136.8,194.9,142.5,152.1,-4.0,decrease,0-25,2026-06-02
+517,17,4,River Indus,Taunsa,113.8,173.2,124.5,125.4,-9.0,decrease,0-25,2026-06-02
+518,17,5,River Indus,Guddu,76.5,139.1,100.0,101.0,-24.0,decrease,0-25,2026-06-02
+519,17,6,River Indus,Sukkur,60.0,110.1,76.8,74.8,-22.0,decrease,0-25,2026-06-02
+520,17,7,River Indus,Kotri,14.4,37.0,19.7,17.8,-27.0,decrease,25-50,2026-06-02
+521,17,8,River Chenab,Trimmu,18.7,33.1,27.8,31.6,-33.0,decrease,25-50,2026-06-02
+522,17,9,River Chenab,Panjnad,14.2,11.9,14.4,17.0,-2.0,decrease,0-25,2026-06-02
+523,18,1,River Indus,Khairabad Bridge,144.8,178.9,113.1,117.5,28.0,increase,25-50,2026-06-03
+524,18,2,River Indus,Jinnah (Mean 24 hrs),160.3,194.5,137.2,148.3,17.0,increase,0-25,2026-06-03
+525,18,3,River Indus,Chashma (Mean 24 hrs),141.3,189.6,145.2,153.9,-3.0,decrease,0-25,2026-06-03
+526,18,4,River Indus,Taunsa,113.8,180.6,124.9,127.3,-9.0,decrease,0-25,2026-06-03
+527,18,5,River Indus,Guddu,70.2,139.0,101.3,102.2,-31.0,decrease,25-50,2026-06-03
+528,18,6,River Indus,Sukkur,57.0,110.3,79.1,77.5,-28.0,decrease,25-50,2026-06-03
+529,18,7,River Indus,Kotri,14.1,45.9,21.5,19.7,-35.0,decrease,25-50,2026-06-03
+530,18,8,River Chenab,Trimmu,18.7,26.9,26.7,30.8,-30.0,decrease,25-50,2026-06-03
+531,18,9,River Chenab,Panjnad,14.2,11.9,15.1,17.5,-6.0,decrease,0-25,2026-06-03
+532,19,1,River Indus,Khairabad Bridge,153.9,169.9,109.1,122.4,41.0,increase,25-50,2026-06-04
+533,19,2,River Indus,Jinnah (Mean 24 hrs),154.2,191.9,140.4,153.8,10.0,increase,0-25,2026-06-04
+534,19,3,River Indus,Chashma (Mean 24 hrs),143.4,198.6,149.5,158.3,-4.0,decrease,0-25,2026-06-04
+535,19,4,River Indus,Taunsa,113.6,180.6,125.3,129.5,-9.0,decrease,0-25,2026-06-04
+536,19,5,River Indus,Guddu,73.0,133.9,101.6,102.3,-28.0,decrease,25-50,2026-06-04
+537,19,6,River Indus,Sukkur,53.6,110.3,80.0,78.1,-33.0,decrease,25-50,2026-06-04
+538,19,7,River Indus,Kotri,12.8,47.3,21.7,20.4,-41.0,decrease,25-50,2026-06-04
+539,19,8,River Chenab,Trimmu,21.0,20.5,22.9,28.9,-8.0,decrease,0-25,2026-06-04
+540,19,9,River Chenab,Panjnad,13.1,11.9,14.6,17.8,-10.0,decrease,0-25,2026-06-04
+541,20,1,River Indus,Khairabad Bridge,174.5,166.7,111.9,132.1,56.0,increase,>50,2026-06-05
+542,20,2,River Indus,Jinnah (Mean 24 hrs),178.0,187.2,135.5,155.4,31.0,increase,25-50,2026-06-05
+543,20,3,River Indus,Chashma (Mean 24 hrs),177.8,194.9,145.7,159.0,22.0,increase,0-25,2026-06-05
+544,20,4,River Indus,Taunsa,114.2,180.6,128.9,132.7,-11.0,decrease,0-25,2026-06-05
+545,20,5,River Indus,Guddu,74.6,142.9,100.0,101.6,-25.0,decrease,0-25,2026-06-05
+546,20,6,River Indus,Sukkur,51.4,104.2,78.0,76.9,-34.0,decrease,25-50,2026-06-05
+547,20,7,River Indus,Kotri,11.3,54.7,23.3,21.6,-51.0,decrease,>50,2026-06-05
+548,20,8,River Chenab,Trimmu,18.8,18.5,21.9,27.1,-14.0,decrease,0-25,2026-06-05
+549,20,9,River Chenab,Panjnad,12.6,11.9,13.2,17.2,-5.0,decrease,0-25,2026-06-05
+550,21,1,River Indus,Khairabad Bridge,173.1,165.0,108.1,125.8,60.0,increase,>50,2026-06-06
+551,21,2,River Indus,Jinnah (Mean 24 hrs),190.2,187.0,136.5,156.9,39.0,increase,25-50,2026-06-06
+552,21,3,River Indus,Chashma (Mean 24 hrs),183.9,192.4,145.4,164.1,26.0,increase,25-50,2026-06-06
+553,21,4,River Indus,Taunsa,114.2,166.8,128.6,135.2,-11.0,decrease,0-25,2026-06-06
+554,21,5,River Indus,Guddu,75.0,145.3,98.8,101.6,-24.0,decrease,0-25,2026-06-06
+555,21,6,River Indus,Sukkur,50.6,109.4,77.5,76.5,-35.0,decrease,25-50,2026-06-06
+556,21,7,River Indus,Kotri,11.6,55.8,25.0,23.1,-53.0,decrease,>50,2026-06-06
+557,21,8,River Chenab,Trimmu,20.9,18.5,24.1,26.4,-13.0,decrease,0-25,2026-06-06
+558,21,9,River Chenab,Panjnad,12.2,12.7,11.8,16.1,4.0,increase,0-25,2026-06-06
+559,22,1,River Indus,Khairabad Bridge,197.6,166.1,103.9,124.2,90.0,increase,>50,2026-06-07
+560,22,2,River Indus,Jinnah (Mean 24 hrs),187.3,187.1,134.7,155.4,39.0,increase,25-50,2026-06-07
+561,22,3,River Indus,Chashma (Mean 24 hrs),183.9,183.8,138.9,157.9,32.0,increase,25-50,2026-06-07
+562,22,4,River Indus,Taunsa,130.6,168.8,130.7,136.9,0.0,decrease,0-25,2026-06-07
+563,22,5,River Indus,Guddu,75.5,147.4,98.5,104.4,-23.0,decrease,0-25,2026-06-07
+564,22,6,River Indus,Sukkur,50.6,111.0,75.0,76.1,-33.0,decrease,25-50,2026-06-07
+565,22,7,River Indus,Kotri,11.6,56.8,32.7,27.8,-64.0,decrease,>50,2026-06-07
+566,22,8,River Chenab,Trimmu,22.8,15.3,23.1,25.5,-1.0,decrease,0-25,2026-06-07
+567,22,9,River Chenab,Panjnad,12.1,12.7,11.5,15.6,6.0,increase,0-25,2026-06-07
+568,2,1,River Indus,Khairabad Bridge,186.1,164.0,99.6,128.3,87.0,increase,>50,2026-06-08
+569,2,2,River Indus,Jinnah (Mean 24 hrs),171.0,183.7,132.0,155.5,30.0,increase,25-50,2026-06-08
+570,2,3,River Indus,Chashma (Mean 24 hrs),165.2,187.3,141.3,161.1,17.0,increase,0-25,2026-06-08
+571,2,4,River Indus,Taunsa,133.6,168.8,134.0,142.5,0.0,decrease,0-25,2026-06-08
+572,2,5,River Indus,Guddu,75.2,135.2,100.8,106.8,-25.0,decrease,0-25,2026-06-08
+573,2,6,River Indus,Sukkur,50.6,113.0,76.0,77.4,-33.0,decrease,25-50,2026-06-08
+574,2,7,River Indus,Kotri,11.5,58.6,33.4,30.1,-66.0,decrease,>50,2026-06-08
+575,2,8,River Chenab,Trimmu,23.1,12.8,20.9,24.7,11.0,increase,0-25,2026-06-08
+576,2,9,River Chenab,Panjnad,11.8,12.5,10.9,15.7,9.0,increase,0-25,2026-06-08
+577,3,1,River Indus,Khairabad Bridge,172.4,171.5,107.1,132.1,61.0,increase,>50,2026-06-09
+578,3,2,River Indus,Jinnah (Mean 24 hrs),167.1,192.7,138.5,163.3,21.0,increase,0-25,2026-06-09
+579,3,3,River Indus,Chashma (Mean 24 hrs),168.2,186.4,144.5,167.2,16.0,increase,0-25,2026-06-09
+580,3,4,River Indus,Taunsa,133.6,168.8,128.6,142.6,4.0,increase,0-25,2026-06-09
+581,3,5,River Indus,Guddu,78.7,132.0,101.8,108.2,-23.0,decrease,0-25,2026-06-09
+582,3,6,River Indus,Sukkur,50.6,101.6,76.0,77.7,-33.0,decrease,25-50,2026-06-09
+583,3,7,River Indus,Kotri,11.5,58.6,35.1,31.1,-67.0,decrease,>50,2026-06-09
+584,3,8,River Chenab,Trimmu,21.2,12.8,20.6,25.0,3.0,increase,0-25,2026-06-09
+585,3,9,River Chenab,Panjnad,12.3,12.5,10.3,14.3,19.0,increase,0-25,2026-06-09
+586,4,1,River Indus,Khairabad Bridge,184.4,169.4,106.9,130.7,73.0,increase,>50,2026-06-10
+587,4,2,River Indus,Jinnah (Mean 24 hrs),172.0,185.8,137.5,165.2,25.0,increase,0-25,2026-06-10
+588,4,3,River Indus,Chashma (Mean 24 hrs),172.0,191.4,147.9,173.1,16.0,increase,0-25,2026-06-10
+589,4,4,River Indus,Taunsa,133.6,167.0,129.3,144.0,3.0,increase,0-25,2026-06-10
+590,4,5,River Indus,Guddu,81.1,127.8,102.2,109.3,-21.0,decrease,0-25,2026-06-10
+591,4,6,River Indus,Sukkur,50.6,94.5,75.5,78.4,-33.0,decrease,25-50,2026-06-10
+592,4,7,River Indus,Kotri,11.9,58.6,34.4,31.1,-65.0,decrease,>50,2026-06-10
+593,4,8,River Chenab,Trimmu,22.1,13.1,20.9,25.9,6.0,increase,0-25,2026-06-10
+594,4,9,River Chenab,Panjnad,11.8,9.5,10.0,13.5,18.0,increase,0-25,2026-06-10
+595,5,1,River Indus,Khairabad Bridge,197.3,172.6,118.6,141.4,66.0,increase,>50,2026-06-11
+596,5,2,River Indus,Jinnah (Mean 24 hrs),193.7,189.3,139.3,164.3,39.0,increase,25-50,2026-06-11
+597,5,3,River Indus,Chashma (Mean 24 hrs),191.6,188.9,148.6,169.7,29.0,increase,25-50,2026-06-11
+598,5,4,River Indus,Taunsa,145.1,155.9,127.8,145.8,14.0,increase,0-25,2026-06-11
+599,5,5,River Indus,Guddu,90.4,128.4,100.4,109.6,-10.0,decrease,0-25,2026-06-11
+600,5,6,River Indus,Sukkur,53.6,90.1,76.0,78.9,-29.0,decrease,25-50,2026-06-11
+601,5,7,River Indus,Kotri,12.4,59.2,33.0,30.5,-63.0,decrease,>50,2026-06-11
+602,5,8,River Chenab,Trimmu,21.2,15.0,21.0,26.1,1.0,increase,0-25,2026-06-11
+603,5,9,River Chenab,Panjnad,13.6,10.1,10.0,13.0,36.0,increase,25-50,2026-06-11
+604,6,1,River Indus,Khairabad Bridge,195.2,173.2,135.8,154.3,44.0,increase,25-50,2026-06-12
+605,6,2,River Indus,Jinnah (Mean 24 hrs),205.6,186.7,145.7,168.1,41.0,increase,25-50,2026-06-12
+606,6,3,River Indus,Chashma (Mean 24 hrs),200.3,191.9,162.0,177.1,24.0,increase,0-25,2026-06-12
+607,6,4,River Indus,Taunsa,145.1,158.6,129.3,147.2,12.0,increase,0-25,2026-06-12
+608,6,5,River Indus,Guddu,92.1,124.7,98.6,109.8,-7.0,decrease,0-25,2026-06-12
+609,6,6,River Indus,Sukkur,59.4,89.2,75.6,79.4,-21.0,decrease,0-25,2026-06-12
+610,6,7,River Indus,Kotri,12.3,60.2,32.7,30.5,-62.0,decrease,>50,2026-06-12
+611,6,8,River Chenab,Trimmu,20.2,15.0,19.2,26.2,5.0,increase,0-25,2026-06-12
+612,6,9,River Chenab,Panjnad,13.6,9.5,10.3,13.0,32.0,increase,25-50,2026-06-12
+613,7,1,River Indus,Khairabad Bridge,197.0,171.6,138.2,158.7,43.0,increase,25-50,2026-06-13
+614,7,2,River Indus,Jinnah (Mean 24 hrs),200.9,189.7,151.7,172.9,32.0,increase,25-50,2026-06-13
+615,7,3,River Indus,Chashma (Mean 24 hrs),209.1,186.4,163.0,180.4,28.0,increase,25-50,2026-06-13
+616,7,4,River Indus,Taunsa,168.0,158.6,135.7,151.0,24.0,increase,0-25,2026-06-13
+617,7,5,River Indus,Guddu,92.2,124.1,98.9,110.9,-7.0,decrease,0-25,2026-06-13
+618,7,6,River Indus,Sukkur,65.5,88.0,74.3,79.3,-12.0,decrease,0-25,2026-06-13
+619,7,7,River Indus,Kotri,12.4,60.9,31.8,30.7,-61.0,decrease,>50,2026-06-13
+620,7,8,River Chenab,Trimmu,21.8,15.0,18.6,23.8,17.0,increase,0-25,2026-06-13
+621,7,9,River Chenab,Panjnad,12.9,9.0,10.0,13.0,30.0,increase,25-50,2026-06-13
+622,8,1,River Indus,Khairabad Bridge,206.7,171.4,135.7,153.7,52.0,increase,>50,2026-06-14
+623,8,2,River Indus,Jinnah (Mean 24 hrs),202.9,195.8,149.8,173.9,35.0,increase,25-50,2026-06-14
+624,8,3,River Indus,Chashma (Mean 24 hrs),207.0,186.5,164.7,184.0,26.0,increase,25-50,2026-06-14
+625,8,4,River Indus,Taunsa,175.6,158.8,139.9,156.3,25.0,increase,0-25,2026-06-14
+626,8,5,River Indus,Guddu,97.4,117.8,95.8,109.4,2.0,increase,0-25,2026-06-14
+627,8,6,River Indus,Sukkur,66.1,87.1,72.4,77.9,-9.0,decrease,0-25,2026-06-14
+628,8,7,River Indus,Kotri,11.1,53.8,30.5,30.8,-64.0,decrease,>50,2026-06-14
+629,8,8,River Chenab,Trimmu,22.0,15.0,18.1,23.2,22.0,increase,0-25,2026-06-14
+630,8,9,River Chenab,Panjnad,12.9,8.7,9.5,13.3,35.0,increase,25-50,2026-06-14
+631,9,1,River Indus,Khairabad Bridge,201.7,171.6,128.8,150.8,57.0,increase,>50,2026-06-15
+632,9,2,River Indus,Jinnah (Mean 24 hrs),208.4,193.2,153.9,175.3,35.0,increase,25-50,2026-06-15
+633,9,3,River Indus,Chashma (Mean 24 hrs),211.0,191.7,164.1,182.7,29.0,increase,25-50,2026-06-15
+634,9,4,River Indus,Taunsa,183.4,158.8,146.1,160.7,26.0,increase,25-50,2026-06-15
+635,9,5,River Indus,Guddu,120.9,120.9,96.7,109.6,25.0,increase,0-25,2026-06-15
+636,9,6,River Indus,Sukkur,70.2,80.2,69.6,75.2,1.0,increase,0-25,2026-06-15
+637,9,7,River Indus,Kotri,11.3,50.7,30.4,31.2,-63.0,decrease,>50,2026-06-15
+638,9,8,River Chenab,Trimmu,21.2,14.3,18.5,22.9,15.0,increase,0-25,2026-06-15
+639,9,9,River Chenab,Panjnad,12.9,8.7,9.5,13.9,36.0,increase,25-50,2026-06-15
+640,10,1,River Indus,Khairabad Bridge,202.3,169.7,133.2,158.8,52.0,increase,>50,2026-06-16
+641,10,2,River Indus,Jinnah (Mean 24 hrs),210.7,188.2,154.7,179.3,36.0,increase,25-50,2026-06-16
+642,10,3,River Indus,Chashma (Mean 24 hrs),210.4,186.0,166.7,188.9,26.0,increase,25-50,2026-06-16
+643,10,4,River Indus,Taunsa,184.2,162.6,146.8,161.4,25.0,increase,0-25,2026-06-16
+644,10,5,River Indus,Guddu,138.1,120.8,101.5,114.0,36.0,increase,25-50,2026-06-16
+645,10,6,River Indus,Sukkur,74.1,83.3,70.6,75.2,5.0,increase,0-25,2026-06-16
+646,10,7,River Indus,Kotri,11.4,46.4,30.0,30.5,-62.0,decrease,>50,2026-06-16
+647,10,8,River Chenab,Trimmu,23.2,19.3,21.3,25.1,9.0,increase,0-25,2026-06-16
+648,10,9,River Chenab,Panjnad,13.2,8.6,10.3,14.7,28.0,increase,25-50,2026-06-16
+649,11,1,River Indus,Khairabad Bridge,202.6,166.1,138.3,163.0,46.0,increase,25-50,2026-06-17
+650,11,2,River Indus,Jinnah (Mean 24 hrs),206.1,188.6,156.2,181.3,32.0,increase,25-50,2026-06-17
+651,11,3,River Indus,Chashma (Mean 24 hrs),210.0,190.5,166.3,192.5,26.0,increase,25-50,2026-06-17
+652,11,4,River Indus,Taunsa,187.2,165.0,149.9,165.5,25.0,increase,0-25,2026-06-17
+653,11,5,River Indus,Guddu,141.4,121.4,104.0,117.1,36.0,increase,25-50,2026-06-17
+654,11,6,River Indus,Sukkur,88.3,85.9,73.4,78.8,20.0,increase,0-25,2026-06-17
+655,11,7,River Indus,Kotri,11.4,42.8,30.2,30.8,-62.0,decrease,>50,2026-06-17
+656,11,8,River Chenab,Trimmu,22.9,21.3,23.4,26.8,-2.0,decrease,0-25,2026-06-17
+657,11,9,River Chenab,Panjnad,13.7,7.5,9.5,14.2,44.0,increase,25-50,2026-06-17
+658,12,1,River Indus,Khairabad Bridge,204.3,155.5,136.9,158.2,49.0,increase,25-50,2026-06-18
+659,12,2,River Indus,Jinnah (Mean 24 hrs),211.7,183.3,159.0,184.5,33.0,increase,25-50,2026-06-18
+660,12,3,River Indus,Chashma (Mean 24 hrs),218.6,185.4,174.8,197.6,25.0,increase,0-25,2026-06-18
+661,12,4,River Indus,Taunsa,187.2,165.0,151.7,173.3,23.0,increase,0-25,2026-06-18
+662,12,5,River Indus,Guddu,146.3,122.1,110.8,124.1,32.0,increase,25-50,2026-06-18
+663,12,6,River Indus,Sukkur,90.2,85.9,75.7,80.9,19.0,increase,0-25,2026-06-18
+664,12,7,River Indus,Kotri,11.6,42.8,29.6,30.4,-61.0,decrease,>50,2026-06-18
+665,12,8,River Chenab,Trimmu,21.9,20.3,24.7,27.1,-11.0,decrease,0-25,2026-06-18
+666,12,9,River Chenab,Panjnad,13.5,8.0,9.6,13.1,41.0,increase,25-50,2026-06-18
+667,13,1,River Indus,Khairabad Bridge,202.2,160.9,145.0,164.6,39.0,increase,25-50,2026-06-19
+668,13,2,River Indus,Jinnah (Mean 24 hrs),218.3,183.0,161.2,186.2,35.0,increase,25-50,2026-06-19
+669,13,3,River Indus,Chashma (Mean 24 hrs),210.0,184.6,176.1,196.4,19.0,increase,0-25,2026-06-19
+670,13,4,River Indus,Taunsa,186.5,165.0,152.0,177.0,23.0,increase,0-25,2026-06-19
+671,13,5,River Indus,Guddu,151.8,121.1,111.5,126.0,36.0,increase,25-50,2026-06-19
+672,13,6,River Indus,Sukkur,100.3,86.7,77.8,82.9,29.0,increase,25-50,2026-06-19
+673,13,7,River Indus,Kotri,11.8,39.5,28.0,29.4,-58.0,decrease,>50,2026-06-19
+674,13,8,River Chenab,Trimmu,16.6,21.3,24.2,27.1,-31.0,decrease,25-50,2026-06-19
+675,13,9,River Chenab,Panjnad,13.1,8.0,9.5,13.3,39.0,increase,25-50,2026-06-19
+676,14,1,River Indus,Khairabad Bridge,199.7,159.8,139.4,167.6,43.0,increase,25-50,2026-06-20
+677,14,2,River Indus,Jinnah (Mean 24 hrs),217.9,179.9,159.4,188.9,37.0,increase,25-50,2026-06-20
+678,14,3,River Indus,Chashma (Mean 24 hrs),210.1,184.5,182.2,203.2,15.0,increase,0-25,2026-06-20
+679,14,4,River Indus,Taunsa,186.3,165.4,154.0,177.5,21.0,increase,0-25,2026-06-20
+680,14,5,River Indus,Guddu,151.4,120.0,116.0,129.2,30.0,increase,25-50,2026-06-20
+681,14,6,River Indus,Sukkur,107.1,85.4,79.4,83.9,35.0,increase,25-50,2026-06-20
+682,14,7,River Indus,Kotri,16.4,37.6,27.8,29.2,-41.0,decrease,25-50,2026-06-20
+683,14,8,River Chenab,Trimmu,15.6,21.3,24.2,29.1,-36.0,decrease,25-50,2026-06-20
+684,14,9,River Chenab,Panjnad,13.9,8.4,9.7,13.9,43.0,increase,25-50,2026-06-20
+685,15,1,River Indus,Khairabad Bridge,195.6,164.3,154.2,167.5,27.0,increase,25-50,2026-06-21
+686,15,2,River Indus,Jinnah (Mean 24 hrs),222.8,179.8,163.0,190.9,37.0,increase,25-50,2026-06-21
+687,15,3,River Indus,Chashma (Mean 24 hrs),210.2,181.5,175.4,201.7,20.0,increase,0-25,2026-06-21
+688,15,4,River Indus,Taunsa,194.1,165.5,159.0,181.3,22.0,increase,0-25,2026-06-21
+689,15,5,River Indus,Guddu,152.8,121.8,116.3,134.9,31.0,increase,25-50,2026-06-21
+690,15,6,River Indus,Sukkur,107.0,82.9,84.0,90.2,27.0,increase,25-50,2026-06-21
+691,15,7,River Indus,Kotri,22.3,30.9,26.6,28.5,-16.0,decrease,0-25,2026-06-21
+692,15,8,River Chenab,Trimmu,18.0,16.1,22.8,29.8,-21.0,decrease,0-25,2026-06-21
+693,15,9,River Chenab,Panjnad,12.6,9.6,11.5,14.8,9.0,increase,0-25,2026-06-21
+694,43,1,River Indus,Khairabad Bridge,189.0,167.7,152.1,169.6,24.0,increase,0-25,2026-06-22
+695,43,2,River Indus,Jinnah (Mean 24 hrs),211.8,185.5,169.3,192.6,25.0,increase,0-25,2026-06-22
+696,43,3,River Indus,Chashma (Mean 24 hrs),206.7,185.5,189.0,207.5,9.0,increase,0-25,2026-06-22
+697,43,4,River Indus,Taunsa,196.4,165.5,160.9,182.5,22.0,increase,0-25,2026-06-22
+698,43,5,River Indus,Guddu,152.8,120.9,116.4,137.3,31.0,increase,25-50,2026-06-22
+699,43,6,River Indus,Sukkur,107.0,82.4,82.0,91.5,30.0,increase,25-50,2026-06-22
+700,43,7,River Indus,Kotri,31.6,31.2,27.4,28.9,15.0,increase,0-25,2026-06-22
+701,43,8,River Chenab,Trimmu,21.2,11.0,20.3,28.4,4.0,increase,0-25,2026-06-22
+702,43,9,River Chenab,Panjnad,13.8,9.8,12.9,16.5,7.0,increase,0-25,2026-06-22
+703,45,1,River Indus,Khairabad Bridge,193.2,180.4,143.9,163.3,34.0,increase,25-50,2026-06-23
+704,45,2,River Indus,Jinnah (Mean 24 hrs),205.2,195.5,168.7,194.2,22.0,increase,0-25,2026-06-23
+705,45,3,River Indus,Chashma (Mean 24 hrs),200.9,197.6,188.0,206.9,7.0,increase,0-25,2026-06-23
+706,45,4,River Indus,Taunsa,191.2,165.5,158.6,181.7,21.0,increase,0-25,2026-06-23
+707,45,5,River Indus,Guddu,152.8,120.9,120.0,140.3,27.0,increase,25-50,2026-06-23
+708,45,6,River Indus,Sukkur,107.2,82.4,82.2,94.0,30.0,increase,25-50,2026-06-23
+709,45,7,River Indus,Kotri,39.0,30.0,27.9,30.0,40.0,increase,25-50,2026-06-23
+710,45,8,River Chenab,Trimmu,25.1,8.3,21.0,28.8,19.0,increase,0-25,2026-06-23
+711,45,9,River Chenab,Panjnad,13.6,11.4,12.5,16.6,9.0,increase,0-25,2026-06-23
+712,44,1,River Indus,Khairabad Bridge,170.5,185.6,135.0,157.3,26.0,increase,25-50,2026-06-24
+713,44,2,River Indus,Jinnah (Mean 24 hrs),205.6,205.5,162.0,188.1,27.0,increase,25-50,2026-06-24
+714,44,3,River Indus,Chashma (Mean 24 hrs),199.3,203.5,183.7,200.2,8.0,increase,0-25,2026-06-24
+715,44,4,River Indus,Taunsa,186.7,165.5,153.9,178.5,21.0,increase,0-25,2026-06-24
+716,44,5,River Indus,Guddu,154.9,120.9,122.0,142.0,27.0,increase,25-50,2026-06-24
+717,44,6,River Indus,Sukkur,106.1,82.4,86.2,97.4,23.0,increase,0-25,2026-06-24
+718,44,7,River Indus,Kotri,40.4,29.9,30.1,31.7,34.0,increase,25-50,2026-06-24
+719,44,8,River Chenab,Trimmu,27.8,7.4,21.2,28.6,31.0,increase,25-50,2026-06-24
+720,44,9,River Chenab,Panjnad,13.1,11.3,12.0,17.0,9.0,increase,0-25,2026-06-24
+721,51,1,River Indus,Khairabad Bridge,169.0,188.2,141.3,163.5,20.0,increase,0-25,2026-06-25
+722,51,2,River Indus,Jinnah (Mean 24 hrs),187.2,205.2,163.1,186.0,15.0,increase,0-25,2026-06-25
+723,51,3,River Indus,Chashma (Mean 24 hrs),181.6,203.0,170.9,193.1,6.0,increase,0-25,2026-06-25
+724,51,4,River Indus,Taunsa,185.9,171.8,161.5,179.6,15.0,increase,0-25,2026-06-25
+725,51,5,River Indus,Guddu,154.9,120.9,121.0,140.7,28.0,increase,25-50,2026-06-25
+726,51,6,River Indus,Sukkur,106.1,82.4,86.8,98.4,22.0,increase,0-25,2026-06-25
+727,51,7,River Indus,Kotri,43.3,29.6,33.2,33.7,31.0,increase,25-50,2026-06-25
+728,51,8,River Chenab,Trimmu,20.5,8.5,22.0,30.4,-7.0,decrease,0-25,2026-06-25
+729,51,9,River Chenab,Panjnad,13.2,11.3,12.4,17.7,7.0,increase,0-25,2026-06-25
+730,50,1,River Indus,Khairabad Bridge,172.9,187.6,137.7,156.3,26.0,increase,25-50,2026-06-26
+731,50,2,River Indus,Jinnah (Mean 24 hrs),184.3,206.3,162.8,187.7,13.0,increase,0-25,2026-06-26
+732,50,3,River Indus,Chashma (Mean 24 hrs),177.2,208.0,176.9,198.9,0.0,increase,0-25,2026-06-26
+733,50,4,River Indus,Taunsa,177.5,178.4,160.8,178.0,10.0,increase,0-25,2026-06-26
+734,50,5,River Indus,Guddu,149.8,120.9,118.6,139.9,26.0,increase,25-50,2026-06-26
+735,50,6,River Indus,Sukkur,106.1,82.4,85.4,96.6,24.0,increase,0-25,2026-06-26
+736,50,7,River Indus,Kotri,43.4,29.5,34.1,34.8,27.0,increase,25-50,2026-06-26
+737,50,8,River Chenab,Trimmu,19.0,14.4,26.9,33.0,-29.0,decrease,25-50,2026-06-26
+738,50,9,River Chenab,Panjnad,12.4,10.2,12.1,18.3,3.0,increase,0-25,2026-06-26
+739,49,1,River Indus,Khairabad Bridge,176.9,196.1,156.1,165.2,13.0,increase,0-25,2026-06-27
+740,49,2,River Indus,Jinnah (Mean 24 hrs),190.3,205.4,167.2,188.0,14.0,increase,0-25,2026-06-27
+741,49,3,River Indus,Chashma (Mean 24 hrs),185.8,209.9,179.0,196.9,4.0,increase,0-25,2026-06-27
+742,49,4,River Indus,Taunsa,177.5,182.7,160.3,178.2,11.0,increase,0-25,2026-06-27
+743,49,5,River Indus,Guddu,147.4,131.8,120.4,139.2,22.0,increase,0-25,2026-06-27
+744,49,6,River Indus,Sukkur,100.3,83.7,79.7,93.0,26.0,increase,25-50,2026-06-27
+745,49,7,River Indus,Kotri,43.1,29.2,36.2,36.9,19.0,increase,0-25,2026-06-27
+746,49,8,River Chenab,Trimmu,24.7,19.3,26.6,32.4,-7.0,decrease,0-25,2026-06-27
+747,49,9,River Chenab,Panjnad,11.9,9.0,12.4,18.3,-4.0,decrease,0-25,2026-06-27
+748,48,1,River Indus,Khairabad Bridge,182.1,209.5,158.1,166.0,15.0,increase,0-25,2026-06-28
+749,48,2,River Indus,Jinnah (Mean 24 hrs),193.0,212.4,178.8,194.0,8.0,increase,0-25,2026-06-28
+750,48,3,River Indus,Chashma (Mean 24 hrs),194.3,215.9,192.5,202.6,1.0,increase,0-25,2026-06-28
+751,48,4,River Indus,Taunsa,155.2,185.4,164.2,178.7,-6.0,decrease,0-25,2026-06-28
+752,48,5,River Indus,Guddu,145.2,133.3,122.6,140.2,18.0,increase,0-25,2026-06-28
+753,48,6,River Indus,Sukkur,98.2,97.0,82.9,93.7,18.0,increase,0-25,2026-06-28
+754,48,7,River Indus,Kotri,42.7,29.2,37.6,38.7,13.0,increase,0-25,2026-06-28
+755,48,8,River Chenab,Trimmu,30.7,14.1,24.3,31.2,26.0,increase,25-50,2026-06-28
+756,48,9,River Chenab,Panjnad,11.1,8.8,12.3,18.3,-9.0,decrease,0-25,2026-06-28
+757,47,1,River Indus,Khairabad Bridge,184.5,238.8,148.9,159.6,24.0,increase,0-25,2026-06-29
+758,47,2,River Indus,Jinnah (Mean 24 hrs),206.7,227.4,183.9,194.5,12.0,increase,0-25,2026-06-29
+759,47,3,River Indus,Chashma (Mean 24 hrs),203.9,226.4,195.7,203.4,4.0,increase,0-25,2026-06-29
+760,47,4,River Indus,Taunsa,168.4,185.7,163.5,180.6,3.0,increase,0-25,2026-06-29
+761,47,5,River Indus,Guddu,142.7,136.5,122.3,139.9,17.0,increase,0-25,2026-06-29
+762,47,6,River Indus,Sukkur,97.2,98.1,84.7,95.0,15.0,increase,0-25,2026-06-29
+763,47,7,River Indus,Kotri,43.1,29.3,38.2,40.1,13.0,increase,0-25,2026-06-29
+764,47,8,River Chenab,Trimmu,29.7,27.5,28.3,33.1,5.0,increase,0-25,2026-06-29
+765,47,9,River Chenab,Panjnad,9.6,8.8,11.8,18.6,-19.0,decrease,0-25,2026-06-29
+766,46,1,River Indus,Khairabad Bridge,191.9,216.4,155.3,166.5,24.0,increase,0-25,2026-06-30
+767,46,2,River Indus,Jinnah (Mean 24 hrs),203.8,241.1,188.5,199.4,8.0,increase,0-25,2026-06-30
+768,46,3,River Indus,Chashma (Mean 24 hrs),203.9,254.4,201.2,207.5,1.0,increase,0-25,2026-06-30
+769,46,4,River Indus,Taunsa,176.7,186.8,168.8,183.3,5.0,increase,0-25,2026-06-30
+770,46,5,River Indus,Guddu,134.7,138.4,122.3,139.6,10.0,increase,0-25,2026-06-30
+771,46,6,River Indus,Sukkur,93.1,98.3,85.3,95.9,9.0,increase,0-25,2026-06-30
+772,46,7,River Indus,Kotri,43.3,28.5,37.7,40.3,15.0,increase,0-25,2026-06-30
+773,46,8,River Chenab,Trimmu,32.9,35.7,31.3,35.1,5.0,increase,0-25,2026-06-30
+774,46,9,River Chenab,Panjnad,8.6,9.3,11.9,19.0,-28.0,decrease,25-50,2026-06-30
+775,52,1,River Indus,Khairabad Bridge,198.0,192.5,164.7,165.4,20.0,increase,0-25,2026-07-01
+776,52,2,River Indus,Jinnah (Mean 24 hrs),207.5,220.3,183.1,196.8,13.0,increase,0-25,2026-07-01
+777,52,3,River Indus,Chashma (Mean 24 hrs),205.0,240.1,203.5,211.5,1.0,increase,0-25,2026-07-01
+778,52,4,River Indus,Taunsa,178.9,199.2,179.2,188.9,0.0,decrease,0-25,2026-07-01
+779,52,5,River Indus,Guddu,132.3,141.2,125.6,141.6,5.0,increase,0-25,2026-07-01
+780,52,6,River Indus,Sukkur,92.0,98.3,84.3,94.6,9.0,increase,0-25,2026-07-01
+781,52,7,River Indus,Kotri,43.3,30.1,35.2,39.8,23.0,increase,0-25,2026-07-01
+782,52,8,River Chenab,Trimmu,33.8,26.6,26.2,31.9,29.0,increase,25-50,2026-07-01
+783,52,9,River Chenab,Panjnad,9.0,11.3,12.9,20.0,-30.0,decrease,25-50,2026-07-01
+784,53,1,River Indus,Khairabad Bridge,207.6,194.6,148.7,162.5,40.0,increase,25-50,2026-07-02
+785,53,2,River Indus,Jinnah (Mean 24 hrs),211.1,216.6,180.7,192.9,17.0,increase,0-25,2026-07-02
+786,53,3,River Indus,Chashma (Mean 24 hrs),214.1,212.7,197.7,205.2,8.0,increase,0-25,2026-07-02
+787,53,4,River Indus,Taunsa,187.4,209.8,181.3,189.3,3.0,increase,0-25,2026-07-02
+788,53,5,River Indus,Guddu,137.8,141.4,126.3,143.0,9.0,increase,0-25,2026-07-02
+789,53,6,River Indus,Sukkur,92.6,98.5,83.7,93.9,11.0,increase,0-25,2026-07-02
+790,53,7,River Indus,Kotri,43.4,40.1,35.2,38.8,23.0,increase,0-25,2026-07-02
+791,53,8,River Chenab,Trimmu,32.5,23.1,28.2,33.0,15.0,increase,0-25,2026-07-02
+792,53,9,River Chenab,Panjnad,11.7,12.7,12.9,20.6,-9.0,decrease,0-25,2026-07-02
+793,56,1,River Indus,Khairabad Bridge,211.4,201.3,157.9,161.5,34.0,increase,25-50,2026-07-03
+794,56,2,River Indus,Jinnah (Mean 24 hrs),217.6,215.5,174.4,192.1,25.0,increase,0-25,2026-07-03
+795,56,3,River Indus,Chashma (Mean 24 hrs),219.6,219.6,186.2,202.1,18.0,increase,0-25,2026-07-03
+796,56,4,River Indus,Taunsa,193.7,203.9,173.6,187.6,12.0,increase,0-25,2026-07-03
+797,56,5,River Indus,Guddu,143.2,148.8,131.5,145.5,9.0,increase,0-25,2026-07-03
+798,56,6,River Indus,Sukkur,93.4,98.5,86.4,95.9,8.0,increase,0-25,2026-07-03
+799,56,7,River Indus,Kotri,43.4,45.6,37.0,40.4,17.0,increase,0-25,2026-07-03
+800,56,8,River Chenab,Trimmu,33.0,23.6,31.6,40.2,4.0,increase,0-25,2026-07-03
+801,56,9,River Chenab,Panjnad,13.7,12.4,13.6,21.1,1.0,increase,0-25,2026-07-03
+802,54,1,River Indus,Khairabad Bridge,216.0,194.4,171.6,183.4,26.0,increase,25-50,2026-07-04
+803,54,2,River Indus,Jinnah (Mean 24 hrs),229.1,217.1,188.1,203.3,22.0,increase,0-25,2026-07-04
+804,54,3,River Indus,Chashma (Mean 24 hrs),225.1,226.5,195.5,209.0,15.0,increase,0-25,2026-07-04
+805,54,4,River Indus,Taunsa,191.4,198.2,173.1,187.7,11.0,increase,0-25,2026-07-04
+806,54,5,River Indus,Guddu,148.5,162.5,140.4,150.7,6.0,increase,0-25,2026-07-04
+807,54,6,River Indus,Sukkur,95.1,103.3,90.2,97.6,5.0,increase,0-25,2026-07-04
+808,54,7,River Indus,Kotri,43.3,51.4,37.9,41.3,14.0,increase,0-25,2026-07-04
+809,54,8,River Chenab,Trimmu,33.7,21.2,32.4,37.3,4.0,increase,0-25,2026-07-04
+810,54,9,River Chenab,Panjnad,14.6,14.4,14.1,21.8,4.0,increase,0-25,2026-07-04
+811,55,1,River Indus,Khairabad Bridge,217.6,246.7,184.9,205.2,18.0,increase,0-25,2026-07-05
+812,55,2,River Indus,Jinnah (Mean 24 hrs),230.5,211.7,189.5,212.1,22.0,increase,0-25,2026-07-05
+813,55,3,River Indus,Chashma (Mean 24 hrs),218.1,214.2,207.1,223.5,5.0,increase,0-25,2026-07-05
+814,55,4,River Indus,Taunsa,191.4,194.7,174.0,193.4,10.0,increase,0-25,2026-07-05
+815,55,5,River Indus,Guddu,155.9,178.9,141.1,153.3,10.0,increase,0-25,2026-07-05
+816,55,6,River Indus,Sukkur,97.2,116.2,96.9,100.8,0.0,increase,0-25,2026-07-05
+817,55,7,River Indus,Kotri,41.9,48.3,36.0,40.8,16.0,increase,0-25,2026-07-05
+818,55,8,River Chenab,Trimmu,45.2,23.9,33.6,31.9,34.0,increase,25-50,2026-07-05
+819,55,9,River Chenab,Panjnad,14.6,14.4,13.4,21.9,9.0,increase,0-25,2026-07-05
+820,57,1,River Indus,Khairabad Bridge,218.0,339.9,218.2,227.1,0.0,decrease,0-25,2026-07-06
+821,57,2,River Indus,Jinnah (Mean 24 hrs),233.9,278.1,208.3,226.3,12.0,increase,0-25,2026-07-06
+822,57,3,River Indus,Chashma (Mean 24 hrs),233.7,249.7,213.4,233.7,10.0,increase,0-25,2026-07-06
+823,57,4,River Indus,Taunsa,192.9,194.7,176.4,202.8,9.0,increase,0-25,2026-07-06
+824,57,5,River Indus,Guddu,155.4,179.0,141.4,156.2,10.0,increase,0-25,2026-07-06
+825,57,6,River Indus,Sukkur,106.8,128.6,99.0,103.7,8.0,increase,0-25,2026-07-06
+826,57,7,River Indus,Kotri,38.0,48.3,34.9,39.9,9.0,increase,0-25,2026-07-06
+827,57,8,River Chenab,Trimmu,35.7,23.0,32.0,33.0,12.0,increase,0-25,2026-07-06
+828,57,9,River Chenab,Panjnad,14.6,14.5,12.9,22.5,13.0,increase,0-25,2026-07-06
+829,58,1,River Indus,Khairabad Bridge,211.9,364.3,215.3,222.8,-2.0,decrease,0-25,2026-07-07
+830,58,2,River Indus,Jinnah (Mean 24 hrs),233.0,322.4,219.1,231.9,6.0,increase,0-25,2026-07-07
+831,58,3,River Indus,Chashma (Mean 24 hrs),233.7,318.0,236.3,249.9,-1.0,decrease,0-25,2026-07-07
+832,58,4,River Indus,Taunsa,199.8,226.7,189.5,213.5,5.0,increase,0-25,2026-07-07
+833,58,5,River Indus,Guddu,152.5,173.6,144.2,162.0,6.0,increase,0-25,2026-07-07
+834,58,6,River Indus,Sukkur,107.3,133.7,100.0,106.5,7.0,increase,0-25,2026-07-07
+835,58,7,River Indus,Kotri,34.8,48.3,35.3,39.8,-1.0,decrease,0-25,2026-07-07
+836,58,8,River Chenab,Trimmu,27.8,24.6,33.8,33.0,-18.0,decrease,0-25,2026-07-07
+837,58,9,River Chenab,Panjnad,17.6,14.0,13.6,21.8,29.0,increase,25-50,2026-07-07
+838,59,1,River Indus,Khairabad Bridge,210.7,327.6,213.7,212.6,-1.0,decrease,0-25,2026-07-08
+839,59,2,River Indus,Jinnah (Mean 24 hrs),231.2,351.5,223.9,230.7,3.0,increase,0-25,2026-07-08
+840,59,3,River Indus,Chashma (Mean 24 hrs),224.6,364.0,246.4,249.4,-9.0,decrease,0-25,2026-07-08
+841,59,4,River Indus,Taunsa,200.2,247.7,201.3,224.7,-1.0,decrease,0-25,2026-07-08
+842,59,5,River Indus,Guddu,153.9,170.0,148.6,166.9,4.0,increase,0-25,2026-07-08
+843,59,6,River Indus,Sukkur,107.0,126.1,99.9,108.9,7.0,increase,0-25,2026-07-08
+844,59,7,River Indus,Kotri,32.8,47.5,37.0,40.8,-11.0,decrease,0-25,2026-07-08
+845,59,8,River Chenab,Trimmu,35.4,26.4,35.9,33.6,-1.0,decrease,0-25,2026-07-08
+846,59,9,River Chenab,Panjnad,17.8,14.3,15.5,20.9,15.0,increase,0-25,2026-07-08
+847,84,1,River Indus,Khairabad Bridge,207.4,278.9,204.1,205.5,2.0,increase,0-25,2026-07-09
+848,84,2,River Indus,Jinnah (Mean 24 hrs),225.1,336.6,224.5,228.4,0.0,increase,0-25,2026-07-09
+849,84,3,River Indus,Chashma (Mean 24 hrs),218.0,385.4,250.1,248.5,-13.0,decrease,0-25,2026-07-09
+850,84,4,River Indus,Taunsa,195.3,350.2,224.7,232.6,-13.0,decrease,0-25,2026-07-09
+851,84,5,River Indus,Guddu,159.6,177.4,152.5,171.1,5.0,increase,0-25,2026-07-09
+852,84,6,River Indus,Sukkur,106.4,125.7,105.5,114.0,1.0,increase,0-25,2026-07-09
+853,84,7,River Indus,Kotri,32.7,46.4,37.1,40.5,-12.0,decrease,0-25,2026-07-09
+854,84,8,River Chenab,Trimmu,28.6,43.1,42.3,37.3,-32.0,decrease,25-50,2026-07-09
+855,84,9,River Chenab,Panjnad,27.9,14.6,16.2,20.1,72.0,increase,>50,2026-07-09
+856,86,1,River Indus,Khairabad Bridge,204.9,289.4,199.6,199.9,3.0,increase,0-25,2026-07-10
+857,86,2,River Indus,Jinnah (Mean 24 hrs),220.3,331.5,216.5,222.8,2.0,increase,0-25,2026-07-10
+858,86,3,River Indus,Chashma (Mean 24 hrs),220.5,368.1,249.6,242.8,-12.0,decrease,0-25,2026-07-10
+859,86,4,River Indus,Taunsa,200.6,366.0,230.9,234.2,-13.0,decrease,0-25,2026-07-10
+860,86,5,River Indus,Guddu,164.5,253.9,171.3,182.5,-4.0,decrease,0-25,2026-07-10
+861,86,6,River Indus,Sukkur,109.1,137.6,111.4,121.1,-2.0,decrease,0-25,2026-07-10
+862,86,7,River Indus,Kotri,33.0,49.2,39.6,41.4,-17.0,decrease,0-25,2026-07-10
+863,86,8,River Chenab,Trimmu,20.4,53.4,41.6,35.4,-51.0,decrease,>50,2026-07-10
+864,86,9,River Chenab,Panjnad,18.9,13.3,16.6,19.6,14.0,increase,0-25,2026-07-10
+865,88,1,River Indus,Khairabad Bridge,204.3,306.8,209.3,208.0,-2.0,decrease,0-25,2026-07-11
+866,88,2,River Indus,Jinnah (Mean 24 hrs),217.2,375.3,230.7,229.3,-6.0,decrease,0-25,2026-07-11
+867,88,3,River Indus,Chashma (Mean 24 hrs),218.1,372.8,243.2,237.9,-10.0,decrease,0-25,2026-07-11
+868,88,4,River Indus,Taunsa,207.7,373.2,232.2,233.2,-11.0,decrease,0-25,2026-07-11
+869,88,5,River Indus,Guddu,157.9,269.9,180.6,189.2,-13.0,decrease,0-25,2026-07-11
+870,88,6,River Indus,Sukkur,113.1,170.7,119.8,125.9,-6.0,decrease,0-25,2026-07-11
+871,88,7,River Indus,Kotri,36.7,60.1,44.0,44.1,-17.0,decrease,0-25,2026-07-11
+872,88,8,River Chenab,Trimmu,19.5,43.4,36.5,31.2,-47.0,decrease,25-50,2026-07-11
+873,88,9,River Chenab,Panjnad,17.6,17.0,19.2,21.1,-8.0,decrease,0-25,2026-07-11
+874,61,1,River Indus,Khairabad Bridge,201.2,289.2,198.3,204.2,1.0,increase,0-25,2026-07-12
+875,61,2,River Indus,Jinnah (Mean 24 hrs),214.4,353.2,223.7,229.6,-4.0,decrease,0-25,2026-07-12
+876,61,3,River Indus,Chashma (Mean 24 hrs),220.6,415.5,258.4,247.7,-15.0,decrease,0-25,2026-07-12
+877,61,4,River Indus,Taunsa,208.2,376.5,231.8,228.7,-10.0,decrease,0-25,2026-07-12
+878,61,5,River Indus,Guddu,161.0,328.9,193.8,195.4,-17.0,decrease,0-25,2026-07-12
+879,61,6,River Indus,Sukkur,109.1,209.7,129.3,132.5,-16.0,decrease,0-25,2026-07-12
+880,61,7,River Indus,Kotri,38.6,67.7,45.3,46.1,-15.0,decrease,0-25,2026-07-12
+881,61,8,River Chenab,Trimmu,18.5,41.2,46.9,35.6,-61.0,decrease,>50,2026-07-12
+882,61,9,River Chenab,Panjnad,18.0,24.1,21.0,21.6,-14.0,decrease,0-25,2026-07-12
+883,60,1,River Indus,Khairabad Bridge,207.8,226.9,177.5,189.9,17.0,increase,0-25,2026-07-13
+884,60,2,River Indus,Jinnah (Mean 24 hrs),219.6,229.1,198.7,218.5,11.0,increase,0-25,2026-07-13
+885,60,3,River Indus,Chashma (Mean 24 hrs),218.1,377.5,243.1,243.6,-10.0,decrease,0-25,2026-07-13
+886,60,4,River Indus,Taunsa,199.1,387.5,235.3,229.7,-15.0,decrease,0-25,2026-07-13
+887,60,5,River Indus,Guddu,170.2,342.1,197.7,195.7,-14.0,decrease,0-25,2026-07-13
+888,60,6,River Indus,Sukkur,113.1,260.6,143.0,139.9,-21.0,decrease,0-25,2026-07-13
+889,60,7,River Indus,Kotri,38.3,68.9,45.0,48.7,-15.0,decrease,0-25,2026-07-13
+890,60,8,River Chenab,Trimmu,25.4,41.2,51.2,40.0,-50.0,decrease,25-50,2026-07-13
+891,60,9,River Chenab,Panjnad,16.9,29.7,25.8,24.9,-34.0,decrease,25-50,2026-07-13
+892,100,1,River Indus,Khairabad Bridge,203.1,205.7,179.7,191.4,13.0,increase,0-25,2026-07-14
+893,100,2,River Indus,Jinnah (Mean 24 hrs),220.7,249.6,199.1,218.7,11.0,increase,0-25,2026-07-14
+894,100,3,River Indus,Chashma (Mean 24 hrs),223.6,283.3,229.5,234.3,-3.0,decrease,0-25,2026-07-14
+895,100,4,River Indus,Taunsa,201.9,426.4,243.5,232.1,-17.0,decrease,0-25,2026-07-14
+896,100,5,River Indus,Guddu,170.2,355.3,205.0,198.9,-17.0,decrease,0-25,2026-07-14
+897,100,6,River Indus,Sukkur,124.5,278.5,149.4,144.2,-17.0,decrease,0-25,2026-07-14
+898,100,7,River Indus,Kotri,38.0,68.8,45.7,51.5,-17.0,decrease,0-25,2026-07-14
+899,100,8,River Chenab,Trimmu,19.5,43.3,47.7,39.7,-59.0,decrease,>50,2026-07-14
+900,100,9,River Chenab,Panjnad,14.8,33.0,26.7,25.0,-45.0,decrease,25-50,2026-07-14

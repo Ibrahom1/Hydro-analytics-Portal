@@ -9,6 +9,9 @@ set "DASHBOARD_RUNNER=%REPO_ROOT%.run_hydro_dashboard_backend.cmd"
 set "GIS_RUNNER=%REPO_ROOT%.run_hydro_gis_uploader.cmd"
 set "BOOTSTRAP_PYTHON="
 
+if not defined DASHBOARD_PORT set "DASHBOARD_PORT=5000"
+if not defined GIS_PORT set "GIS_PORT=8001"
+
 where py >nul 2>&1
 if not errorlevel 1 (
   py -3 -c "import sys" >nul 2>&1
@@ -188,18 +191,18 @@ if not exist "%REPO_ROOT%waterdashboard\backend\app.py" (
   exit /b 1
 )
 
-echo Checking for an existing Hydro Dashboard backend on port 5000...
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr /r /c:":5000 .*LISTENING"') do (
+echo Checking for an existing Hydro Dashboard backend on port %DASHBOARD_PORT%...
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr /r /c:":%DASHBOARD_PORT% .*LISTENING"') do (
   if not "%%P"=="0" (
-    echo Stopping existing process on port 5000 ^(PID %%P^) so the latest backend code is used...
+    echo Stopping existing process on port %DASHBOARD_PORT% ^(PID %%P^) so the latest backend code is used...
     taskkill /PID %%P /F >nul 2>&1
   )
 )
 
-echo Checking for an existing Hydro GIS Uploader API on port 8001...
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr /r /c:":8001 .*LISTENING"') do (
+echo Checking for an existing Hydro GIS Uploader API on port %GIS_PORT%...
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr /r /c:":%GIS_PORT% .*LISTENING"') do (
   if not "%%P"=="0" (
-    echo Stopping existing process on port 8001 ^(PID %%P^) so the latest GIS API code is used...
+    echo Stopping existing process on port %GIS_PORT% ^(PID %%P^) so the latest GIS API code is used...
     taskkill /PID %%P /F >nul 2>&1
   )
 )
@@ -212,7 +215,7 @@ echo Preparing Hydro Dashboard Backend runner...
   echo set "VENV_DIR=%%REPO_ROOT%%.venv"
   echo set "VENV_ACTIVATE=%%VENV_DIR%%\Scripts\activate.bat"
   echo set "VENV_PYTHON=%%VENV_DIR%%\Scripts\python.exe"
-  echo set "PORT=5000"
+  echo set "PORT=%DASHBOARD_PORT%"
   echo.
   echo if not exist "%%VENV_PYTHON%%" ^(
   echo   echo Python virtual environment was not found at "%%VENV_PYTHON%%".
@@ -245,23 +248,23 @@ echo Preparing Hydro GIS Uploader API runner...
   echo.
   echo if exist "%%VENV_ACTIVATE%%" call "%%VENV_ACTIVATE%%"
   echo cd /d "%%REPO_ROOT%%"
-  echo "%%VENV_PYTHON%%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port 8001
+  echo "%%VENV_PYTHON%%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port %GIS_PORT%
   echo pause
 ) > "%GIS_RUNNER%"
 
-echo Starting Hydro Dashboard Backend on http://localhost:5000 ...
+echo Starting Hydro Dashboard Backend on http://localhost:%DASHBOARD_PORT% ...
 start "Hydro Dashboard Backend" "%DASHBOARD_RUNNER%"
 
-echo Starting Hydro GIS Uploader API on http://localhost:8001 ...
+echo Starting Hydro GIS Uploader API on http://localhost:%GIS_PORT% ...
 start "Hydro GIS Uploader API" "%GIS_RUNNER%"
 
 echo.
 echo Backends started in separate windows:
-echo   Hydro Dashboard Backend  - http://localhost:5000/api/health
-echo   Hydro GIS Uploader API   - http://localhost:8001/api/gis/health
+echo   Hydro Dashboard Backend  - http://localhost:%DASHBOARD_PORT%/api/health
+echo   Hydro GIS Uploader API   - http://localhost:%GIS_PORT%/api/gis/health
 echo.
 echo If either endpoint is not ready immediately, wait a few seconds for its window to finish starting.
 echo.
-pause
+if not "%~1"=="--nopause" pause
 
 endlocal

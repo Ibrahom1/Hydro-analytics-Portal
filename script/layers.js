@@ -1,8 +1,27 @@
 // Global GeoServer IP variables
-const geoserverUrl='172.18.7.35'
-const mamAyman = "172.18.1.179"; // National, Provincial, District, Tehsil
-const mamHimael = "172.18.1.147";
-const ibrahim  = "172.18.1.112";
+const _hostname = window.location.hostname;
+const isLocalNetwork = _hostname === 'localhost' || _hostname === '127.0.0.1' || _hostname.startsWith('192.168.') || _hostname.startsWith('172.') || _hostname.startsWith('10.');
+const isProxied = (!isLocalNetwork && window.location.protocol !== 'file:') || window.location.port === '8000';
+const proxyBase = window.location.origin;
+
+const geoserverUrl = isProxied ? `${proxyBase}/proxy_main` : 'http://172.18.7.35:8080';
+const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.179:8080"; 
+const mamHimael = "http://172.18.1.147:8080"; // Not proxied per request
+const ibrahim  = isProxied ? `${proxyBase}/proxy_ibrahim` : "http://172.18.1.115:8080";
+const mustafa = isProxied ? `${proxyBase}/proxy_mustafa` : "http://172.18.1.39:8080"; 
+const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.85:8080";
+
+const geo_1_4 = isProxied ? `${proxyBase}/proxy_1_4` : 'http://172.18.1.4:8080';
+const geo_1_43 = isProxied ? `${proxyBase}/proxy_1_43` : 'http://172.18.1.43:8080';
+const geo_1_56 = isProxied ? `${proxyBase}/proxy_1_56` : 'http://172.18.1.56:8080';
+
+const apiImpactHost = isProxied ? `${proxyBase}/proxy_api_impact` : 'http://172.18.1.45:5009';
+const apiDewHost = isProxied ? `${proxyBase}/proxy_api_dew` : 'http://172.18.1.108:8000';
+
+const _host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
+const apiDailyHost = isProxied ? `${proxyBase}/proxy_api_daily` : `http://${_host}:5000`;
+const apiPrecipGeojsonHost = isProxied ? `${proxyBase}/proxy_api_precip` : 'http://172.18.0.19:5000';
+
 const mapDiv = document.getElementById("map1");
 
 function canHydroMapAcceptLayerChanges(map) {
@@ -76,7 +95,7 @@ function whenHydroMapStyleReady(map, callback, timeoutMs) {
 // DEW Exposure
 let exposuresLoadPromise = null;
 const exposureDistricts = new Set();
-const DEW_EXPOSURE_API_URL = "http://172.18.1.108:8000/get-exposures/";
+const DEW_EXPOSURE_API_URL = "${apiDewHost}/get-exposures/";
 
 function setExposureDropdownMessage(msg) {
   const el = document.getElementById('dew-exposure-status');
@@ -205,14 +224,11 @@ function collectDewCoordinates(node, bucket) {
 }
 
 function zoomToDewFeatures(map, features) {
-  const points = [];
-  features.forEach((feature) => collectDewCoordinates(feature?.geometry?.coordinates, points));
-  if (!points.length) return;
-
-  const bounds = points.reduce((acc, point) => acc.extend(point), new mapboxgl.LngLatBounds(points[0], points[0]));
-  map.fitBounds(bounds, {
-    padding: { top: 80, right: 80, bottom: 80, left: 80 },
-    maxZoom: 11,
+  // Fit the bounds of the entire country of Pakistan to guarantee that the 
+  // tehsil boundary vector tiles are fully loaded on all screen sizes,
+  // preventing calculation failure on mobile/tablet viewports.
+  map.fitBounds([[60.872, 23.639], [77.837, 37.084]], {
+    padding: { top: 30, bottom: 30, left: 30, right: 30 },
     duration: 900
   });
 }
@@ -801,6 +817,17 @@ function getNextNDays(offset = 0, type = "") {
   }
   return `${year}-${month}-${day}`;
 }
+
+function formatShortDate(dateStr) {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const day = parts[2];
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const month = monthNames[monthIdx] || '';
+  return `${day} ${month}`;
+}
+
 // function for hours
 function getNextNHours(offset = 0, type = "short") {
             const currentDate = new Date();
@@ -847,7 +874,7 @@ function addBoundaryLayers(map) {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:national_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:national_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   safeAddLayer({
@@ -870,7 +897,7 @@ function addBoundaryLayers(map) {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:provincial_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:provincial_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   safeAddLayer({
@@ -893,7 +920,7 @@ function addBoundaryLayers(map) {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:district_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:district_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -964,7 +991,7 @@ function addBoundaryLayers(map) {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:tehsil_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:tehsil_boundary@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -1108,7 +1135,7 @@ function addBoundaryLayers(map) {
 
   safeAddSource("Union_Council", {
     type: "geojson",
-    data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Union_Council&outputFormat=application/json&srsName=EPSG:3857`,
+    data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Union_Council&outputFormat=application/json&srsName=EPSG:3857`,
   });
   safeAddLayer({
     id: "Union_Council",
@@ -1395,6 +1422,11 @@ function toggleHighlight(checkbox) {
   }
 
   if (checkbox.id === 'monsoonvideo') {
+    if (isProxied && checkbox.checked) {
+      checkbox.checked = false;
+      alert("High-resolution videos have been disabled to conserve bandwidth while accessing via the internet proxy.");
+      return;
+    }
     const map = document.getElementById('map2');
     const video = document.getElementById('monsoonVideo');
     if (map && video) {
@@ -1591,7 +1623,70 @@ class WeatherLayerController {
     this.hourlyLayersAdded = false;
     this.weeklyLayersAdded = false;
     this.defaultOpacity = 0.7; // Default opacity value (70%)
+    this.weeklyDates = []; // Dynamic list of available GeoJSON dates
+    
+    // Initialize controller configurations
     this.initializeControllers();
+    
+    // Fetch dates asynchronously from the API and store the promise
+    this.weeklyDatesPromise = this.loadWeeklyDates();
+  }
+
+  async loadWeeklyDates() {
+    try {
+      const url = `${apiPrecipGeojsonHost}/api/layers`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (data && data.precip && data.precip.length > 0) {
+        let dates = data.precip;
+        if (dates.length > 7) {
+          const todayStr = getNextNDays(0); // YYYY-MM-DD
+          let idx = dates.indexOf(todayStr);
+          if (idx !== -1) {
+            // Adjust start index if there are not enough future days to make 7 days
+            if (dates.length - idx < 7) {
+              idx = Math.max(0, idx - (7 - (dates.length - idx)));
+            }
+            dates = dates.slice(idx, idx + 7);
+          } else {
+            dates = dates.slice(-7);
+          }
+        }
+        this.weeklyDates = dates;
+        console.log("Successfully fetched weekly precipitation geojson dates from API:", this.weeklyDates);
+        
+        // Re-initialize weekly controller config with the new count and layer IDs
+        const wkyController = this.controllers.get('wky');
+        if (wkyController) {
+          wkyController.config.layerCount = this.weeklyDates.length;
+          wkyController.layerIds = this.weeklyDates.map((_, i) => `meteoblue_geojson_precipitation_forecast_${i}`);
+          
+          // Update the slider's max value in DOM
+          const sliderEl = document.getElementById(wkyController.config.sliderId);
+          if (sliderEl) {
+            sliderEl.max = this.weeklyDates.length - 1;
+          }
+          
+          // Re-render the time markers / calendar labels
+          const timestampsEl = document.getElementById(wkyController.config.timestampsId);
+          if (timestampsEl) {
+            const lastIndex = Math.max(1, this.weeklyDates.length - 1);
+            timestampsEl.innerHTML = this.weeklyDates.map((date, index) => {
+              const left = (index / lastIndex) * 100;
+              const time = formatShortDate(date);
+              return `<span class="time-marker text-center cursor-pointer hover:bg-gray-600 p-1 rounded ${index === 0 ? 'active' : ''}"
+                     style="left: ${left}%;"
+                     onclick="weatherController.updateLayer('wky', ${index})">${time}</span>`;
+            }).join('');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch available weekly geojson dates from API, using fallback local dates:", e);
+      // Fallback: populate weeklyDates with 8 days starting today
+      this.weeklyDates = Array.from({ length: 8 }, (_, i) => getNextNDays(i));
+    }
   }
 
   // Use existing global functions for time formatting
@@ -1694,142 +1789,105 @@ class WeatherLayerController {
     console.log('Hourly precipitation layers added successfully');
   }
 
-  // Add Meteoblue weekly precipitation layers to the map (vector, multi-layer) - UPDATED FOR DAILY ACCUMULATION
-  addMeteoblueWeeklyLayers() {
+  // Add weekly precipitation layers as GeoJSON
+  async addMeteoblueWeeklyLayers() {
     if (this.weeklyLayersAdded) return;
-   
-    const metbluT = '1c9f9d57164f';
-    const model = "NEMSIN";
-    const totalWPAIndex = 8;
-   
-    for (let index = 0; index < totalWPAIndex; index++) {
-      const time = this.getNextNDaysWithTime(index);
-      const sourceId = `meteoblue_nems_cloudprecipitation_forecast_${index}`;
-      // UPDATED: Daily accumulation URL with new contour steps and proper encoding
-      const baseUrl = `https://maps-api.meteoblue.com/v1/map/vector/${model}/${time}/cloudsLow~73~low%20cld%20lay~daily~mean~contourSteps~20.0~40.0~60.0~80.0~95.0_cloudsMid~74~mid%20cld%20lay~daily~mean~contourSteps~20.0~40.0~60.0~80.0~95.0_precip~61~sfc~daily~sum~contourSteps~1~2~3~4~5~6~8~10~12~16~18~20~25~30~35~40~50~60~70~80~90~100~125~150_snow~679~sfc~daily~sum~contourSteps~1~5~10~20~30/{z}/{x}/{y}?apikey=${metbluT}`;
-     
-      // Add source if it doesn't exist
+
+    // Wait for the dates list to be resolved first
+    if (this.weeklyDatesPromise) {
+      await this.weeklyDatesPromise;
+    }
+    
+    // Ensure we have weeklyDates populated
+    if (!this.weeklyDates || this.weeklyDates.length === 0) {
+      this.weeklyDates = Array.from({ length: 8 }, (_, i) => getNextNDays(i));
+    }
+
+    console.log("Adding weekly precipitation geojson layers for dates:", this.weeklyDates);
+
+    // Fetch GeoJSON for each date and add sources/layers to the map
+    const fetchPromises = this.weeklyDates.map(async (date, index) => {
+      const sourceId = `meteoblue_geojson_source_${index}`;
+      const layerId = `meteoblue_geojson_precipitation_forecast_${index}`;
+      
+      // Construct API url for fetching geojson of this specific date
+      const url = `${apiPrecipGeojsonHost}/api/layer?layer=precip&date=${date}`;
+      
+      let geojson = { type: "FeatureCollection", features: [] };
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          geojson = await response.json();
+        } else {
+          console.warn(`Failed to fetch geojson for date ${date}: HTTP ${response.status}`);
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch geojson for date ${date}:`, e);
+      }
+
+      // Add source
       if (!this.sourceExists(sourceId)) {
         try {
           map1.addSource(sourceId, {
-            type: "vector",
-            tiles: [baseUrl],
+            type: "geojson",
+            data: geojson
           });
         } catch (error) {
-          console.warn(`Failed to add source ${sourceId}:`, error);
-          continue;
+          console.warn(`Failed to add geojson source ${sourceId}:`, error);
         }
       }
 
-      // Add all layer types for this day
-      this.addWeeklyLayerSet(sourceId, index);
-    }
-    this.weeklyLayersAdded = true;
-    console.log('Weekly precipitation layers added successfully');
-  }
-
-  // Helper method to add all layer types for a weekly forecast day - UPDATED FOR DAILY ACCUMULATION
-  addWeeklyLayerSet(sourceId, index) {
-    const layers = [
-      {
-        id: `meteoblue_nems_cloudlow_forecast_${index}`,
-        sourceLayer: "cloudsLow",
-        paint: {
-          "fill-antialias": false,
-          "fill-opacity": 0,
-          "fill-opacity-transition": { duration: 300 },
-          "fill-color": [
-            "interpolate", ["linear"], ["get", "minValue"],
-            0, "rgba(255,255,255,0.0)",
-            20, "rgba(255,255,255,0.2)",
-            40, "rgba(255,255,255,0.3)",
-            60, "rgba(255,255,255,0.5)",
-            80, "rgba(255,255,255,0.8)",
-            95, "rgba(255,255,255,0.9)"
-          ]
-        }
-      },
-      {
-        id: `meteoblue_nems_cloudmid_forecast_${index}`,
-        sourceLayer: "cloudsMid",
-        paint: {
-          "fill-antialias": false,
-          "fill-opacity": 0,
-          "fill-opacity-transition": { duration: 300 },
-          "fill-color": [
-            "interpolate", ["linear"], ["get", "minValue"],
-            0, "rgba(255,255,255,0.0)",
-            20, "rgba(255,255,255,0.2)",
-            40, "rgba(255,255,255,0.3)",
-            60, "rgba(255,255,255,0.5)",
-            80, "rgba(255,255,255,0.8)",
-            95, "rgba(255,255,255,0.9)"
-          ]
-        }
-      },
-      {
-        id: `meteoblue_nems_precipitation_forecast_${index}`,
-        sourceLayer: "precip",
-        paint: {
-          "fill-antialias": false,
-          "fill-opacity": 0,
-          "fill-opacity-transition": { duration: 300 },
-          // UPDATED: New precipitation color scale for daily accumulation
-          "fill-color": [
-            "interpolate", ["linear"], ["get", "minValue"],
-            1, "rgba(240,249,255,1.0)",   /* very light cyan */
-            2, "rgba(222,243,252,1.0)",
-            3, "rgba(191,235,250,1.0)",
-            4, "rgba(160,225,248,1.0)",
-            5, "rgba(133,217,246,1.0)",   /* cyan */
-            6, "rgba(110,200,242,1.0)",
-            8, "rgba(82,176,237,1.0)",
-            10, "rgba(64,149,230,1.0)",   /* blue */
-            12, "rgba(49,136,227,1.0)",
-            16, "rgba(33,121,223,1.0)",
-            18, "rgba(29,156,109,1.0)",   /* teal */
-            20, "rgba(26,178,64,1.0)",    /* green */
-            25, "rgba(111,201,54,1.0)",
-            30, "rgba(173,230,47,1.0)",   /* lime green */
-            35, "rgba(209,242,46,1.0)",
-            40, "rgba(247,250,46,1.0)",   /* yellow */
-            50, "rgba(250,213,41,1.0)",
-            60, "rgba(252,176,36,1.0)",   /* orange */
-            70, "rgba(250,141,38,1.0)",
-            80, "rgba(249,102,35,1.0)",   /* red-orange */
-            90, "rgba(246,66,35,1.0)",
-            100, "rgba(243,33,33,1.0)",   /* red */
-            125, "rgba(216,0,117,1.0)",   /* magenta */
-            150, "rgba(166,0,157,1.0)"    /* deep purple */
-          ]
-        }
-      },
-      {
-        id: `meteoblue_nems_snow_forecast_${index}`,
-        sourceLayer: "snow", // FIXED: Changed from "layerSnow" to "snow"
-        paint: {
-          "fill-pattern": "snowPattern",
-          "fill-antialias": false
-        }
-      }
-    ];
-
-    layers.forEach(layerConfig => {
-      if (!this.layerExists(layerConfig.id)) {
+      // Add layer
+      if (!this.layerExists(layerId)) {
         try {
           map1.addLayer({
-            id: layerConfig.id,
+            id: layerId,
             type: "fill",
             source: sourceId,
-            "source-layer": layerConfig.sourceLayer,
-            paint: layerConfig.paint,
+            paint: {
+              "fill-antialias": false,
+              "fill-opacity": 0,
+              "fill-opacity-transition": { duration: 300 },
+              // Standard precipitation colors using minValue or value properties
+              "fill-color": [
+                "interpolate", ["linear"], ["coalesce", ["get", "minValue"], ["get", "value"], 0],
+                1, "rgba(240,249,255,1.0)",   /* very light cyan */
+                2, "rgba(222,243,252,1.0)",
+                3, "rgba(191,235,250,1.0)",
+                4, "rgba(160,225,248,1.0)",
+                5, "rgba(133,217,246,1.0)",   /* cyan */
+                6, "rgba(110,200,242,1.0)",
+                8, "rgba(82,176,237,1.0)",
+                10, "rgba(64,149,230,1.0)",   /* blue */
+                12, "rgba(49,136,227,1.0)",
+                16, "rgba(33,121,223,1.0)",
+                18, "rgba(29,156,109,1.0)",   /* teal */
+                20, "rgba(26,178,64,1.0)",    /* green */
+                25, "rgba(111,201,54,1.0)",
+                30, "rgba(173,230,47,1.0)",   /* lime green */
+                35, "rgba(209,242,46,1.0)",
+                40, "rgba(247,250,46,1.0)",   /* yellow */
+                50, "rgba(250,213,41,1.0)",
+                60, "rgba(252,176,36,1.0)",   /* orange */
+                70, "rgba(250,141,38,1.0)",
+                80, "rgba(249,102,35,1.0)",   /* red-orange */
+                90, "rgba(246,66,35,1.0)",
+                100, "rgba(243,33,33,1.0)",   /* red */
+                125, "rgba(216,0,117,1.0)",   /* magenta */
+                150, "rgba(166,0,157,1.0)"    /* deep purple */
+              ]
+            },
             layout: { visibility: "none" }
           }, 'nationalBoundary');
         } catch (error) {
-          console.warn(`Failed to add layer ${layerConfig.id}:`, error);
+          console.warn(`Failed to add geojson layer ${layerId}:`, error);
         }
       }
     });
+
+    await Promise.all(fetchPromises);
+    this.weeklyLayersAdded = true;
+    console.log('Weekly precipitation geojson layers added successfully');
   }
 
   // Generic controller factory
@@ -1871,11 +1929,11 @@ class WeatherLayerController {
     // Weekly precipitation controller - explicit layer IDs
     this.controllers.set('wky', this.createController({
       id: 'wky',
-      layerType: 'nems',
+      layerType: 'geojson',
       forecast: 'forecast',
       layerCount: 8,
       layerIds: Array.from({ length: 8 }, (_, i) =>
-        `meteoblue_nems_precipitation_forecast_${i}`),
+        `meteoblue_geojson_precipitation_forecast_${i}`),
       toggleId: 'wky-precip-toggle',
       sliderId: 'wky-precip-slider',
       controlsId: 'wky-precip-controls',
@@ -1883,7 +1941,12 @@ class WeatherLayerController {
       playbackId: 'wky-precip-playback',
       opacitySliderId: 'wky-opacity-slider', // Add opacity slider ID
       opacityValueId: 'wky-opacity-value', // Add opacity value display ID
-      timeFunction: (i) => getNextNDays(i, 'short'),
+      timeFunction: (i) => {
+        if (this.weeklyDates && this.weeklyDates[i]) {
+          return formatShortDate(this.weeklyDates[i]);
+        }
+        return getNextNDays(i, 'short');
+      },
       intervalSpeed: 1000
     }));
   }
@@ -2079,13 +2142,34 @@ class WeatherLayerController {
     const controls = document.getElementById(controller.config.controlsId);
    
     if (visible) {
+      // --- AUTO-CLOSE SIDEBAR FOR ALL SCREENS <= 1440px ---
+      if (window.innerWidth <= 1440) {
+        const sidebar = document.getElementById('app-sidebar');
+        if (sidebar && !sidebar.classList.contains('is-closed')) {
+          const closeBtn = document.getElementById('sidebar-close');
+          const toggleBtn = document.getElementById('sidebar-toggle');
+          
+          sidebar.classList.add('is-closed');
+          
+          if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', 'false');
+            toggleBtn.classList.remove('is-hidden');
+          }
+          if (closeBtn) {
+            closeBtn.setAttribute('aria-expanded', 'false');
+            closeBtn.style.display = 'none';
+          }
+        }
+      }
+      // ----------------------------------------------------
+
       // Add layers if not already added
       if (controllerId === 'hrs' && !this.hourlyLayersAdded) {
         await this.waitForMapStyle();
         this.addMeteoblueHourlyLayers();
       } else if (controllerId === 'wky' && !this.weeklyLayersAdded) {
         await this.waitForMapStyle();
-        this.addMeteoblueWeeklyLayers();
+        await this.addMeteoblueWeeklyLayers();
       }
 
       controls?.classList.remove('hidden');
@@ -2180,7 +2264,7 @@ class WeatherLayerController {
             this.addMeteoblueHourlyLayers();
           } else if (controllerId === 'wky' && !this.weeklyLayersAdded) {
             await this.waitForMapStyle();
-            this.addMeteoblueWeeklyLayers();
+            await this.addMeteoblueWeeklyLayers();
           }
          
           await controller.updateActiveLayer(controller.activeIndex);
@@ -2572,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', () => {
         map1.addSource(sourceId, {
           'type': 'raster',
           'tiles': [
-            `http://${ahad}:8080/geoserver/Precipitation_2026/wms?service=WMS&version=1.1.0&request=GetMap&layers=Precipitation_2026:${month}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+            `${ahad}/geoserver/Precipitation_2026/wms?service=WMS&version=1.1.0&request=GetMap&layers=Precipitation_2026:${month}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
           ],
           'tileSize': 256
         });
@@ -2813,6 +2897,12 @@ blinkBtn.addEventListener("click", function () {
 
 function handleHECRASVideo(checkbox, file) {
   if (!checkbox.checked) return;
+  
+  if (isProxied) {
+    checkbox.checked = false;
+    alert("High-resolution videos have been disabled to conserve bandwidth while accessing via the internet proxy.");
+    return;
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center';
@@ -2922,13 +3012,13 @@ function showFloodLegend() {
   });
   legend.appendChild(title);
 
-  // Define static flood levels (always show all three)
+  const isMobileLegend = window.innerWidth <= 480;
   const floodLevels = [
-    { color: 'purple', label: 'Ex.High Flood' },
-    { color: 'brown', label: 'Very High Flood' },
-    { color: '#F72D24', label: 'High Flood' },
-    { color: '#FBAB12', label: 'Medium Flood' },
-    { color: '#2C9326', label: 'Low Flood' }
+    { color: 'purple', label: 'Ex.High Flood', short: 'Ex.High' },
+    { color: 'brown', label: 'Very High Flood', short: 'V.High' },
+    { color: '#F72D24', label: 'High Flood', short: 'High' },
+    { color: '#FBAB12', label: 'Medium Flood', short: 'Med' },
+    { color: '#2C9326', label: 'Low Flood', short: 'Low' }
     
   ];
 
@@ -2955,7 +3045,7 @@ function showFloodLegend() {
 
     // Create label
     const label = document.createElement('span');
-    label.textContent = level.label;
+    label.textContent = isMobileLegend ? level.short : level.label;
     Object.assign(label.style, {
       color: '#333',
       fontSize: '14px',
@@ -3212,6 +3302,10 @@ if (advisoryModalEl && advisoryModalEl.parentElement !== document.body) {
 }
 
 function launchAdvisorySlideshow(region) {
+  if (isProxied) {
+    alert("High-resolution media has been disabled to conserve bandwidth while accessing via the internet proxy.");
+    return;
+  }
   activeAdvisoryData = advisoryImageData[region];
   if (!activeAdvisoryData || activeAdvisoryData.length === 0) return;
   
@@ -3341,9 +3435,7 @@ document.getElementById('slideshowModal').addEventListener('click', function(e) 
       closeAdvisorySlideshow();
   }
 });
-// Global GeoServer IP variables
-const mustafa = "172.18.1.37"; // Swat, Panjgora, etc.
-const ahad = "172.18.1.85"; // AJK, Jhal, hyd layers, etc.
+
 let isPlaying = false;
 let playInterval;
 let currentDay = 1;
@@ -3733,8 +3825,8 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiemVlc2hhbjEwIiwiYSI6ImNtMXN0YXVhbTBhYnIybHNhO
 const map1 = new mapboxgl.Map({
   container: 'map1',
   style: 'mapbox://styles/mapbox/standard',
-  center: [69.3451, 30.3753],
-  zoom: 5.2,
+  bounds: [[60.872, 23.639], [77.837, 37.084]],
+  fitBoundsOptions: { padding: 20 },
   projection: 'mercator'
 });
 
@@ -4716,7 +4808,7 @@ async function loadImpactForDate(dateValue) {
   setImpactModalStatus('Loading impact rows...', 'info');
 
   try {
-    const impactResponse = await fetch(`http://172.18.1.45:5009/api/impact?date=${encodeURIComponent(dateValue)}`, {
+    const impactResponse = await fetch(`${apiImpactHost}/api/impact?date=${encodeURIComponent(dateValue)}`, {
       cache: 'no-store'
     });
     if (!impactResponse.ok) {
@@ -4737,7 +4829,7 @@ async function loadImpactForDate(dateValue) {
     setImpactModalStatus('Loading impact geometry...', 'info');
 
     const ids = Array.from(impactRowsById.keys());
-    const geometryResponse = await fetch(`http://172.18.1.45:5009/api/gis/gloric?ids=${encodeURIComponent(ids.join(','))}`, {
+    const geometryResponse = await fetch(`${apiImpactHost}/api/gis/gloric?ids=${encodeURIComponent(ids.join(','))}`, {
       cache: 'no-store'
     });
     if (!geometryResponse.ok) {
@@ -6490,8 +6582,9 @@ function addHydrometLayersToMap(map) {
       });
 
       const resolveHydroApiBase = (port) => {
-        const host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
-        return `http://${host}:${port}`;
+        if (port === 5000) return apiDailyHost;
+        const _host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
+        return `http://${_host}:${port}`;
       };
 
       const ffdHistoryConfig = {
@@ -6507,6 +6600,58 @@ function addHydrometLayersToMap(map) {
       let ffdHistoryFallbackYear = null;
       let ffdHistoryCurrentProps = null;
       let ffdHistoryCompareMode = 'none';
+
+      // Storage tab state
+      let ffdHistoryActiveTab = 'discharge'; // 'discharge' | 'storage'
+      let ffdStorageChart = null;
+      let ffdStorageFullscreenChart = null;
+      let ffdStorageLastData = null;
+      let ffdStorageDays = 7;
+
+      const formatStorageCardDate = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const year = parts[0];
+        const monthNum = parseInt(parts[1], 10);
+        const dayNum = parseInt(parts[2], 10);
+        const months = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
+        const monthName = months[monthNum - 1] || '';
+        let suffix = 'th';
+        if (dayNum === 1 || dayNum === 21 || dayNum === 31) suffix = 'st';
+        else if (dayNum === 2 || dayNum === 22) suffix = 'nd';
+        else if (dayNum === 3 || dayNum === 23) suffix = 'rd';
+        return `${dayNum}${suffix} ${monthName} ${year}`;
+      };
+
+      const getLastYearDateStr = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const year = parseInt(parts[0], 10) - 1;
+        return `${year}-${parts[1]}-${parts[2]}`;
+      };
+
+      const formatStorageDayMonth = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const monthNum = parseInt(parts[1], 10);
+        const dayNum = parseInt(parts[2], 10);
+        const months = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
+        const monthName = months[monthNum - 1] || '';
+        let suffix = 'th';
+        if (dayNum === 1 || dayNum === 21 || dayNum === 31) suffix = 'st';
+        else if (dayNum === 2 || dayNum === 22) suffix = 'nd';
+        else if (dayNum === 3 || dayNum === 23) suffix = 'rd';
+        return `${dayNum}${suffix} ${monthName}`;
+      };
 
       const ffdHistoryCompareLabels = {
         none: 'No comparison',
@@ -7247,6 +7392,412 @@ function addHydrometLayersToMap(map) {
         summaryEl.style.gridTemplateColumns = `repeat(${cards.length}, 1fr)`;
       };
 
+      // ================== STORAGE HISTORY FUNCTIONS ==================
+
+      const fetchFFDStorageHistory = async (name, days, startDate, endDate) => {
+        let url = `${ffdHistoryConfig.apiBase}/api/storage-history?name=${encodeURIComponent(name)}`;
+        if (startDate && endDate) {
+          url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        } else {
+          url += `&days=${days}`;
+        }
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`Storage API HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Storage API error');
+        return data;
+      };
+
+      const renderFFDStorageSummary = (data) => {
+        const summaryEl = document.getElementById('ffd-history-summary');
+        if (!summaryEl || !data || !data.series || !data.series.length) return;
+
+        const series = data.series;
+        const latest = series[series.length - 1];
+        const oldest = series[0];
+
+        const fmtMaf = (v) => v != null ? `${Number(v).toFixed(2)} MAF` : 'N/A';
+
+        // Change calculation
+        const changeLabel = ffdStorageDays <= 7 ? 'Weekly Change' : ffdStorageDays <= 14 ? '14-Day Change' : 'Monthly Change';
+        let changePct = null;
+        if (oldest && latest && oldest.today != null && latest.today != null && oldest.today !== 0) {
+          changePct = ((latest.today - oldest.today) / Math.abs(oldest.today)) * 100;
+        }
+
+        const changeArrow = changePct == null ? '▶' : changePct > 0 ? '▲' : changePct < 0 ? '▼' : '▶';
+        const changeTone = changePct == null ? 'ffd-change-flat' : changePct > 0 ? 'ffd-change-up' : changePct < 0 ? 'ffd-change-down' : 'ffd-change-flat';
+        const changeCard_tone = changePct != null && changePct < 0 ? 'storage-change negative' : 'storage-change';
+
+        const changeVal = changePct != null
+          ? `<span class="${changeTone}">${changeArrow} ${Math.abs(changePct).toFixed(1)}%</span>`
+          : '<span class="ffd-change-flat">▶ —</span>';
+
+        // Helper to format day-month for card ranges (e.g., 15th Jun)
+        const formatDayMonth = (dateStr) => {
+          if (!dateStr) return '';
+          const parts = dateStr.split('-');
+          if (parts.length !== 3) return dateStr;
+          const monthNum = parseInt(parts[1], 10);
+          const dayNum = parseInt(parts[2], 10);
+          const months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+          ];
+          const monthName = months[monthNum - 1] || '';
+          let suffix = 'th';
+          if (dayNum === 1 || dayNum === 21 || dayNum === 31) suffix = 'st';
+          else if (dayNum === 2 || dayNum === 22) suffix = 'nd';
+          else if (dayNum === 3 || dayNum === 23) suffix = 'rd';
+          return `${dayNum}${suffix} ${monthName}`;
+        };
+
+        const getWeekChangeCard = (label, startIndex, endIndex, toneClass) => {
+          const len = series.length;
+          if (startIndex < 0) startIndex = 0;
+          if (endIndex >= len) endIndex = len - 1;
+          if (startIndex >= endIndex) return null;
+
+          const startVal = series[startIndex].today;
+          const endVal = series[endIndex].today;
+
+          if (startVal != null && endVal != null && startVal !== 0) {
+            const pct = ((endVal - startVal) / Math.abs(startVal)) * 100;
+            const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '▶';
+            const tone = pct > 0 ? 'ffd-change-up' : pct < 0 ? 'ffd-change-down' : 'ffd-change-flat';
+            const cardTone = pct < 0 ? `${toneClass} negative` : toneClass;
+            const startLabelDate = formatDayMonth(series[startIndex].date);
+            const endLabelDate = formatDayMonth(series[endIndex].date);
+            return {
+              tone: cardTone,
+              label: label,
+              valueHtml: `<span class="${tone}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`,
+              meta: `${startLabelDate} to ${endLabelDate}`
+            };
+          }
+          return null;
+        };
+
+        // Conditional Weekly Change card for 14-day view
+        let weeklyCard = null;
+        if (ffdStorageDays === 14 && series.length >= 8) {
+          const wkOldest = series[series.length - 8];
+          if (wkOldest && wkOldest.today != null && latest.today != null && wkOldest.today !== 0) {
+            const wkPct = ((latest.today - wkOldest.today) / Math.abs(wkOldest.today)) * 100;
+            const wkArrow = wkPct > 0 ? '▲' : wkPct < 0 ? '▼' : '▶';
+            const wkTone = wkPct > 0 ? 'ffd-change-up' : wkPct < 0 ? 'ffd-change-down' : 'ffd-change-flat';
+            const wkCardTone = wkPct < 0 ? 'storage-change negative' : 'storage-change';
+            weeklyCard = {
+              tone: wkCardTone,
+              label: 'Last Week Change',
+              valueHtml: `<span class="${wkTone}">${wkArrow} ${Math.abs(wkPct).toFixed(1)}%</span>`,
+              meta: `${formatDayMonth(wkOldest.date)} to ${formatDayMonth(latest.date)}`
+            };
+          }
+        }
+
+        const cards = [];
+
+        if (ffdStorageDays === 30) {
+          // Add Week 1-4 Change cards instead of today/comparison
+          const wk1Card = getWeekChangeCard('Week 1 Change', series.length - 30, series.length - 23, 'storage-week1');
+          const wk2Card = getWeekChangeCard('Week 2 Change', series.length - 23, series.length - 16, 'storage-week2');
+          const wk3Card = getWeekChangeCard('Week 3 Change', series.length - 16, series.length - 9, 'storage-week3');
+          const wk4Card = getWeekChangeCard('Week 4 Change', series.length - 9, series.length - 1, 'storage-week4');
+
+          if (wk1Card) cards.push(wk1Card);
+          if (wk2Card) cards.push(wk2Card);
+          if (wk3Card) cards.push(wk3Card);
+          if (wk4Card) cards.push(wk4Card);
+        } else {
+          // Standard Today + Comparison cards
+          cards.push(
+            { tone: 'storage-today',    label: `Today (${formatStorageCardDate(latest.date)})`, value: fmtMaf(latest.today),              meta: '' },
+            { tone: 'storage-lastyear', label: `Last Year (${formatStorageCardDate(getLastYearDateStr(latest.date))})`, value: fmtMaf(latest.last_year),          meta: '' },
+            { tone: 'storage-avg5',     label: `Avg 5 Years (on ${formatStorageDayMonth(latest.date)})`,             value: fmtMaf(latest.avg_last_5_years),   meta: '' },
+            { tone: 'storage-avg10',    label: `Avg 10 Years (on ${formatStorageDayMonth(latest.date)})`,            value: fmtMaf(latest.avg_last_10_years),  meta: '' }
+          );
+
+          if (weeklyCard) {
+            cards.push(weeklyCard);
+          }
+        }
+
+        cards.push({
+          tone: changeCard_tone,
+          label: changeLabel,
+          valueHtml: changeVal,
+          meta: `${series.length} days`
+        });
+
+        summaryEl.innerHTML = cards.map(card => `
+          <div class="ffd-history-card ${card.tone}">
+            <span>${escapeFFDHistoryHTML(card.label)}</span>
+            <strong>${card.valueHtml || escapeFFDHistoryHTML(card.value || '')}</strong>
+            ${card.meta ? `<small>${escapeFFDHistoryHTML(card.meta)}</small>` : ''}
+          </div>
+        `).join('');
+
+        // Responsive columns: 2-col on mobile, 3-col on tablet, N-col on desktop
+        const colCount = window.innerWidth <= 768 ? 2 : (window.innerWidth <= 1100 ? 3 : cards.length);
+        summaryEl.style.gridTemplateColumns = `repeat(${colCount}, minmax(0, 1fr))`;
+      };
+
+      const renderFFDStorageChart = (canvasId, data, isFullscreen = false) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !window.Chart || !data || !data.series || !data.series.length) return;
+
+        // Destroy previous
+        if (isFullscreen) {
+          if (ffdStorageFullscreenChart) { ffdStorageFullscreenChart.destroy(); ffdStorageFullscreenChart = null; }
+        } else {
+          if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
+        }
+
+        const series = data.series;
+        const labels = series.map(p => p.date);
+        const todayData = series.map(p => p.today);
+        const lastYearData = series.map(p => p.last_year);
+        const avg5Data = series.map(p => p.avg_last_5_years);
+        const avg10Data = series.map(p => p.avg_last_10_years);
+        const maxMaf = data.max_maf;
+        const capacityData = series.map(() => maxMaf);
+
+        // Custom plugin: draw value labels above each visible circle point
+        const pointLabelPlugin = {
+          id: 'storagePointLabels',
+          afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = `bold ${isFullscreen ? 11 : 9}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+
+            // Target datasets: Today (0), Last Year (1), Avg 5y (2), Avg 10y (3)
+            const targetIndices = [0, 1, 2, 3];
+            const colors = ['#e0f2fe', '#fef3c7', '#f3e8ff', '#fce7f3'];
+
+            targetIndices.forEach((dsIndex) => {
+              const ds = chart.data.datasets[dsIndex];
+              if (!ds) return;
+              const meta = chart.getDatasetMeta(dsIndex);
+              // Only draw if the dataset is visible (not hidden) in the chart
+              if (!chart.isDatasetVisible(dsIndex)) return;
+
+              ctx.fillStyle = colors[dsIndex] || '#e2e8f0';
+
+              meta.data.forEach((pt, i) => {
+                const val = ds.data[i];
+                if (val == null) return;
+                // Ensure the point coordinates are valid numbers and not NaN/uncomputed
+                if (!pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
+                const formatted = Number(val).toFixed(2);
+                ctx.fillText(formatted, pt.x, pt.y - 5);
+              });
+            });
+
+            ctx.restore();
+          }
+        };
+
+        // Gradient fill for today's storage
+        const ctx2d = canvas.getContext('2d');
+        const gradient = ctx2d.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+        gradient.addColorStop(0, 'rgba(6, 182, 212, 0.45)');
+        gradient.addColorStop(0.6, 'rgba(6, 182, 212, 0.12)');
+        gradient.addColorStop(1, 'rgba(6, 182, 212, 0.02)');
+
+        const datasets = [
+          {
+            label: `Storage (Today)`,
+            data: todayData,
+            borderColor: '#06b6d4',
+            backgroundColor: gradient,
+            fill: 'origin',
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 5 : 4,
+            pointHoverRadius: isFullscreen ? 7 : 6,
+            pointBackgroundColor: '#0c1825',
+            pointBorderColor: '#06b6d4',
+            pointBorderWidth: 2,
+            borderWidth: isFullscreen ? 3 : 2.5,
+            order: 1,
+          },
+          {
+            label: 'Last Year',
+            data: lastYearData,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.06)',
+            fill: false,
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 2 : 1.8,
+            borderDash: [6, 4],
+            hidden: true,
+            order: 2,
+          },
+          {
+            label: 'Avg 5 Years',
+            data: avg5Data,
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168, 85, 247, 0.06)',
+            fill: false,
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 2 : 1.8,
+            borderDash: [4, 4],
+            hidden: true,
+            order: 3,
+          },
+          {
+            label: 'Avg 10 Years',
+            data: avg10Data,
+            borderColor: '#ec4899',
+            backgroundColor: 'rgba(236, 72, 153, 0.06)',
+            fill: false,
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 2 : 1.8,
+            borderDash: [3, 5],
+            hidden: true,
+            order: 4,
+          }
+        ];
+
+        if (maxMaf != null) {
+          datasets.push({
+            label: `Capacity (${maxMaf} MAF)`,
+            data: capacityData,
+            borderColor: '#ef4444',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0,
+            spanGaps: true,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderWidth: isFullscreen ? 2.5 : 2,
+            borderDash: [8, 5],
+            hidden: true,
+            order: 5,
+          });
+        }
+
+        const chartInstance = new Chart(canvas, {
+          type: 'line',
+          plugins: [pointLabelPlugin],
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 800,
+              easing: 'easeInOutCubic',
+            },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: {
+                labels: {
+                  color: '#e2e8f0',
+                  boxWidth: 14,
+                  usePointStyle: true,
+                  font: { size: isFullscreen ? 12 : 10 }
+                },
+                onClick(e, legendItem, legend) {
+                  const index = legendItem.datasetIndex;
+                  const meta = legend.chart.getDatasetMeta(index);
+                  meta.hidden = !meta.hidden;
+                  legend.chart.update();
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  title: (items) => items[0]?.label ? items[0].label : '',
+                  label: (ctx) => {
+                    if (ctx.parsed.y == null) return null;
+                    return `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(3)} MAF`;
+                  }
+                },
+                backgroundColor: 'rgba(6, 24, 44, 0.92)',
+                borderColor: 'rgba(6, 182, 212, 0.3)',
+                borderWidth: 1,
+                titleColor: '#22d3ee',
+                bodyColor: '#e2e8f0',
+              },
+              zoom: isFullscreen ? {
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                pan: { enabled: true, mode: 'x' }
+              } : false
+            },
+            scales: {
+              x: {
+                ticks: {
+                  color: '#94a3b8',
+                  maxTicksLimit: isFullscreen ? 14 : (window.innerWidth <= 480 ? 5 : 8),
+                  autoSkip: true,
+                  minRotation: 0,
+                  maxRotation: 0,
+                  font: { size: isFullscreen ? 11 : 9 },
+                  callback: (val, idx) => {
+                    const lbl = labels[val];
+                    if (!lbl) return '';
+                    const d = new Date(lbl);
+                    return isNaN(d.getTime()) ? lbl : `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })}`;
+                  }
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.1)' }
+              },
+              y: {
+                ticks: {
+                  color: '#94a3b8',
+                  font: { size: isFullscreen ? 11 : 9 },
+                  callback: (v) => `${Number(v).toFixed(1)} MAF`
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                title: { display: isFullscreen, text: 'Storage (MAF)', color: '#94a3b8', font: { size: 12 } }
+              }
+            }
+          }
+        });
+
+        if (isFullscreen) ffdStorageFullscreenChart = chartInstance;
+        else ffdStorageChart = chartInstance;
+      };
+
+      const loadFFDStorageData = async () => {
+        if (!ffdHistoryName) return;
+        const summaryEl = document.getElementById('ffd-history-summary');
+        const chartEl = document.querySelector('.ffd-history-chart');
+        if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Loading storage data…</div>';
+
+        try {
+          const data = await fetchFFDStorageHistory(ffdHistoryName, ffdStorageDays);
+          ffdStorageLastData = data;
+
+          if (!data.series || !data.series.length) {
+            if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">No storage data available.</div>';
+            return;
+          }
+
+          // Add storage-mode class to chart container
+          if (chartEl) chartEl.classList.add('storage-mode');
+
+          renderFFDStorageSummary(data);
+          renderFFDStorageChart('ffd-history-canvas', data);
+        } catch (err) {
+          console.warn('Storage history fetch failed:', err);
+          if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Storage data unavailable.</div>';
+        }
+      };
+
+      // ================== END STORAGE HISTORY FUNCTIONS ==================
+
       const renderFFDHistoryChart = (canvasId, bundle, isFullscreen = false) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas || !window.Chart) {
@@ -7517,6 +8068,42 @@ function addHydrometLayersToMap(map) {
         const startInput = document.getElementById('ffd-history-start');
         const endInput = document.getElementById('ffd-history-end');
         const compareButtons = panel.querySelectorAll('[data-ffd-compare]');
+        const storageToggleBtn = document.getElementById('ffd-storage-toggle');
+
+        // ---- Storage toggle logic ----
+        const switchToDischargeTab = async () => {
+          ffdHistoryActiveTab = 'discharge';
+          panel.classList.remove('storage-mode');
+          if (storageToggleBtn) storageToggleBtn.classList.remove('active');
+          const chartEl = panel.querySelector('.ffd-history-chart');
+          if (chartEl) chartEl.classList.remove('storage-mode');
+          // destroy storage chart
+          if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
+          await loadFFDHistoryData();
+        };
+
+        const switchToStorageTab = async () => {
+          ffdHistoryActiveTab = 'storage';
+          panel.classList.add('storage-mode');
+          if (storageToggleBtn) storageToggleBtn.classList.add('active');
+          // destroy discharge chart
+          if (ffdHistoryChart) { ffdHistoryChart.destroy(); ffdHistoryChart = null; }
+          ffdStorageDays = 7;
+          // set dropdown to 7 if the status select exists
+          const statusSelectEl = document.getElementById('ffd-history-status');
+          if (statusSelectEl) statusSelectEl.value = '7';
+          await loadFFDStorageData();
+        };
+
+        if (storageToggleBtn) {
+          storageToggleBtn.addEventListener('click', async () => {
+            if (ffdHistoryActiveTab === 'discharge') {
+              await switchToStorageTab();
+            } else {
+              await switchToDischargeTab();
+            }
+          });
+        }
 
         const setControlsOpen = (isOpen) => {
           panel.classList.toggle('controls-open', isOpen);
@@ -7579,12 +8166,17 @@ function addHydrometLayersToMap(map) {
             if (e.target.value === 'custom') return;
             const days = parseInt(e.target.value, 10);
             if (!isNaN(days)) {
-              ffdHistoryConfig.defaultDays = days;
-              if (startInput) startInput.value = '';
-              if (endInput) endInput.value = '';
-              const customOpt = document.getElementById('ffd-history-status-custom');
-              if (customOpt) customOpt.style.display = 'none';
-              await loadFFDHistoryData();
+              if (ffdHistoryActiveTab === 'storage') {
+                ffdStorageDays = days;
+                await loadFFDStorageData();
+              } else {
+                ffdHistoryConfig.defaultDays = days;
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+                const customOpt = document.getElementById('ffd-history-status-custom');
+                if (customOpt) customOpt.style.display = 'none';
+                await loadFFDHistoryData();
+              }
             }
           });
         }
@@ -7626,25 +8218,38 @@ function addHydrometLayersToMap(map) {
 
         if (fullscreenBtn && fullscreenPanel) {
           fullscreenBtn.addEventListener('click', () => {
-            if (!ffdHistoryLastSeries) {
-              setFFDHistoryStatus('Load history before fullscreen');
-              return;
-            }
             const fullscreenTitle = document.querySelector('.ffd-history-fullscreen-title');
-            if (fullscreenTitle) {
-              fullscreenTitle.textContent = `${ffdHistoryName || 'FFD'} - Fullscreen History`;
+
+            if (ffdHistoryActiveTab === 'storage') {
+              if (!ffdStorageLastData) {
+                return;
+              }
+              if (fullscreenTitle) {
+                fullscreenTitle.textContent = `${ffdHistoryName || 'FFD'} - Storage Fullscreen`;
+              }
+              fullscreenPanel.classList.add('open');
+              renderFFDStorageChart('ffd-history-canvas-full', ffdStorageLastData, true);
+            } else {
+              if (!ffdHistoryLastSeries) {
+                setFFDHistoryStatus('Load history before fullscreen');
+                return;
+              }
+              if (fullscreenTitle) {
+                fullscreenTitle.textContent = `${ffdHistoryName || 'FFD'} - Fullscreen History`;
+              }
+              fullscreenPanel.classList.add('open');
+              renderFFDHistoryChart('ffd-history-canvas-full', ffdHistoryLastSeries, true);
             }
-            fullscreenPanel.classList.add('open');
-            renderFFDHistoryChart(
-              'ffd-history-canvas-full',
-              ffdHistoryLastSeries,
-              true
-            );
           });
         }
 
         if (fullscreenClose) {
-          fullscreenClose.addEventListener('click', closeFullscreen);
+          fullscreenClose.addEventListener('click', () => {
+            if (!fullscreenPanel) return;
+            fullscreenPanel.classList.remove('open');
+            if (ffdHistoryFullscreenChart) { ffdHistoryFullscreenChart.destroy(); ffdHistoryFullscreenChart = null; }
+            if (ffdStorageFullscreenChart) { ffdStorageFullscreenChart.destroy(); ffdStorageFullscreenChart = null; }
+          });
         }
 
         if (applyBtn) {
@@ -7794,6 +8399,24 @@ function addHydrometLayersToMap(map) {
           dateToggleBtn.setAttribute('aria-expanded', 'false');
         }
 
+        // Show/hide S storage toggle based on whether this is a reservoir dam
+        const normName = (name || '').toLowerCase();
+        const isReservoirDam = normName.includes('tarbela') || normName.includes('mangla') || normName.includes('chashma');
+        const storageToggleBtn = document.getElementById('ffd-storage-toggle');
+        if (storageToggleBtn) {
+          storageToggleBtn.style.display = isReservoirDam ? '' : 'none';
+        }
+
+        // Always reset to discharge tab when opening a new station
+        if (ffdHistoryActiveTab === 'storage') {
+          ffdHistoryActiveTab = 'discharge';
+          panel.classList.remove('storage-mode');
+          if (storageToggleBtn) storageToggleBtn.classList.remove('active');
+          const chartEl = panel.querySelector('.ffd-history-chart');
+          if (chartEl) chartEl.classList.remove('storage-mode');
+          if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
+        }
+
         if (!keepManualPosition) {
           panel.dataset.dragged = '';
           panel.style.width = `${Math.round(getFFDHistoryDockWidth())}px`;
@@ -7822,6 +8445,27 @@ function addHydrometLayersToMap(map) {
       // Add popup on click (keeping your existing popup code)
       // Enhanced FFD popup click handler with professional styling and N/A units fix
       map1.on('click', 'ffd_point', (e) => {
+        // --- MOBILE/TABLET/LAPTOP SIDEBAR AUTO-CLOSE LOGIC ---
+        if (window.innerWidth <= 1440) {
+          const sidebar = document.getElementById('app-sidebar');
+          if (sidebar && !sidebar.classList.contains('is-closed')) {
+            const closeBtn = document.getElementById('sidebar-close');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            
+            sidebar.classList.add('is-closed');
+            
+            if (toggleBtn) {
+              toggleBtn.setAttribute('aria-expanded', 'false');
+              toggleBtn.classList.remove('is-hidden');
+            }
+            if (closeBtn) {
+              closeBtn.setAttribute('aria-expanded', 'false');
+              closeBtn.style.display = 'none';
+            }
+          }
+        }
+        // ----------------------------------------  // ----------------------------------------
+
         const props = e.features[0].properties;
 
         // Format the From and Lag Hours information using flood routing data
@@ -8291,6 +8935,76 @@ function addHydrometLayersToMap(map) {
 
                         .mapboxgl-popup-tip {
                             border-top-color: #ffffff !important;
+                        }
+
+                        @media (max-width: 768px) {
+                            .ffd-popup-container {
+                                width: 230px !important;
+                            }
+                            .popup-header {
+                                padding: 5px 8px !important;
+                            }
+                            .station-name {
+                                font-size: 13px !important;
+                            }
+                            .status-badge {
+                                padding: 2px 5px !important;
+                                font-size: 9px !important;
+                            }
+                            .popup-content {
+                                padding: 5px 8px 8px !important;
+                            }
+                            .discharge-grid, .trend-grid {
+                                flex-direction: row !important;
+                                gap: 4px !important;
+                            }
+                            .discharge-item, .trend-item {
+                                flex: 1 !important;
+                                flex-direction: column !important;
+                                align-items: flex-start !important;
+                                padding: 3px 5px !important;
+                                gap: 1px !important;
+                            }
+                            .discharge-label, .trend-label {
+                                font-size: 9px !important;
+                            }
+                            .discharge-value, .trend-value {
+                                font-size: 11px !important;
+                                text-align: left !important;
+                            }
+                            .inflow-highlight, .outflow-bold {
+                                font-size: 11px !important;
+                            }
+                            .trend-section, .discharge-section, .popup-meta-section, .peak-section, .timestamp-section {
+                                margin-bottom: 5px !important;
+                            }
+                            .timestamp-section, .update-info {
+                                font-size: 9px !important;
+                                padding-top: 5px !important;
+                                margin-top: 5px !important;
+                            }
+                            .upstream-section {
+                                margin-top: 5px !important;
+                                padding-top: 5px !important;
+                            }
+                            .upstream-list {
+                                flex-direction: row !important;
+                                gap: 4px !important;
+                            }
+                            .upstream-item {
+                                flex: 1 !important;
+                                flex-direction: column !important;
+                                align-items: flex-start !important;
+                                padding: 3px 5px !important;
+                            }
+                            .upstream-item .station-name {
+                                font-size: 9px !important;
+                            }
+                            .lag-time {
+                                font-size: 8px !important;
+                                padding: 1px 3px !important;
+                                margin-top: 2px !important;
+                            }
                         }
                     </style>
                 `;
@@ -8784,7 +9498,7 @@ function addHydrometLayersToMap(map) {
     if (!map1.getSource(sourceId)) {
       map1.addSource(sourceId, {
         type: "geojson",
-        data: `http://${ahad}:8080/geoserver/GLOF/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${encodeURIComponent(geoserverLayer)}&outputFormat=application/json&srsName=EPSG:4326`
+        data: `${ahad}/geoserver/GLOF/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${encodeURIComponent(geoserverLayer)}&outputFormat=application/json&srsName=EPSG:4326`
       });
     }
 
@@ -8900,7 +9614,7 @@ function addHydrometLayersToMap(map) {
   ///Extremely High flood extent
   map1.addSource("Extremly_high", {
     type: "geojson",
-    data: `http://${ahad}:8080/geoserver/monsoon/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=monsoon:Extremly%20high&maxFeatures=50&outputFormat=application/json`
+    data: `${ahad}/geoserver/monsoon/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=monsoon:Extremly%20high&maxFeatures=50&outputFormat=application/json`
   });
 
   map1.addLayer({
@@ -8931,7 +9645,7 @@ function addHydrometLayersToMap(map) {
   // vERY High flood extent
   map1.addSource("Very_high", {
     type: "geojson",
-    data: `http://${ahad}:8080/geoserver/monsoon/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=monsoon:Very_high&maxFeatures=50&outputFormat=application/json`
+    data: `${ahad}/geoserver/monsoon/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=monsoon:Very_high&maxFeatures=50&outputFormat=application/json`
   });
 
   map1.addLayer({
@@ -8965,7 +9679,7 @@ function addHydrometLayersToMap(map) {
       type: "vector",
       scheme: "tms",
       tiles: [
-        `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:Swat_rivert@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+        `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:Swat_rivert@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
       ],
     });
   }
@@ -9005,7 +9719,7 @@ function addHydrometLayersToMap(map) {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:Panjgora_river@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:Panjgora_river@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -9185,7 +9899,7 @@ function addHydrometLayersToMap(map) {
   //DI khan HT extent
 map1.addSource("DI_Khan_HT", {
   type: "geojson",
-  data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADI_Khan_HT&outputFormat=application%2Fjson`,
+  data: `${ahad}/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADI_Khan_HT&outputFormat=application%2Fjson`,
 });
 
 map1.addLayer({
@@ -9215,7 +9929,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   //DG khan HT extent
   map1.addSource("DG khan HT", {
     type: "geojson",
-    data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson`,
+    data: `${ahad}/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3ADG%20khan%20HT&outputFormat=application%2Fjson`,
   });
   map1.addLayer({
     id: "DG khan HT",
@@ -9244,7 +9958,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Pir_Panjal_HT@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Pir_Panjal_HT@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -9274,7 +9988,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   //Hyderabad arc extent
   map1.addSource("Hyderabad_arc", {
     type: "geojson",
-    data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson`,
+    data: `${ahad}/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3AHyderabad_arc&outputFormat=application%2Fjson`,
   });
   map1.addLayer({
     id: "Hyderabad_arc",
@@ -9301,7 +10015,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   //jhal arc extent
   map1.addSource("jhal_magsi_arc_Complete", {
     type: "geojson",
-    data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson`,
+    data: `${ahad}/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3Ajhal_magsi_arc_Complete&outputFormat=application%2Fjson`,
   });
   map1.addLayer({
     id: "jhal_magsi_arc_Complete",
@@ -9332,7 +10046,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
 
   //   scheme: "tms",
   //   tiles: [
-  //     `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:jhal_magsi_arc_full@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+  //     `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:jhal_magsi_arc_full@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
   //   ],
   // });
   // map1.addLayer({
@@ -9364,7 +10078,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:KIRTHAR_RANGE@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:KIRTHAR_RANGE@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -9396,7 +10110,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
      type: "vector",
      scheme: "tms",
      tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:bajaur_hill_torrents@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:bajaur_hill_torrents@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
      ],
     });
   }
@@ -9434,7 +10148,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("Buner_150mm")) {
     map1.addSource("Buner_150mm", {
       type: "geojson",
-      data: `http://${ahad}:8080/geoserver/monsoon/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=monsoon:Buner_inundation_filtered&outputFormat=application/json&srsName=EPSG:4326`
+      data: `${ahad}/geoserver/monsoon/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=monsoon:Buner_inundation_filtered&outputFormat=application/json&srsName=EPSG:4326`
     });
   }
 
@@ -9470,7 +10184,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("Mardan_inundation_filter")) {
     map1.addSource("Mardan_inundation_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Mardan_inundation_filter&outputFormat=application/json&srsName=EPSG:4326`
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Mardan_inundation_filter&outputFormat=application/json&srsName=EPSG:4326`
     });
   }
 
@@ -9505,7 +10219,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("kech_panjgur_50mm_filter")) {
     map1.addSource("kech_panjgur_50mm_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:kech%26panjgur_50mm_filter&outputFormat=application/json&srsName=EPSG:4326`
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:kech%26panjgur_50mm_filter&outputFormat=application/json&srsName=EPSG:4326`
     });
   }
 
@@ -9540,7 +10254,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("kech_panjgur_100mm_filter")) {
     map1.addSource("kech_panjgur_100mm_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:kech%26panjgaur_100mm_filter&outputFormat=application/json&srsName=EPSG:4326`
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:kech%26panjgaur_100mm_filter&outputFormat=application/json&srsName=EPSG:4326`
     });
   }
 
@@ -9577,7 +10291,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
      type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:chakwal_hill_torrents@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:chakwal_hill_torrents@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
  }
@@ -9613,7 +10327,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("pulkhu_75mm_filter")) {
     map1.addSource("pulkhu_75mm_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_75mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_75mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9648,7 +10362,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("pulkhu_150_filter")) {
     map1.addSource("pulkhu_150_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_150_filter&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_150_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9683,7 +10397,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("pulkhu_300_filter")) {
     map1.addSource("pulkhu_300_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_300_filter&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:pulkhu_300_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9718,7 +10432,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("baein_basantar_150mm")) {
     map1.addSource("baein_basantar_150mm", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Baein%26Basantar_150mm&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Baein%26Basantar_150mm&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9753,7 +10467,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("baein_basantar_350mm")) {
     map1.addSource("baein_basantar_350mm", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Baein%26Basantar_350mm&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:Baein%26Basantar_350mm&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9788,7 +10502,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("munawar_tawi_60mm_filter")) {
     map1.addSource("munawar_tawi_60mm_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:munawar_tawi_60mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:munawar_tawi_60mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9823,7 +10537,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   if (!map1.getSource("munawar_150mm_filter")) {
     map1.addSource("munawar_150mm_filter", {
       type: "geojson",
-      data: `http://${geoserverUrl}:8080/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:munawar_150mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
+      data: `${geoserverUrl}/geoserver/gcop/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=gcop:munawar_150mm_filter&outputFormat=application/json&srsName=EPSG:4326`,
     });
   }
 
@@ -9860,7 +10574,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:lower_indus_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:lower_indus_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -9894,7 +10608,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:lower_indus_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:lower_indus_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -9930,7 +10644,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:lower_indus_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:lower_indus_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -9961,7 +10675,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:upper_indus_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:upper_indus_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -9992,7 +10706,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:upper_indus_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:upper_indus_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10024,7 +10738,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:upper_indus_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:upper_indus_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10055,7 +10769,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:chenab_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:chenab_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10087,7 +10801,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:chenab_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:chenab_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10118,7 +10832,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:chenab_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:chenab_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10150,7 +10864,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:kabul_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:kabul_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10181,7 +10895,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:kabul_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:kabul_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10214,7 +10928,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:kabul_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:kabul_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10245,7 +10959,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:jhelum_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:jhelum_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10275,7 +10989,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   ///Jhelum Medium
   map1.addSource("jmfex", {
     type: "geojson",
-    data: `http://${mamAyman}:8080/geoserver/WaterResourceMonitoring/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=WaterResourceMonitoring%3Ajmfex&outputFormat=application%2Fjson`,
+    data: `${mamAyman}/geoserver/WaterResourceMonitoring/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=WaterResourceMonitoring%3Ajmfex&outputFormat=application%2Fjson`,
   });
 
   map1.addLayer({
@@ -10304,7 +11018,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:jhelum_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:jhelum_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10336,7 +11050,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:swat_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:swat_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10368,7 +11082,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:swat_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:swat_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10399,7 +11113,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:swat_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:swat_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10432,7 +11146,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Muzafferabad_arc@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Muzafferabad_arc@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10463,7 +11177,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource('Depth_Max_Terrain_DEM_AJK1', {
     type: 'raster',
     tiles: [
-      `http://${ahad}:8080/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Depth_Max_Terrain_DEM_AJK1&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
+      `${ahad}/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Depth_Max_Terrain_DEM_AJK1&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
     ],
     tileSize: 256
   });
@@ -10489,7 +11203,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     if (!map1.getSource(layerId)) {
       map1.addSource(layerId, {
         type: 'geojson',
-        data: `http://${ahad}:8080/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3A${geoserverLayerName}&outputFormat=application%2Fjson`
+        data: `${ahad}/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026%3A${geoserverLayerName}&outputFormat=application%2Fjson`
       });
     }
 
@@ -10540,7 +11254,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource('Terrain_Jhal_Depth', {
     type: 'raster',
     tiles: [
-      `http://${ahad}:8080/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Terrain_Jhal_Depth&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
+      `${ahad}/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Terrain_Jhal_Depth&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
     ],
     tileSize: 256
   });
@@ -10567,7 +11281,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
         map1.addSource('Terrain_Jhal_Depth', {
           type: 'raster',
           tiles: [
-            `http://${ahad}:8080/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Terrain_Jhal_Depth&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
+            `${ahad}/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Terrain_Jhal_Depth&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
           ],
           tileSize: 256
         });
@@ -10618,7 +11332,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource('Terrain_hyd', {
     type: 'raster',
     tiles: [
-      `http://${ahad}:8080/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Terrain_hyd&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
+      `${ahad}/geoserver/global/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=Terrain_hyd&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=1439&HEIGHT=602&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`
     ],
     tileSize: 256
   });
@@ -10645,7 +11359,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Jamshoro flooding@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Jamshoro flooding@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10682,7 +11396,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:ravi_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:ravi_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -10716,7 +11430,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:ravi_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:ravi_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -10751,7 +11465,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/	gcop:ravi_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/	gcop:ravi_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10782,7 +11496,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:sutlej_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:sutlej_high_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10814,7 +11528,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:sutlej_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:sutlej_medium_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -10849,7 +11563,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:sutlej_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:sutlej_low_outlook_2026@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -10919,7 +11633,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:barrages_v1@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:barrages_v1@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -10980,7 +11694,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("KPKDrainage_Density", {
     'type': 'raster',
     'tiles': [
-      `http://${mustafa}:8080/geoserver/ne/wms?service=WMS&version=1.1.0&request=GetMap&layers=KPKDrainage_Density&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mustafa}/geoserver/ne/wms?service=WMS&version=1.1.0&request=GetMap&layers=KPKDrainage_Density&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11008,7 +11722,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("P_panjal_Cl", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=P_panjal_Cl&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=P_panjal_Cl&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 128
   });
@@ -11038,7 +11752,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Depth (Max).Terrain.sargodha", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Depth (Max).Terrain.sargodha&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Depth (Max).Terrain.sargodha&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 128
   });
@@ -11068,7 +11782,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Depth (Max).Terrain.Rawalpindi", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Depth (Max).Terrain.Rawalpindi&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Depth (Max).Terrain.Rawalpindi&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 128
   });
@@ -11100,7 +11814,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Depth (Max).Terrain.dem_faislabad", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Depth (Max).Terrain.dem_faislabad&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Depth (Max).Terrain.dem_faislabad&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 128
   });
@@ -11127,7 +11841,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Nowshera_Depth", {
     'type': 'raster',
     'tiles': [
-      `http://${ahad}:8080/geoserver/HydroAnalytics2026/wms?service=WMS&version=1.1.0&request=GetMap&layers=Nowshera_Depth&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${ahad}/geoserver/HydroAnalytics2026/wms?service=WMS&version=1.1.0&request=GetMap&layers=Nowshera_Depth&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 128
   });
@@ -11153,7 +11867,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Charsadda_Depth", {
     'type': 'raster',
     'tiles': [
-      `http://${ahad}:8080/geoserver/HydroAnalytics2026/wms?service=WMS&version=1.1.0&request=GetMap&layers=Charsadda_Depth&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${ahad}/geoserver/HydroAnalytics2026/wms?service=WMS&version=1.1.0&request=GetMap&layers=Charsadda_Depth&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 128
   });
@@ -11184,7 +11898,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Sindh", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Sindh&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Sindh&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11216,7 +11930,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Kirthar", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Kirthar_Cl&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Kirthar_Cl&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11244,7 +11958,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("DG khan", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=DG khan&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=DG khan&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11269,7 +11983,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("DIKHAN_CL", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=DIKHAN_CL&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=DIKHAN_CL&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11296,7 +12010,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Gujranwala", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Gujranwala&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Gujranwala&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11326,7 +12040,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("upper_KP", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=upper_KP&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=upper_KP&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11354,7 +12068,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   map1.addSource("Lower_KP", {
     'type': 'raster',
     'tiles': [
-      `http://${mamHimael}:8080/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Lower_KP&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
+      `${mamHimael}/geoserver/Hydromet/wms?service=WMS&version=1.1.0&request=GetMap&layers=Lower_KP&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&styles=&format=image/png&transparent=true`
     ],
     'tileSize': 256
   });
@@ -11386,7 +12100,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:kpk_urban@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:kpk_urban@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -11452,7 +12166,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:breachpoints@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:breachpoints@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
   map1.addLayer({
@@ -11778,7 +12492,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     map1.addSource("indian", {
       type: "vector",
       scheme: "tms",
-      tiles: [`http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:indian_structure@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
+      tiles: [`${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:indian_structure@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
     });
   }
 
@@ -12235,17 +12949,12 @@ document.getElementById("di_ht").addEventListener("change", function () {
       map1.addImage("Under_construction", image); // Matches "icon-image" in layer below
     });
   }
-
-
-
-
-
   // Future structures
   if (!map1.getSource("Future")) {
     map1.addSource("Future", {
       type: "vector",
       scheme: "tms",
-      tiles: [`http://${mamAyman}:8080/geoserver/gwc/service/tms/1.0.0/ne:Future@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
+      tiles: [`${mamAyman}/geoserver/gwc/service/tms/1.0.0/ne:Future@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
     });
   }
 
@@ -12254,7 +12963,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     map1.addSource("Ready_for_Construction", {
       type: "vector",
       scheme: "tms",
-      tiles: [`http://${mamAyman}:8080/geoserver/gwc/service/tms/1.0.0/ne:Ready_for_Construction@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
+      tiles: [`${mamAyman}/geoserver/gwc/service/tms/1.0.0/ne:Ready_for_Construction@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
     });
   }
 
@@ -12263,7 +12972,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     map1.addSource("Ongoing", {
       type: "vector",
       scheme: "tms",
-      tiles: [`http://${mamAyman}:8080/geoserver/gwc/service/tms/1.0.0/ne:Ongoing@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
+      tiles: [`${mamAyman}/geoserver/gwc/service/tms/1.0.0/ne:Ongoing@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
     });
   }
 
@@ -12272,7 +12981,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     map1.addSource("Under_construction", {
       type: "vector",
       scheme: "tms",
-      tiles: [`http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:under_construction_dams@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
+      tiles: [`${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:under_construction_dams@EPSG:900913@pbf/{z}/{x}/{y}.pbf`]
     });
   }
 
@@ -12873,7 +13582,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
       type: "vector",
       scheme: "tms",
       tiles: [
-        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:reserviors@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+        `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:reserviors@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
       ],
     });
   }
@@ -12908,7 +13617,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:minnor_rivers@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:minnor_rivers@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -12963,7 +13672,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:pakistan_rivers@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:pakistan_rivers@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -13000,7 +13709,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:kp_rivers@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:kp_rivers@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -13036,7 +13745,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/Humza:G15_Flood_Inundation_2010_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/Humza:G15_Flood_Inundation_2010_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13069,7 +13778,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:G16_Flood_Inundation_2011_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:G16_Flood_Inundation_2011_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13103,7 +13812,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/GCC:G17_Flood_Inundation_2012_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/GCC:G17_Flood_Inundation_2012_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13136,7 +13845,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:G18_Flood_Inundation_2013_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:G18_Flood_Inundation_2013_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13169,7 +13878,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:G19_Flood_Inundation_2014_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:G19_Flood_Inundation_2014_SUPARCO@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13201,7 +13910,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:G20_Flood_Inundation_2015_NDMA_GIS_Team@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:G20_Flood_Inundation_2015_NDMA_GIS_Team@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13232,7 +13941,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamAyman}:8080/geoserver/gwc/service/tms/1.0.0/Flood_Insight:river_2022@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamAyman}/geoserver/gwc/service/tms/1.0.0/Flood_Insight:river_2022@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13262,7 +13971,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/	ne:VIIRS_20230726_20230730_FloodExtent_PAK@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/	ne:VIIRS_20230726_20230730_FloodExtent_PAK@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13294,7 +14003,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://172.18.1.4:8080/geoserver/gwc/service/tms/1.0.0/abdul_sattar:flood_Hotspot_Area@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geo_1_4}/geoserver/gwc/service/tms/1.0.0/abdul_sattar:flood_Hotspot_Area@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -13364,7 +14073,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mustafa}:8080/geoserver/gwc/service/tms/1.0.0/ne:VIIRS_20240420_20240424_MaximumFloodExtent_Pakistan@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mustafa}/geoserver/gwc/service/tms/1.0.0/ne:VIIRS_20240420_20240424_MaximumFloodExtent_Pakistan@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13399,7 +14108,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${ibrahim}:8080/geoserver/gwc/service/tms/1.0.0/Boundaries:2024 sept@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${ibrahim}/geoserver/gwc/service/tms/1.0.0/Boundaries:2024 sept@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13431,7 +14140,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
   // map1.addSource("fLOOD_Extent", {
   //   type: "raster",
   //   tiles: [
-  //     `http://${ahad}:8080/geoserver/monsoon/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=monsoon:fLOOD_Extent&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`,
+  //     `${ahad}/geoserver/monsoon/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=monsoon:fLOOD_Extent&VERSION=1.3.0&FORMAT=image/png&TRANSPARENT=true&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}`,
   //   ],
   //   tileSize: 256,
   // });
@@ -13467,7 +14176,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/	gcop:protection_bands@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/	gcop:protection_bands@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
 
@@ -13529,7 +14238,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:settlements@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:settlements@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13569,7 +14278,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:schools@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:schools@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13609,7 +14318,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:railway_stations@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:railway_stations@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13649,7 +14358,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:airports@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:airports@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13689,7 +14398,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:BridgesL@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:BridgesL@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13729,7 +14438,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:health_facilities@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:health_facilities@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13776,7 +14485,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_extent_27-28Aug@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_extent_27-28Aug@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13812,7 +14521,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_Extent_1-2sep@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_Extent_1-2sep@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13850,7 +14559,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood05Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood05Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13882,7 +14591,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood06Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood06Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13917,7 +14626,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood07Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood07Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13953,7 +14662,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood09Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood09Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -13988,7 +14697,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood13Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood13Sep25@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14023,7 +14732,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Extent16-09-2025@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Extent16-09-2025@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14059,7 +14768,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_Extant_19-09-2025@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_Extant_19-09-2025@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14093,7 +14802,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_extant_21sep@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_extant_21sep@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14127,7 +14836,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:buner_hill_torrents@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:buner_hill_torrents@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14161,7 +14870,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:FloodExtents_CummTill14Sep25Dis@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:FloodExtents_CummTill14Sep25Dis@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14195,7 +14904,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_Extent_Comulated_5to21f@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Flood_Extent_Comulated_5to21f@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14227,7 +14936,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Pond_Sites@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Pond_Sites@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14264,7 +14973,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:KP_Dams@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:KP_Dams@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14300,7 +15009,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:GB@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:GB@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14336,7 +15045,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Retention_Reserviors@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Retention_Reserviors@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14371,7 +15080,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Retention_Pond@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Retention_Pond@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14405,7 +15114,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:DGK@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:DGK@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14442,7 +15151,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:balochistan@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:balochistan@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14479,7 +15188,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Dams@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Dams@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
     ]
   });
 
@@ -14514,7 +15223,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
     type: "vector",
     scheme: "tms",
     tiles: [
-      `http://${mamHimael}:8080/geoserver/gwc/service/tms/1.0.0/Hydromet:Retention_PondImp@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+      `${mamHimael}/geoserver/gwc/service/tms/1.0.0/Hydromet:Retention_PondImp@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
     ],
   });
   map1.addLayer({
@@ -14561,7 +15270,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
         type: 'vector',
         scheme: 'tms',
         tiles: [
-          `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:Main_Canals@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+          `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:Main_Canals@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
         ]
       });
     }
@@ -14570,7 +15279,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
         type: 'vector',
         scheme: 'tms',
         tiles: [
-          `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:Branch_Canals@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+          `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:Branch_Canals@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
         ]
       });
     }
@@ -14579,7 +15288,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
         type: 'vector',
         scheme: 'tms',
         tiles: [
-          `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:Link_Canals@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+          `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:Link_Canals@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
         ]
       });
     }
@@ -14588,7 +15297,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
         type: 'vector',
         scheme: 'tms',
         tiles: [
-          `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:Distributories@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+          `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:Distributories@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
         ]
       });
     }
@@ -14818,7 +15527,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
       type: "vector",
       scheme: "tms",
       tiles: [
-        `http://${geoserverUrl}:8080/geoserver/gwc/service/tms/1.0.0/gcop:water_shed@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
+        `${geoserverUrl}/geoserver/gwc/service/tms/1.0.0/gcop:water_shed@EPSG:900913@pbf/{z}/{x}/{y}.pbf`,
       ],
     });
   }
@@ -16178,7 +16887,7 @@ function ffdLegend() {
 //               type: "vector",
 //               scheme: "tms",
 //               tiles: [
-//                   `http://172.18.1.43:8080/geoserver/gwc/service/tms/1.0.0/Flood_simu:Jhelum_${i}@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
+//                   `${geo_1_43}/geoserver/gwc/service/tms/1.0.0/Flood_simu:Jhelum_${i}@EPSG:900913@pbf/{z}/{x}/{y}.pbf`
 //               ]
 //           });
 //           map.addLayer({
@@ -16373,34 +17082,43 @@ function getFFDHistoryDockWidth() {
 }
 
 function getFluidMeterDockMetrics() {
-  const compactView = window.innerWidth <= 1100;
-  const baseTop = compactView ? 12 : 14;
   const mapContainer = getMapDockContainer();
-  const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
   const mapHeight = mapContainer ? mapContainer.clientHeight : window.innerHeight;
-  const dockWidth = getDockPanelWidth();
-  const metrics = {
-    top: `${baseTop}px`,
-    right: '16px',
-    width: `${dockWidth}px`,
-    maxHeight: `${Math.max(220, Math.floor(mapHeight - baseTop - 16))}px`
-  };
+  
+  let top = '14px';
+  let right = '16px';
+  let left = 'auto';
+  let width = `${getDockPanelWidth()}px`;
+  let maxHeight = `${Math.max(220, Math.floor(mapHeight - 30))}px`;
 
-  const historyPanel = document.getElementById('ffd-history-panel');
-  if (!historyPanel || !historyPanel.classList.contains('open') || compactView) {
-    return metrics;
+  if (window.innerWidth <= 480) {
+    top = '10px';
+    right = 'auto';
+    left = '5%';
+    width = '90%';
+    maxHeight = `${Math.floor(mapHeight * 0.45)}px`;
+  } else if (window.innerWidth <= 1440) {
+    top = '14px';
+    right = '56px';
+    left = 'auto';
+    width = 'clamp(300px, 35vw, 380px)';
+    maxHeight = `${Math.floor(mapHeight * 0.52)}px`;
   }
 
-  const panelRect = historyPanel.getBoundingClientRect();
-  if (!Number.isFinite(panelRect.top) || !mapRect || !Number.isFinite(mapRect.top)) {
-    return metrics;
-  }
+  const metrics = { top, right, left, width, maxHeight };
 
-  const gap = 10;
-  const availableHeight = Math.floor(panelRect.top - mapRect.top - baseTop - gap);
-
-  if (availableHeight > 180) {
-    metrics.maxHeight = `${availableHeight}px`;
+  if (window.innerWidth > 1440) {
+    const historyPanel = document.getElementById('ffd-history-panel');
+    const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
+    if (historyPanel && historyPanel.classList.contains('open')) {
+      const panelRect = historyPanel.getBoundingClientRect();
+      if (Number.isFinite(panelRect.top) && mapRect && Number.isFinite(mapRect.top)) {
+        const availableHeight = Math.floor(panelRect.top - mapRect.top - 24);
+        if (availableHeight > 180) {
+          metrics.maxHeight = `${availableHeight}px`;
+        }
+      }
+    }
   }
 
   return metrics;
@@ -16413,6 +17131,36 @@ function alignFFDHistoryPanelToFluidMeter() {
   if (!historyPanel || !historyPanel.classList.contains('open')) return;
   if (historyPanel.classList.contains('dragging') || historyPanel.dataset.dragged === 'true') return;
 
+  const mapContainer = getMapDockContainer();
+  const mapHeight = mapContainer ? mapContainer.clientHeight : window.innerHeight;
+
+  if (window.innerWidth <= 480) {
+    historyPanel.style.width = '90%';
+    historyPanel.style.left = '5%';
+    historyPanel.style.right = 'auto';
+    historyPanel.style.top = 'auto';
+    historyPanel.style.bottom = '10px';
+    historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.45)}px`;
+    return;
+  } else if (window.innerWidth <= 1440) {
+    historyPanel.style.left = '16px';
+    historyPanel.style.top = 'auto';
+    historyPanel.style.bottom = '16px';
+    historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.42)}px`;
+
+    const isFluidOpen = fluidContainer && fluidContainer.style.display === 'block';
+    const isFluidDocked = isFluidOpen && (!fluidContainer.style.left || fluidContainer.style.left === 'auto');
+    if (window.innerWidth >= 1024 && isFluidDocked) {
+      historyPanel.style.right = 'calc(clamp(300px, 35vw, 380px) + 72px)';
+      historyPanel.style.width = 'auto';
+    } else {
+      historyPanel.style.right = '56px';
+      historyPanel.style.width = 'calc(100% - 72px)';
+    }
+    return;
+  }
+
+  historyPanel.style.maxHeight = 'calc(100% - 32px)';
   const sharedWidth = `${Math.round(getFFDHistoryDockWidth())}px`;
 
   if (!fluidContainer || fluidContainer.style.display !== 'block') {
@@ -16429,7 +17177,6 @@ function alignFFDHistoryPanelToFluidMeter() {
   }
 
   const fluidRect = fluidContainer.getBoundingClientRect();
-  const mapContainer = getMapDockContainer();
   const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
   const measuredRight = mapRect && Number.isFinite(fluidRect.right)
     ? Math.max(16, Math.round(mapRect.right - fluidRect.right))
@@ -16449,7 +17196,7 @@ function dockFluidMeter(container, avoidAligningHistory = false) {
   const metrics = getFluidMeterDockMetrics();
 
   container.style.position = 'absolute';
-  container.style.left = 'auto';
+  container.style.left = metrics.left || 'auto';
   container.style.top = metrics.top;
   container.style.right = metrics.right;
   container.style.width = metrics.width;
@@ -16520,6 +17267,7 @@ function makeDraggable() {
 
 
 function dragStart(e) {
+  if (window.innerWidth <= 1024) return; // Disable dragging on mobile/tablet
   const container = document.getElementById('fluidMeterContainer');
   if (!container) return;
 
@@ -16912,7 +17660,7 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
         drawPercentageSign: true,
         precision: 2,
         drawBubbles: true,
-        size: 130,
+        size: window.innerWidth <= 1440 ? 105 : 130,
         borderWidth: 3,
         backgroundColor: "#262626",
         foregroundColor: "white",
@@ -16940,7 +17688,7 @@ function showDamFluidMeter(damName, percentage, reservoirLevel, details = {}) {
 const fetchDailySituation = async (station) => {
   try {
     const host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
-    const response = await fetch(`http://${host}:5000/api/daily-situation?station=${encodeURIComponent(station)}`);
+    const response = await fetch(`${apiDailyHost}/api/daily-situation?station=${encodeURIComponent(station)}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -17218,6 +17966,8 @@ function closeFluidMeter() {
       document.removeEventListener('touchend', dragEnd);
       isDraggableSetup = false;
     }
+
+    alignFFDHistoryPanelToFluidMeter();
   }
 }
 
@@ -17658,7 +18408,7 @@ function FluidMeter() {
 // ─── DEW Exposure ─────────────────────────────────────────────────────────────
 let exposuresLoadPromiseLegacy = null;
 const exposureDistrictsLegacy = new Set();
-const DEW_EXPOSURE_API_URL_LEGACY = "http://172.18.1.108:8000/get-exposures/";
+const DEW_EXPOSURE_API_URL_LEGACY = "${apiDewHost}/get-exposures/";
 
 function setExposureDropdownMessage(msg) {
   const el = document.getElementById('dew-exposure-status');
@@ -17835,3 +18585,197 @@ if (document.readyState === "loading") {
 } else {
   initDewExposureControls();
 }
+
+// Mobile Resolution Layout Orchestrator: Auto-close overlapping panels
+(function() {
+  const isMobile = () => window.innerWidth <= 768;
+
+  // Watch for window resize to auto-close if moving from desktop to mobile/tablet width
+  window.addEventListener('resize', () => {
+    if (isMobile()) {
+      const sidebar = document.getElementById('app-sidebar');
+      const gisEditPanel = document.querySelector('.gis-layer-edit-panel');
+      if (sidebar && !sidebar.classList.contains('is-closed') && gisEditPanel && gisEditPanel.classList.contains('is-open')) {
+        closeSidebar();
+      }
+    }
+  });
+
+  // Helper to close the sidebar
+  const closeSidebar = () => {
+    const sidebar = document.getElementById('app-sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    const closeBtn = document.getElementById('sidebar-close');
+    if (sidebar && !sidebar.classList.contains('is-closed')) {
+      sidebar.classList.add('is-closed');
+      if (toggleBtn) {
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.classList.remove('is-hidden');
+      }
+      if (closeBtn) {
+        closeBtn.setAttribute('aria-expanded', 'false');
+        closeBtn.style.display = 'none';
+      }
+    }
+  };
+
+  // Helper to close all floating panels
+  const closeAllPanels = (excludeId) => {
+    // FFD History
+    if (excludeId !== 'ffd-history-panel') {
+      const p = document.getElementById('ffd-history-panel');
+      if (p && p.classList.contains('open')) p.classList.remove('open');
+    }
+    // Impact Summary
+    if (excludeId !== 'impact-summary-panel') {
+      const p = document.getElementById('impact-summary-panel');
+      if (p && p.classList.contains('open')) p.classList.remove('open');
+    }
+    // DEW Exposure
+    if (excludeId !== 'dew-exposure-panel') {
+      const p = document.getElementById('dew-exposure-panel');
+      if (p && p.style.display !== 'none') p.style.display = 'none';
+    }
+    // Style Switcher
+    if (excludeId !== 'mapboxgl-style-list') {
+      const sl = document.querySelector('.mapboxgl-style-list');
+      const sb = document.querySelector('.mapboxgl-style-switcher');
+      if (sl && sl.style.display !== 'none') {
+        sl.style.display = 'none';
+        if (sb) sb.style.display = 'block';
+      }
+    }
+    // GIS Layer Edit
+    if (excludeId !== 'gis-layer-edit-panel') {
+      const p = document.querySelector('.gis-layer-edit-panel');
+      if (p && p.classList.contains('is-open')) p.classList.remove('is-open');
+    }
+  };
+
+  const setupOrchestrator = () => {
+    // 0. Auto-close sidebar on initial load if on mobile/tablet
+    if (isMobile()) {
+      closeSidebar();
+    }
+
+    // 1. Listen for sidebar open
+    const sidebar = document.getElementById('app-sidebar');
+    if (sidebar) {
+      const sidebarObserver = new MutationObserver(() => {
+        if (!isMobile()) return;
+        if (!sidebar.classList.contains('is-closed')) {
+          // Sidebar just opened! Close all other panels.
+          closeAllPanels();
+        }
+      });
+      sidebarObserver.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // 2. Listen for FFD History panel open
+    const ffdPanel = document.getElementById('ffd-history-panel');
+    if (ffdPanel) {
+      const ffdObserver = new MutationObserver(() => {
+        if (!isMobile()) return;
+        if (ffdPanel.classList.contains('open')) {
+          closeSidebar();
+          closeAllPanels('ffd-history-panel');
+        }
+      });
+      ffdObserver.observe(ffdPanel, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // 3. Listen for Impact Summary panel open
+    const impactPanel = document.getElementById('impact-summary-panel');
+    if (impactPanel) {
+      const impactObserver = new MutationObserver(() => {
+        if (!isMobile()) return;
+        if (impactPanel.classList.contains('open')) {
+          closeSidebar();
+          closeAllPanels('impact-summary-panel');
+        }
+      });
+      impactObserver.observe(impactPanel, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // 4. Listen for DEW Exposure panel visibility changes
+    const dewPanel = document.getElementById('dew-exposure-panel');
+    if (dewPanel) {
+      const dewObserver = new MutationObserver(() => {
+        if (!isMobile()) return;
+        if (dewPanel.style.display !== 'none') {
+          closeSidebar();
+          closeAllPanels('dew-exposure-panel');
+        }
+      });
+      dewObserver.observe(dewPanel, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    // 5. Use event delegation for dynamically added Mapbox controls instead of a heavy subtree MutationObserver
+    // Mapbox triggers thousands of internal DOM updates; observing the subtree kills performance on mobile.
+    document.addEventListener('click', (e) => {
+      if (!isMobile()) return;
+      
+      const isGisEditBtn = e.target.closest('.gis-layer-edit-btn');
+      const isStyleSwitcherBtn = e.target.closest('.mapboxgl-style-switcher');
+
+      if (isGisEditBtn) {
+        closeSidebar();
+        closeAllPanels('gis-layer-edit-panel');
+      } else if (isStyleSwitcherBtn) {
+        closeSidebar();
+        closeAllPanels('mapboxgl-style-list');
+      }
+    }, true); // Use capture phase to ensure we catch it even if Mapbox stops propagation
+
+    // 6. Collapsible controls toolbar (mobile only)
+    // Inject a gear toggle button into the top-right Mapbox control container
+    const ctrlContainer = document.querySelector('.mapboxgl-ctrl-top-right');
+    if (ctrlContainer) {
+      // Create the wrapper (needs .mapboxgl-ctrl class so Mapbox treats it as a control)
+      const toggleWrap = document.createElement('div');
+      toggleWrap.className = 'mapboxgl-ctrl controls-master-toggle-wrap';
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'controls-master-toggle';
+      toggleBtn.title = 'Toggle map controls';
+      toggleBtn.setAttribute('aria-label', 'Toggle map controls');
+      toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>`;
+
+      toggleWrap.appendChild(toggleBtn);
+
+      // Prepend as the first child so it sits at the top
+      ctrlContainer.insertBefore(toggleWrap, ctrlContainer.firstChild);
+
+      // Start collapsed on mobile
+      if (isMobile()) {
+        ctrlContainer.classList.add('controls-collapsed');
+      }
+
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isCollapsed = ctrlContainer.classList.toggle('controls-collapsed');
+        toggleBtn.classList.toggle('is-active', !isCollapsed);
+      });
+
+      // On resize: collapse on mobile, expand on desktop
+      window.addEventListener('resize', () => {
+        if (isMobile()) {
+          // Keep whatever state the user has set
+        } else {
+          ctrlContainer.classList.remove('controls-collapsed');
+          toggleBtn.classList.remove('is-active');
+        }
+      });
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupOrchestrator);
+  } else {
+    setupOrchestrator();
+  }
+})();
