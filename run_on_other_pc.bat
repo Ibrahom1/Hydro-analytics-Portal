@@ -27,7 +27,7 @@ echo ---------------------------------------------------------
 :: Exporting variables so child bat inherits them
 set "DASHBOARD_PORT=!DASHBOARD_PORT!"
 set "GIS_PORT=!GIS_PORT!"
-call "%~dp0update_waterdashboard_and_run.bat" --nopause --no-ingest
+call "%~dp0update_waterdashboard_and_run.bat" --nopause
 
 echo ---------------------------------------------------------
 echo Step 2: Starting HTTP server for Frontend UI on port !UI_PORT!...
