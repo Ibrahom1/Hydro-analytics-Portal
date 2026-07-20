@@ -12,6 +12,22 @@ set "BOOTSTRAP_PYTHON="
 if not defined DASHBOARD_PORT set "DASHBOARD_PORT=5000"
 if not defined GIS_PORT set "GIS_PORT=8001"
 
+set "NO_INGEST="
+set "NO_PAUSE="
+
+:ParseArgs
+if "%~1"=="--nopause" (
+  set "NO_PAUSE=1"
+)
+if "%~1"=="--no-ingest" (
+  set "NO_INGEST=1"
+)
+if "%~1"=="--pc-b" (
+  set "NO_INGEST=1"
+)
+shift
+if not "%~1"=="" goto ParseArgs
+
 where py >nul 2>&1
 if not errorlevel 1 (
   py -3 -c "import sys" >nul 2>&1
@@ -137,51 +153,55 @@ rem if errorlevel 1 (
 rem   echo Warning: Failed to refresh Indian dam snapshot. Continuing with existing Indian values.
 rem )
 
-echo Updating ft_and_percentage.js from Daily Water Situation.pdf...
-"%VENV_PYTHON%" "%REPO_ROOT%res_storages\storages.py"
-if errorlevel 1 (
-  echo Failed to update dam values from PDF.
-  pause
-  exit /b 1
-)
-
-echo Ingesting Daily Water Situation PDF into SQLite and historical archive...
-"%VENV_PYTHON%" "%REPO_ROOT%res_storages\daily_water_situation_db.py"
-if errorlevel 1 (
-  echo Failed to ingest Daily Water Situation PDF into SQLite.
-  pause
-  exit /b 1
-)
-
-if defined HAS_GIT (
-  echo Committing Daily Water Situation PDF, SQLite, archive, and dashboard JS updates...
-  pushd "%REPO_ROOT%" >nul
+if not defined NO_INGEST (
+  echo Updating ft_and_percentage.js from Daily Water Situation.pdf...
+  "%VENV_PYTHON%" "%REPO_ROOT%res_storages\storages.py"
   if errorlevel 1 (
-    echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
-  ) else (
-    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js"
+    echo Failed to update dam values from PDF.
+    pause
+    exit /b 1
+  )
+
+  echo Ingesting Daily Water Situation PDF into SQLite and historical archive...
+  "%VENV_PYTHON%" "%REPO_ROOT%res_storages\daily_water_situation_db.py"
+  if errorlevel 1 (
+    echo Failed to ingest Daily Water Situation PDF into SQLite.
+    pause
+    exit /b 1
+  )
+
+  if defined HAS_GIT (
+    echo Committing Daily Water Situation PDF, SQLite, archive, and dashboard JS updates...
+    pushd "%REPO_ROOT%" >nul
     if errorlevel 1 (
-      echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
+      echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
     ) else (
-      git diff --cached --quiet
+      git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js"
       if errorlevel 1 (
-        git commit -m "Update daily water situation data"
-        if errorlevel 1 (
-          echo Warning: Failed to commit Daily Water Situation updates. Continuing without push.
-        ) else (
-          git push
-          if errorlevel 1 (
-            echo Warning: Failed to push Daily Water Situation updates. Commit remains local.
-          )
-        )
+        echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
       ) else (
-        echo No Daily Water Situation changes to commit.
+        git diff --cached --quiet
+        if errorlevel 1 (
+          git commit -m "Update daily water situation data"
+          if errorlevel 1 (
+            echo Warning: Failed to commit Daily Water Situation updates. Continuing without push.
+          ) else (
+            git push
+            if errorlevel 1 (
+              echo Warning: Failed to push Daily Water Situation updates. Commit remains local.
+            )
+          )
+        ) else (
+          echo No Daily Water Situation changes to commit.
+        )
       )
+      popd >nul
     )
-    popd >nul
+  ) else (
+    echo Git not found. Daily Water Situation updates were not committed.
   )
 ) else (
-  echo Git not found. Daily Water Situation updates were not committed.
+  echo Skipping PDF ingestion, database updates, and Git push (run with --no-ingest/--pc-b).
 )
 
 if not exist "%REPO_ROOT%waterdashboard\backend\app.py" (
@@ -265,6 +285,6 @@ echo   Hydro GIS Uploader API   - http://localhost:%GIS_PORT%/api/gis/health
 echo.
 echo If either endpoint is not ready immediately, wait a few seconds for its window to finish starting.
 echo.
-if not "%~1"=="--nopause" pause
+if not defined NO_PAUSE pause
 
 endlocal
