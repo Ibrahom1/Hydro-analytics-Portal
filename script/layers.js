@@ -21,6 +21,7 @@ const apiDewHost = isProxied ? `${proxyBase}/proxy_api_dew` : 'http://172.18.1.1
 const _host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
 const apiDailyHost = isProxied ? `${proxyBase}/proxy_api_daily` : `http://${_host}:5000`;
 const apiPrecipGeojsonHost = isProxied ? `${proxyBase}/proxy_api_precip` : 'http://172.18.0.19:5000';
+const ffdRiversHost = isProxied ? `${proxyBase}/proxy_ffd_rivers` : 'http://172.18.7.21';
 
 const mapDiv = document.getElementById("map1");
 
@@ -1462,9 +1463,8 @@ function toggleHighlight(checkbox) {
   }
 
   if (checkbox.id === 'ffd') {
-    const legend = document.getElementById('ffdLegend');
-    if (legend) {
-      legend.remove();
+    if (typeof ffdLegend === 'function') {
+      ffdLegend();
     }
   }
 
@@ -3059,6 +3059,9 @@ function showFloodLegend() {
 
   // Add legend to page
   document.body.appendChild(legend);
+  if (typeof repositionFFDLegend === 'function') {
+    requestAnimationFrame(() => repositionFFDLegend());
+  }
 }
 
 // Function to hide the legend
@@ -3066,6 +3069,9 @@ function hideFloodLegend() {
   const existingLegend = document.getElementById('floodLegend');
   if (existingLegend) {
     existingLegend.remove();
+  }
+  if (typeof repositionFFDLegend === 'function') {
+    requestAnimationFrame(() => repositionFFDLegend());
   }
 }
 
@@ -3808,7 +3814,7 @@ const map1Layers = [
   "Terrain_Jhal_Depth", "Terrain_hyd", "Depth_Max_Terrain_DEM_AJK1",
   // Other important layers that were missing
   "glofas", "gmrc_wapda_stations", "pmd_stations", "damaged_pmd_stations",
-  "ffd_point", "ffd_label", "DI_Khan_HT", "DG khan HT", "Pir_Panjal_HT",
+  "ffd_point", "ffd_label", "ffd_forecast_square", "DI_Khan_HT", "DG khan HT", "Pir_Panjal_HT",
   "Mardan_inundation_filter",
   "kech_panjgur_50mm_filter", "kech_panjgur_100mm_filter",
   "munawar_tawi_60mm_filter", "munawar_150mm_filter",
@@ -6012,9 +6018,9 @@ function applyPendingBasemapConfig(map) {
 
 //         // Check if this is one of our special dams and show fluid meter with reservoir level
 //         const damData = {
-//             'Mangla Dam': { percentage: fillPercentage_Mangla, level: val_Mangla },
-//             'Chashma': { percentage: fillPercentage_Chashma, level: val_Chashma },
-//             'Tarbela Dam': { percentage: fillPercentage_Tarbela, level: val_Tarbela }
+//             'Mangla Dam': { percentage: fillPercentage_Mangla, level: res_lvl_value_Mangla },
+//             'Chashma': { percentage: fillPercentage_Chashma, level: res_lvl_value_Chashma },
+//             'Tarbela Dam': { percentage: fillPercentage_Tarbela, level: res_lvl_value_Tarbela }
 //         };
 
 //         if (damData.hasOwnProperty(props.name)) {
@@ -6288,6 +6294,9 @@ const convertToGeojson = (data) => {
         "cyp_discharge": location.cyp_discharge || "",
         "cyp_status": location.cyp_status || "",
         "cyp_date": location.cyp_date || "",
+        "forecast_status": location.forecast_status || "",
+        "forecast_qual": location.forecast_qual || "",
+        "forecast_quant": location.forecast_quant || "",
         "from": FLOOD_ROUTING_MAP[location.name]?.from || [],
         "lag_hours": FLOOD_ROUTING_MAP[location.name]?.lag || [],
       },
@@ -6419,6 +6428,10 @@ function addHydrometLayersToMap(map) {
           else if (inflow > 30000) inflowClass = 'MEDIUM';
         }
         feature.properties.inflow_class = inflowClass;
+
+        // Normalize forecast status for consistent map styling
+        const rawForecast = String(feature.properties.forecast_status || '').trim();
+        feature.properties.forecast_status_upper = rawForecast.toUpperCase().replace(/\s+/g, '_');
       });
 
       return geojson;
@@ -6539,25 +6552,97 @@ function addHydrometLayersToMap(map) {
         paint: {
           'circle-color': [
             'match',
-            ['get', 'status'],
-            'Normal', '#28a745',           // Green - Normal Flow
-            'NORMAL', '#28a745',           // Green - Normal Flow
-            'Low', '#00FFFF',             // Teal - Low Flood  
-            'LOW', '#00FFFF',             // Teal - Low Flood
-            'Medium', '#0000FF',          // Blue - Medium Flood
-            'MEDIUM', '#0000FF',          // Blue - Medium Flood
-            'High', '#fd7e14',            // Orange - High Flood
-            'HIGH', '#fd7e14',            // Orange - High Flood
-            'Very High', '#7B3F00',       // Purple/Dark Red - Very High Flood
-            'VERY_HIGH', '#7B3F00',       // Purple/Dark Red - Very High Flood
-            'Exceptionally High', '#ff0000', // Red - Exceptionally High Flood
-            'EX_HIGH', '#ff0000',         // Red - Exceptionally High Flood
-            '#999999'                     // Default gray
+            ['coalesce', ['get', 'status_upper'], ['get', 'status'], ''],
+            'NORMAL', '#288846',
+            'Normal', '#288846',
+            'NORMAL_FLOW', '#288846',
+            'LOW', '#2c65bd',
+            'Low', '#2c65bd',
+            'LOW_FLOOD', '#2c65bd',
+            'MEDIUM', '#f6c445',
+            'Medium', '#f6c445',
+            'MEDIUM_FLOOD', '#f6c445',
+            'HIGH', '#f78339',
+            'High', '#f78339',
+            'HIGH_FLOOD', '#f78339',
+            'VERY_HIGH', '#ef3742',
+            'Very High', '#ef3742',
+            'VERY_HIGH_FLOOD', '#ef3742',
+            'EX_HIGH', '#a51f2b',
+            'EXCEPTIONALLY_HIGH', '#a51f2b',
+            'Exceptionally High', '#a51f2b',
+            'EXCEPTIONALLY_HIGH_FLOOD', '#a51f2b',
+            '#808080'                     // Default gray
           ],
           'circle-radius': 7,
           'circle-opacity': 1,
           'circle-stroke-color': '#fff',
           'circle-stroke-width': 2
+        }
+      });
+
+      // Generate colored square outline images for forecast status markers
+      const squareSize = 22;
+      const createForecastSquare = (borderColor) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = squareSize;
+        canvas.height = squareSize;
+        const ctx = canvas.getContext('2d');
+        // Transparent background
+        ctx.clearRect(0, 0, squareSize, squareSize);
+        // Colored border outline only (no fill)
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(1.5, 1.5, squareSize - 3, squareSize - 3);
+        return { width: squareSize, height: squareSize, data: ctx.getImageData(0, 0, squareSize, squareSize).data };
+      };
+
+      const forecastSquareMap = {
+        'forecast-sq-normal': '#288846',
+        'forecast-sq-low': '#2c65bd',
+        'forecast-sq-medium': '#f6c445',
+        'forecast-sq-high': '#f78339',
+        'forecast-sq-very-high': '#ef3742',
+        'forecast-sq-ex-high': '#a51f2b',
+        'forecast-sq-default': '#808080'
+      };
+
+      Object.entries(forecastSquareMap).forEach(([name, color]) => {
+        if (!map1.hasImage(name)) {
+          map1.addImage(name, createForecastSquare(color));
+        }
+      });
+
+      // Add forecast status square layer (centered on circle point)
+      map1.addLayer({
+        id: 'ffd_forecast_square',
+        type: 'symbol',
+        source: 'ffd',
+        filter: ['!=', ['get', 'forecast_status_upper'], ''],
+        layout: {
+          'visibility': initialVisibility,
+          'icon-image': [
+            'match',
+            ['coalesce', ['get', 'forecast_status_upper'], ''],
+            'NORMAL', 'forecast-sq-normal',
+            'NORMAL_FLOW', 'forecast-sq-normal',
+            'LOW', 'forecast-sq-low',
+            'LOW_FLOOD', 'forecast-sq-low',
+            'MEDIUM', 'forecast-sq-medium',
+            'MEDIUM_FLOOD', 'forecast-sq-medium',
+            'HIGH', 'forecast-sq-high',
+            'HIGH_FLOOD', 'forecast-sq-high',
+            'VERY_HIGH', 'forecast-sq-very-high',
+            'VERY_HIGH_FLOOD', 'forecast-sq-very-high',
+            'EX_HIGH', 'forecast-sq-ex-high',
+            'EXCEPTIONALLY_HIGH', 'forecast-sq-ex-high',
+            'EXCEPTIONALLY_HIGH_FLOOD', 'forecast-sq-ex-high',
+            'forecast-sq-default'
+          ],
+          'icon-size': 1,
+          'icon-offset': [0, 0],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
         }
       });
 
@@ -8213,7 +8298,17 @@ function addHydrometLayersToMap(map) {
           closeBtn.addEventListener('click', () => {
             panel.classList.remove('open');
             closeFullscreen();
+            if (typeof ffdLegend === 'function') ffdLegend();
           });
+        }
+
+        // Observer to automatically sync ffdLegend visibility whenever history panel opens or closes
+        if (!panel._ffdLegendObserverAdded) {
+          const legendObserver = new MutationObserver(() => {
+            if (typeof ffdLegend === 'function') ffdLegend();
+          });
+          legendObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
+          panel._ffdLegendObserverAdded = true;
         }
 
         if (fullscreenBtn && fullscreenPanel) {
@@ -8321,12 +8416,14 @@ function addHydrometLayersToMap(map) {
             const newTop = startTop + dy;
 
             const maxLeft = Math.max(8, window.innerWidth - panelWidth - 8);
-            const maxTop = Math.max(8, window.innerHeight - panelHeight - 8);
+            // Keep at least 60px of the panel header visible on screen
+            const maxTop = Math.max(8, window.innerHeight - 60);
 
             panel.style.left = `${clamp(newLeft, 8, maxLeft)}px`;
             panel.style.top = `${clamp(newTop, 8, maxTop)}px`;
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
+            // Height is already frozen from pointerdown — don't touch it here
             event.preventDefault();
           };
 
@@ -8337,6 +8434,9 @@ function addHydrometLayersToMap(map) {
             if (hasMoved) {
               panel.dataset.dragged = 'true';
             }
+            // Clear ALL inline height/maxHeight — let CSS handle sizing
+            panel.style.height = '';
+            panel.style.maxHeight = '';
             endDrag();
 
             const fluidContainer = document.getElementById('fluidMeterContainer');
@@ -8359,7 +8459,11 @@ function addHydrometLayersToMap(map) {
             startLeft = rect.left;
             startTop = rect.top;
             panelWidth = rect.width;
-            panelHeight = rect.height;
+            panelHeight = Math.round(rect.height);
+            // Freeze the panel at its exact current content height during drag
+            // Using rounded integer to prevent sub-pixel accumulation across drags
+            panel.style.height = panelHeight + 'px';
+            panel.style.maxHeight = panelHeight + 'px';
             panel.classList.add('dragging');
             if (typeof header.setPointerCapture === 'function' && event.pointerId !== undefined) {
               try {
@@ -8427,6 +8531,7 @@ function addHydrometLayersToMap(map) {
         }
 
         panel.classList.add('open');
+        if (typeof ffdLegend === 'function') ffdLegend();
 
         const fluidContainer = document.getElementById('fluidMeterContainer');
         if (fluidContainer && fluidContainer.style.display === 'block') {
@@ -8640,6 +8745,33 @@ function addHydrometLayersToMap(map) {
                                 </div>
                             </div>` : '';
 
+        // Forecast (24h) section
+        const forecastColor = getStatusColor(props.forecast_status);
+        const formatForecastQuant = (quant) => {
+          if (!quant) return '';
+          return String(quant).replace(/\b\d+\b/g, (match) => {
+            const num = parseFloat(match);
+            return !isNaN(num) ? num.toLocaleString() : match;
+          });
+        };
+
+        const forecastHTML = (props.forecast_status && props.forecast_status.trim() !== '' && props.forecast_status.toLowerCase() !== 'n/a') ? `
+                            <div class="forecast-section">
+                                <div class="forecast-grid">
+                                    <div class="forecast-row">
+                                        <span class="popup-meta-label">Forecast (24h):</span>
+                                        <span class="forecast-badge" style="background-color: ${forecastColor};">
+                                            ${escapePopupText(props.forecast_qual || props.forecast_status)}
+                                        </span>
+                                    </div>
+                                    ${props.forecast_quant ? `
+                                    <div class="forecast-quant-row">
+                                        <span class="popup-meta-label">Est. Range:</span>
+                                        <span class="forecast-quant-value">${escapePopupText(formatForecastQuant(props.forecast_quant))}</span>
+                                    </div>` : ''}
+                                </div>
+                            </div>` : '';
+
         const popupHTML = `
                     <div class="ffd-popup-container">
                         <!-- Header Section -->
@@ -8683,6 +8815,9 @@ function addHydrometLayersToMap(map) {
                                     <span class="timestamp-value">${props.recording_time || 'Unknown'}</span>
                                 </div>
                             </div>
+
+                            <!-- Forecast (24h) -->
+                            ${forecastHTML}
 
                             <!-- Fallback HTML Max Peak -->
                             ${maxPeakHTML}
@@ -8767,14 +8902,55 @@ function addHydrometLayersToMap(map) {
                             font-size: 10px;
                         }
 
-                        .discharge-section, .trend-section, .popup-meta-section, .peak-section {
+                        .discharge-section, .trend-section, .popup-meta-section, .peak-section, .forecast-section {
                             margin-bottom: 8px;
                         }
 
-                        .discharge-grid, .trend-grid, .popup-meta-grid, .peak-grid {
+                        .discharge-grid, .trend-grid, .popup-meta-grid, .peak-grid, .forecast-grid {
                             display: flex;
                             flex-direction: column;
                             gap: 4px;
+                        }
+
+                        .forecast-row {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 4px 8px;
+                            background: #f8f9fa;
+                            border-radius: 6px;
+                            border: 1px solid #e3f2fd;
+                            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                        }
+
+                        .forecast-badge {
+                            color: #fff;
+                            padding: 3px 8px;
+                            border-radius: 4px;
+                            font-size: 10px;
+                            font-weight: 700;
+                            text-transform: uppercase;
+                            letter-spacing: 0.3px;
+                            white-space: nowrap;
+                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+                        }
+
+                        .forecast-quant-row {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 4px 8px;
+                            background: #f8f9fa;
+                            border-radius: 6px;
+                            border: 1px solid #e3f2fd;
+                            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                        }
+
+                        .forecast-quant-value {
+                            font-size: 13px;
+                            font-weight: 700;
+                            color: #212529;
+                            font-style: normal;
                         }
 
                         .discharge-item, .trend-item, .popup-meta-item {
@@ -9024,7 +9200,7 @@ function addHydrometLayersToMap(map) {
         const damData = {
           'Mangla Dam': {
             percentage: fillPercentage_Mangla,
-            level: val_Mangla,
+            level: res_lvl_value_Mangla,
             country: 'Pakistan',
             region: 'Mirpur, AJK',
             fullCapacity: 1242,
@@ -9036,7 +9212,7 @@ function addHydrometLayersToMap(map) {
           },
           'Chashma': {
             percentage: fillPercentage_Chashma,
-            level: val_Chashma,
+            level: res_lvl_value_Chashma,
             country: 'Pakistan',
             region: 'Mianwali, Punjab',
             fullCapacity: 649,
@@ -9048,7 +9224,7 @@ function addHydrometLayersToMap(map) {
           },
           'Tarbela Dam': {
             percentage: fillPercentage_Tarbela,
-            level: val_Tarbela,
+            level: res_lvl_value_Tarbela,
             country: 'Pakistan',
             region: 'Haripur, KP',
             fullCapacity: 1550,
@@ -9126,26 +9302,38 @@ function addHydrometLayersToMap(map) {
 
       // Helper function to get status color (keeping your existing function)
       function getStatusColor(status) {
-        const normalizedStatus = status ? status.toUpperCase() : '';
+        const normalizedStatus = status ? status.toUpperCase().trim() : '';
 
         switch (normalizedStatus) {
           case 'NORMAL':
-            return '#28a745';  // Green - Normal Flow
+          case 'NORMAL FLOW':
+          case 'NORMAL_FLOW':
+            return '#288846';  // Green - Normal Flow
           case 'LOW':
-            return '#00FFFF';  // Teal - Low Flood
+          case 'LOW FLOOD':
+          case 'LOW_FLOOD':
+            return '#2c65bd';  // Blue - Low Flood
           case 'MEDIUM':
-            return '#0000FF';  // Blue - Medium Flood
+          case 'MEDIUM FLOOD':
+          case 'MEDIUM_FLOOD':
+            return '#f6c445';  // Yellow - Medium Flood
           case 'HIGH':
-            return '#fd7e14';  // Orange - High Flood
+          case 'HIGH FLOOD':
+          case 'HIGH_FLOOD':
+            return '#f78339';  // Orange - High Flood
           case 'VERY_HIGH':
           case 'VERY HIGH':
-            return '#7B3F00';  // Purple/Dark Red - Very High Flood
+          case 'VERY HIGH FLOOD':
+          case 'VERY_HIGH_FLOOD':
+            return '#ef3742';  // Red - Very High Flood
           case 'EX_HIGH':
           case 'EXCEPTIONALLY_HIGH':
           case 'EXCEPTIONALLY HIGH':
-            return '#ff0000';  // Red - Exceptionally High Flood
+          case 'EXCEPTIONALLY HIGH FLOOD':
+          case 'EXCEPTIONALLY_HIGH_FLOOD':
+            return '#a51f2b';  // Dark Red / Maroon - Exceptionally High
           default:
-            return '#999999';  // Default gray
+            return '#808080';  // Default gray
         }
       }
 
@@ -9164,18 +9352,26 @@ function addHydrometLayersToMap(map) {
   };
 
   // Add FFD layers (style load already guarantees layers can be added)
-  addFFDLayers();
+  addFFDLayers().then(() => {
+    // ffdLegend(); // Commented out per request: do not show FFD legend on toggle
+  });
 
   // Toggle visibility based on checkbox (only add listener once)
   if (!document.getElementById("ffd")._ffdListenerAdded) {
     document.getElementById("ffd").addEventListener("change", function () {
       const isVisible = this.checked;
+      ffdLegend();
 
       // Function to apply visibility once layers are available
       const applyFFDVisibility = () => {
         // Toggle FFD point layer
         if (map1.getLayer("ffd_point")) {
           map1.setLayoutProperty("ffd_point", "visibility", isVisible ? "visible" : "none");
+        }
+
+        // Toggle FFD forecast square layer
+        if (map1.getLayer("ffd_forecast_square")) {
+          map1.setLayoutProperty("ffd_forecast_square", "visibility", isVisible ? "visible" : "none");
         }
 
         // Toggle FFD label layer
@@ -9287,6 +9483,101 @@ function addHydrometLayersToMap(map) {
 
   // Expose functions globally for debugging/manual control
   window.updateFFDData = updateFFDData;
+
+  // FFD Rivers Layer Integration
+  const addFFDRiversLayer = async () => {
+    try {
+      if (map1.getSource('ffd_rivers')) {
+        return;
+      }
+
+      console.log('Fetching FFD Rivers data...');
+      const response = await fetch(`${ffdRiversHost}/get-ffd-rivers/`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const geojson = await response.json();
+      if (geojson && Array.isArray(geojson.features)) {
+        geojson.features.forEach(f => {
+          if (f && f.properties && typeof f.properties.color === 'string') {
+            let col = f.properties.color.trim();
+            if (col && !col.startsWith('#')) {
+              f.properties.color = '#' + col;
+            }
+          }
+        });
+      }
+
+      map1.addSource('ffd_rivers', {
+        type: 'geojson',
+        data: geojson
+      });
+
+      // Add fill layer styled using feature raw color and opacity
+      map1.addLayer({
+        id: 'ffd_rivers_layer',
+        type: 'fill',
+        source: 'ffd_rivers',
+        layout: {
+          'visibility': document.getElementById('ffd_rivers')?.checked ? 'visible' : 'none'
+        },
+        paint: {
+          'fill-color': ['coalesce', ['get', 'color'], '#017321'],
+          'fill-opacity': ['coalesce', ['get', 'opacity'], 0.6]
+        }
+      });
+
+      // Add line layer for outline/stroke using feature raw color
+      map1.addLayer({
+        id: 'ffd_rivers_outline',
+        type: 'line',
+        source: 'ffd_rivers',
+        layout: {
+          'visibility': document.getElementById('ffd_rivers')?.checked ? 'visible' : 'none'
+        },
+        paint: {
+          'line-color': ['coalesce', ['get', 'color'], '#017321'],
+          'line-width': 1.5,
+          'line-opacity': ['coalesce', ['get', 'opacity'], 0.8]
+        }
+      });
+
+      console.log('FFD Rivers layer added successfully');
+    } catch (err) {
+      console.error('Failed to load FFD Rivers layer:', err);
+    }
+  };
+
+  // Toggle visibility based on checkbox change
+  if (document.getElementById("ffd_rivers") && !document.getElementById("ffd_rivers")._ffdRiversListenerAdded) {
+    document.getElementById("ffd_rivers").addEventListener("change", async function () {
+      const isVisible = this.checked;
+      if (!map1.getSource('ffd_rivers')) {
+        await addFFDRiversLayer();
+      } else {
+        if (map1.getLayer("ffd_rivers_layer")) {
+          map1.setLayoutProperty("ffd_rivers_layer", "visibility", isVisible ? "visible" : "none");
+        }
+        if (map1.getLayer("ffd_rivers_outline")) {
+          map1.setLayoutProperty("ffd_rivers_outline", "visibility", isVisible ? "visible" : "none");
+        }
+      }
+    });
+    document.getElementById("ffd_rivers")._ffdRiversListenerAdded = true;
+  }
+
+  // Toggle visibility for KP flood cell irrigation department
+  if (document.getElementById("kp_flood_cell") && !document.getElementById("kp_flood_cell")._kpFloodCellListenerAdded) {
+    document.getElementById("kp_flood_cell").addEventListener("change", function () {
+      const isVisible = this.checked;
+      ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'].forEach(layerId => {
+        if (map1.getLayer(layerId)) {
+          map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
+        }
+      });
+    });
+    document.getElementById("kp_flood_cell")._kpFloodCellListenerAdded = true;
+  }
 
 
 
@@ -12649,30 +12940,30 @@ document.getElementById("di_ht").addEventListener("change", function () {
     const indianDamData = {
       'BHAKRA DAM': {
         percentage: fillPercentage_Bhakra,
-        level: val_Bhakra,
+        level: res_lvl_value_Bhakra,
         country: 'India',
         region: 'Bilaspur, HP',
         fullCapacity: 1680,
         fillLastYear: fillPercentage_Bhakra_last_year,
-        fillNormal: fillPercentage_Bhakra_normal
+        fillNormal: fillPercentage_Bhakra_5year_normal
       },
       'PONG DAM': {
         percentage: fillPercentage_Pong,
-        level: val_Pong,
+        level: res_lvl_value_Pong,
         country: 'India',
         region: 'Kangra, HP',
         fullCapacity: 1390,
         fillLastYear: fillPercentage_Pong_last_year,
-        fillNormal: fillPercentage_Pong_normal
+        fillNormal: fillPercentage_Pong_5year_normal
       },
       'THEIN DAM': {
         percentage: fillPercentage_Thein,
-        level: val_Thein,
+        level: res_lvl_value_Thein,
         country: 'India',
         region: 'Pathankot, PB',
-        fullCapacity: 1730,
+        fullCapacity: 1732,
         fillLastYear: fillPercentage_Thein_last_year,
-        fillNormal: fillPercentage_Thein_normal
+        fillNormal: fillPercentage_Thein_5year_normal
       }
     };
     const damName = feature.properties.Name;
@@ -16787,91 +17078,205 @@ function createFfdLegend() {
   legendDiv.id = 'ffdLegend';
   legendDiv.style.cssText = `
     position: fixed;
-    bottom: 191px;
-    right: 22px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px 14px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 184px;
     display: none;
     font-family: Arial, sans-serif;
   `;
 
-  // Create legend title
-  const titleDiv = document.createElement('div');
-  titleDiv.textContent = 'Flow Levels';
-  titleDiv.style.cssText = `
-    font-size: 14px;
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 8px;
-    text-align: center;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 6px;
-  `;
-
-  // Legend items data
+  // Legend items data (shared color palette)
   const legendItems = [
-    { color: 'green', label: 'Normal' },
-    { color: '#00FFFF', label: 'Low' },
-    { color: '#0000FF', label: 'Medium' },
-    { color: '#FFA500', label: 'High' },
-    { color: '#A52A2A', label: 'Very High' },
-    { color: '#FF0000', label: 'Exceptionally High' }
+    { color: '#288846', label: 'Normal Flow' },
+    { color: '#2c65bd', label: 'Low Flood' },
+    { color: '#f6c445', label: 'Medium Flood' },
+    { color: '#f78339', label: 'High Flood' },
+    { color: '#ef3742', label: 'Very High Flood' },
+    { color: '#a51f2b', label: 'Exceptionally High' }
   ];
 
-  // Add title to legend
-  legendDiv.appendChild(titleDiv);
-
-  // Create legend items
-  legendItems.forEach((item, index) => {
-    const itemDiv = document.createElement('div');
-    itemDiv.style.cssText = `
-      display: flex;
-      align-items: center;
-      margin-bottom: ${index === legendItems.length - 1 ? '0' : '6px'};
-      font-size: 12px;
-    `;
-
-    const colorDiv = document.createElement('div');
-    colorDiv.style.cssText = `
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      margin-right: 8px;
-      border: 2px solid #fff;
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
-      background-color: ${item.color};
-    `;
-
-    const labelSpan = document.createElement('span');
-    labelSpan.textContent = item.label;
-    labelSpan.style.cssText = `
-      color: #333;
-      font-weight: 500;
-    `;
-
-    itemDiv.appendChild(colorDiv);
-    itemDiv.appendChild(labelSpan);
-    legendDiv.appendChild(itemDiv);
-  });
+  // Build legend using innerHTML for cleaner two-column layout
+  legendDiv.innerHTML = `
+    <style>
+      #ffdLegend {
+        position: fixed;
+        bottom: 120px;
+        right: 20px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 8px;
+        padding: 10px 14px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        transition: all 0.2s ease-in-out;
+      }
+      #ffdLegend .ffd-legend-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
+        gap: 16px;
+      }
+      #ffdLegend .ffd-legend-col-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2c3e50;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      #ffdLegend .ffd-legend-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        gap: 8px;
+      }
+      #ffdLegend .ffd-legend-row:last-child {
+        margin-bottom: 0;
+      }
+      #ffdLegend .ffd-legend-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #333;
+        flex: 1;
+        white-space: nowrap;
+      }
+      #ffdLegend .ffd-legend-circle {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
+      }
+      #ffdLegend .ffd-legend-separator {
+        width: 1px;
+        height: 13px;
+        background: #ddd;
+        margin: 0 4px;
+        flex-shrink: 0;
+      }
+      #ffdLegend .ffd-legend-square {
+        width: 13px;
+        height: 13px;
+        border-radius: 2px;
+        border: 2px solid #333;
+        flex-shrink: 0;
+      }
+      @media (max-width: 1024px) {
+        #ffdLegend {
+          bottom: 100px;
+          right: 16px;
+          padding: 8px 12px;
+        }
+      }
+      @media (max-width: 768px) {
+        #ffdLegend {
+          bottom: 90px;
+          right: 12px;
+          padding: 8px 10px;
+        }
+        #ffdLegend .ffd-legend-label {
+          font-size: 10px;
+        }
+        #ffdLegend .ffd-legend-col-title {
+          font-size: 10px;
+        }
+      }
+      @media (max-width: 480px) {
+        #ffdLegend {
+          bottom: 80px;
+          right: 8px;
+          padding: 6px 8px;
+          max-width: calc(100vw - 16px);
+        }
+        #ffdLegend .ffd-legend-circle,
+        #ffdLegend .ffd-legend-square {
+          width: 11px;
+          height: 11px;
+        }
+      }
+    </style>
+    <div class="ffd-legend-header">
+      <span class="ffd-legend-col-title">Status</span>
+      <span class="ffd-legend-col-title" style="margin-left: auto;">Forecast (24h)</span>
+    </div>
+    ${legendItems.map(item => `
+      <div class="ffd-legend-row">
+        <span class="ffd-legend-label">${item.label}</span>
+        <div class="ffd-legend-circle" style="background-color: ${item.color};"></div>
+        <div class="ffd-legend-separator"></div>
+        <div class="ffd-legend-square" style="background-color: ${item.color};"></div>
+      </div>
+    `).join('')}
+  `;
 
   // Add legend to body
   document.body.appendChild(legendDiv);
 }
 
+// Helper to calculate dynamic stack position for FFD legend to prevent overlap with Flood Extent legend
+function repositionFFDLegend() {
+  const ffdLegendEl = document.getElementById('ffdLegend');
+  if (!ffdLegendEl || ffdLegendEl.style.display === 'none') return;
+
+  const floodLegendEl = document.getElementById('floodLegend');
+  const isFloodLegendVisible = floodLegendEl && floodLegendEl.offsetHeight > 0 && window.getComputedStyle(floodLegendEl).display !== 'none';
+
+  const width = window.innerWidth;
+  let baseRight = '20px';
+  let baseBottom = 20;
+
+  if (width <= 480) {
+    baseRight = '8px';
+    baseBottom = 10;
+  } else if (width <= 768) {
+    baseRight = '12px';
+    baseBottom = 14;
+  } else if (width <= 1024) {
+    baseRight = '16px';
+    baseBottom = 16;
+  }
+
+  if (isFloodLegendVisible) {
+    const floodHeight = floodLegendEl.offsetHeight || 190;
+    const floodStyle = window.getComputedStyle(floodLegendEl);
+    const floodBottom = parseInt(floodStyle.bottom, 10) || baseBottom;
+    const newBottom = floodBottom + floodHeight + 12;
+    ffdLegendEl.style.bottom = `${newBottom}px`;
+  } else {
+    ffdLegendEl.style.bottom = `${baseBottom}px`;
+  }
+  ffdLegendEl.style.right = baseRight;
+}
+
+if (typeof window !== 'undefined' && !window._ffdLegendResizeAdded) {
+  window.addEventListener('resize', repositionFFDLegend);
+  window._ffdLegendResizeAdded = true;
+}
+
 // Function to toggle FFD legend visibility
 function ffdLegend() {
+  createFfdLegend();
   const legend = document.getElementById('ffdLegend');
   const checkbox = document.getElementById('ffd');
+  const historyPanel = document.getElementById('ffd-history-panel');
 
-  if (legend && checkbox) {
-    if (checkbox.checked) {
+  const isHistoryOpen = historyPanel && historyPanel.classList.contains('open');
+
+  if (legend) {
+    if (checkbox && checkbox.checked && !isHistoryOpen) {
       legend.style.display = 'block';
+      requestAnimationFrame(() => repositionFFDLegend());
     } else {
       legend.style.display = 'none';
     }
@@ -16919,6 +17324,8 @@ function getMap1VisibilityStates() {
     { checkboxId: 'uncBoundary', layers: ['Union_Council', 'unionBoundary_label'] },
     { checkboxId: 'PakRivers', layers: ['Pakistan_Rivers'] },
     { checkboxId: 'kp_Rivers', layers: ['KP_RIVERS'] },
+    { checkboxId: 'ffd_rivers', layers: ['ffd_rivers_layer', 'ffd_rivers_outline'] },
+    { checkboxId: 'kp_flood_cell', layers: ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'] },
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
     { checkboxId: 'india', layers: ['indian'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },
@@ -17134,19 +17541,21 @@ function alignFFDHistoryPanelToFluidMeter() {
   const mapContainer = getMapDockContainer();
   const mapHeight = mapContainer ? mapContainer.clientHeight : window.innerHeight;
 
+  historyPanel.style.height = 'auto';
+
   if (window.innerWidth <= 480) {
     historyPanel.style.width = '90%';
     historyPanel.style.left = '5%';
     historyPanel.style.right = 'auto';
     historyPanel.style.top = 'auto';
     historyPanel.style.bottom = '10px';
-    historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.45)}px`;
+    historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.85)}px`;
     return;
   } else if (window.innerWidth <= 1440) {
     historyPanel.style.left = '16px';
     historyPanel.style.top = 'auto';
     historyPanel.style.bottom = '16px';
-    historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.42)}px`;
+    historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.85)}px`;
 
     const isFluidOpen = fluidContainer && fluidContainer.style.display === 'block';
     const isFluidDocked = isFluidOpen && (!fluidContainer.style.left || fluidContainer.style.left === 'auto');
@@ -17160,7 +17569,7 @@ function alignFFDHistoryPanelToFluidMeter() {
     return;
   }
 
-  historyPanel.style.maxHeight = 'calc(100% - 32px)';
+  historyPanel.style.maxHeight = `${Math.floor(mapHeight * 0.85)}px`;
   const sharedWidth = `${Math.round(getFFDHistoryDockWidth())}px`;
 
   if (!fluidContainer || fluidContainer.style.display !== 'block') {
@@ -18778,4 +19187,22 @@ if (document.readyState === "loading") {
   } else {
     setupOrchestrator();
   }
+})();
+
+// Auto-Sync Handler: keeps portal data fresh without requiring manual batch runs
+(function initPortalAutoSync() {
+  const syncLivePortalData = () => {
+    fetch('/api/sync-now', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.status === 'success') {
+          console.log('🔄 Portal data auto-synced successfully');
+        }
+      })
+      .catch(() => {});
+  };
+
+  // Run on initial load and every 5 minutes (300,000 ms)
+  setTimeout(syncLivePortalData, 4000);
+  setInterval(syncLivePortalData, 300000);
 })();

@@ -26,10 +26,58 @@ ROUTES = {
     '/proxy_api_daily/': f'http://127.0.0.1:{DASHBOARD_PORT}/',
     '/proxy_api_gis/': f'http://127.0.0.1:{GIS_PORT}/api/gis/',
     '/proxy_api_precip/': 'http://172.18.0.19:5000/',
+    '/proxy_ffd_rivers/': 'http://172.18.7.21/',
 }
 
 # The default UI server (Live Server or Python HTTP server)
 UI_URL = f"http://127.0.0.1:{UI_PORT}/"
+
+import threading
+import time
+from pathlib import Path
+
+def run_auto_sync():
+    """Background task to auto-sync Google Sheets, Daily Water Situation, and microservices into ft_and_percentage.js"""
+    try:
+        repo_root = Path(__file__).resolve().parent
+        js_target = repo_root / "script" / "ft_and_percentage.js"
+        
+        # 1. Sync Google Sheets (Indian Dams)
+        from res_storages.fetch_indian_dams_sheet import update_indian_dams_from_google_sheet
+        update_indian_dams_from_google_sheet(js_target)
+
+        # 2. Sync Daily Water Situation PDF (Pakistani Dams & Storage)
+        pdf_path = repo_root / "res_storages" / "Daily Water Situation.pdf"
+        if pdf_path.exists():
+            from res_storages.storages import main as run_storages_main
+            run_storages_main()
+
+        # 3. Ingest Daily Water Situation PDF into SQLite database
+        db_path = repo_root / "data" / "daily_water_situation.sqlite"
+        archive_dir = repo_root / "res_storages" / "Historical Daily Storages"
+        if pdf_path.exists():
+            from res_storages.daily_water_situation_db import ingest_pdf
+            ingest_pdf(pdf_path, db_path, archive_dir)
+    except Exception as e:
+        print(f"[AUTO-SYNC WARNING] Background sync error: {e}")
+
+def start_background_auto_sync():
+    """Daemon thread running auto-sync every 5 minutes (300s)"""
+    def loop():
+        time.sleep(3) # Wait 3 seconds on startup
+        while True:
+            run_auto_sync()
+            time.sleep(300)
+
+    t = threading.Thread(target=loop, daemon=True)
+    t.start()
+    print("🔄 Background Auto-Sync Thread started (Google Sheets synced every 5 min)")
+
+@app.route('/api/sync-now', methods=['GET', 'POST'])
+def sync_now():
+    """Instant trigger endpoint to sync Google Sheets data on demand"""
+    run_auto_sync()
+    return {"status": "success", "message": "Google Sheets data synced successfully"}, 200
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
@@ -93,6 +141,12 @@ def forward_request(req, url):
         # Ensure permissive CORS on all responses
         response_headers.append(('Access-Control-Allow-Origin', '*'))
 
+        # Prevent remote browsers (Tailscale / Cloudflare / HTTP proxy) from serving stale cached JS/API data
+        if 'ft_and_percentage.js' in url or 'api' in url:
+            response_headers.append(('Cache-Control', 'no-cache, no-store, must-revalidate'))
+            response_headers.append(('Pragma', 'no-cache'))
+            response_headers.append(('Expires', '0'))
+
         # Stream the response back (important for large map tiles/images)
         def generate():
             try:
@@ -122,4 +176,5 @@ if __name__ == '__main__':
     print("2. Open the forwarded link in your browser!")
     print("=" * 60)
     
+    start_background_auto_sync()
     app.run(host='0.0.0.0', port=PROXY_PORT, threaded=True)

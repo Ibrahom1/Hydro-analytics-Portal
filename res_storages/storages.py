@@ -622,9 +622,9 @@ def update_js_file(
 	content = js_path.read_text(encoding="utf-8")
 
 	replacements = {
-		"val_Tarbela": f"'{levels['Tarbela']}'",
-		"val_Mangla": f"'{levels['Mangla']}'",
-		"val_Chashma": f"'{levels['Chashma']}'",
+		"res_lvl_value_Tarbela": f"'{levels['Tarbela']}'",
+		"res_lvl_value_Mangla": f"'{levels['Mangla']}'",
+		"res_lvl_value_Chashma": f"'{levels['Chashma']}'",
 		"lastYearLevel_Tarbela": format_js_numeric(last_year_levels["Tarbela"]),
 		"lastYearLevel_Mangla": format_js_numeric(last_year_levels["Mangla"]),
 		"lastYearLevel_Chashma": format_js_numeric(last_year_levels["Chashma"]),
@@ -830,6 +830,14 @@ def main() -> int:
 	)
 	if not args.dry_run:
 		print(f"[INFO] Updated JS: {js_path}")
+		try:
+			try:
+				from res_storages.fetch_indian_dams_sheet import update_indian_dams_from_google_sheet
+			except ImportError:
+				from fetch_indian_dams_sheet import update_indian_dams_from_google_sheet
+			update_indian_dams_from_google_sheet(js_path)
+		except Exception as err:
+			print(f"[WARNING] Could not run Google Sheet sync for Indian dams: {err}")
 
 	return 0
 

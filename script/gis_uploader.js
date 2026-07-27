@@ -1,5 +1,16 @@
 (function () {
-  const API_BASE = 'http://localhost:8001/api/gis';
+  const API_BASE = (function getGisApiBase() {
+    const hostname = window.location.hostname;
+    const origin = window.location.origin;
+    // If accessing remotely via Tailscale IP, domain, or reverse proxy port 8000
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `${origin}/proxy_api_gis`;
+    }
+    if (window.location.port === '8000') {
+      return `${origin}/proxy_api_gis`;
+    }
+    return 'http://localhost:8001/api/gis';
+  })();
   const uploadedLayers = new Map();
   let modal = null;
   let currentMode = 'vector';
@@ -29,6 +40,7 @@
     { checkboxId: 'uncBoundary', layers: ['Union_Council'] },
     { checkboxId: 'PakRivers', layers: ['Pakistan_Rivers'] },
     { checkboxId: 'kp_Rivers', layers: ['KP_RIVERS'] },
+    { checkboxId: 'kp_flood_cell', layers: ['kp_flood_cell_layer'] },
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
     { checkboxId: 'india', layers: ['indian'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },

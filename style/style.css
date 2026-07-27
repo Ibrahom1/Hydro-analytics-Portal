@@ -34,15 +34,17 @@
 }
 
 .glass-sidebar {
-  position: relative;
+  position: absolute;
   width: clamp(220px, 22vw, 300px);
-  max-height: calc(100% - 20px);
+  top: 10px;
+  bottom: auto;
+  height: auto;
+  max-height: calc(100% - 30px);
   padding: 14px 14px 18px;
   color: #f8fafc;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
   border: 1px solid var(--glass-border);
   border-radius: 22px;
   background: linear-gradient(155deg, rgba(9, 20, 35, 0.68) 0%, rgba(15, 32, 55, 0.62) 45%, rgba(10, 18, 30, 0.78) 100%);
@@ -50,10 +52,10 @@
   -webkit-backdrop-filter: blur(22px) saturate(160%);
   box-shadow: 0 24px 44px rgba(3, 7, 18, 0.45);
   transition: transform 0.35s ease, opacity 0.35s ease;
-  position: absolute;
-  top: 10px;
   left: 10px;
   z-index: 30;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
 }
 
 .glass-sidebar.is-closed {
@@ -920,6 +922,7 @@ body {
   gap: 8px;
   padding: 9px 12px 12px;
   min-height: 0;
+  flex: 0 1 auto;
   overflow-y: auto;
 }
 
@@ -1057,6 +1060,7 @@ body {
 
 .ffd-history-chart {
   height: 220px;
+  flex-shrink: 0;
   padding: 8px 8px 2px;
   background: rgba(19, 25, 33, 0.42);
   border: 1px solid rgba(226, 232, 240, 0.1);
@@ -1064,7 +1068,7 @@ body {
 }
 
 .ffd-history-panel.controls-open .ffd-history-chart {
-  height: 200px;
+  height: 190px;
 }
 
 .ffd-history-fullscreen {
@@ -3386,8 +3390,10 @@ body {
   top: 10px;
   right: 70px;
   width: min(360px, calc(100vw - 28px));
-  max-height: min(600px, 75vh) !important;
-  overflow-y: auto !important;
+  max-height: 45vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
   border: 1px solid rgba(226, 232, 240, 0.2);
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.96);
@@ -3407,6 +3413,7 @@ body {
 }
 
 .gis-layer-edit-header {
+  flex-shrink: 0 !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3415,6 +3422,33 @@ body {
   border-bottom: 1px solid rgba(148, 163, 184, 0.22);
   font-size: 13px;
   font-weight: 800;
+}
+
+.gis-layer-edit-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  max-height: calc(45vh - 46px) !important;
+  padding: 12px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.6) rgba(15, 23, 42, 0.5);
+}
+
+.gis-layer-edit-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gis-layer-edit-body::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 4px;
+}
+
+.gis-layer-edit-body::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.5);
+  border-radius: 4px;
+}
+
+.gis-layer-edit-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.8);
 }
 
 .gis-layer-edit-header button,
@@ -4926,12 +4960,28 @@ video, canvas:not(#map canvas) {
 }
 
 /* ---- Base Panel Fluid Constraints ---- */
-.glass-sidebar, .section-panel, .ffd-history-panel, .impact-summary-panel,
-.exposure-report-panel, .layer-reorder-panel, .gis-uploader-panel, .gis-layer-edit-panel {
+.ffd-history-panel, .impact-summary-panel,
+.exposure-report-panel, .layer-reorder-panel, .gis-uploader-panel {
   max-width: 100vw !important;
   max-height: 100vh !important;
   box-sizing: border-box;
   overflow-y: auto !important;
+}
+
+.section-panel {
+  max-width: 100% !important;
+  box-sizing: border-box;
+  overflow: hidden !important;
+}
+
+.ffd-history-panel {
+  max-height: 50vh !important;
+  overflow: hidden !important;
+}
+
+.gis-layer-edit-panel {
+  max-height: 45vh !important;
+  overflow: hidden !important;
 }
 
 /* ==========================================================================
@@ -4958,10 +5008,54 @@ video, canvas:not(#map canvas) {
    ========================================================================== */
 .glass-sidebar {
   width: clamp(200px, 22vw, 320px) !important;
-  padding: clamp(8px, 1.2vw, 14px) !important;
+  padding: clamp(8px, 1vw, 12px) !important;
   top: clamp(50px, 6vw, 72px) !important;
+  bottom: auto !important;
   left: clamp(10px, 2vw, 28px) !important;
+  height: auto !important;
+  max-height: calc(100% - clamp(60px, 7vw, 95px)) !important;
   border-radius: clamp(12px, 1.8vw, 22px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.6) rgba(15, 23, 42, 0.3);
+}
+
+.glass-sidebar .sidebar-section-btn {
+  padding: clamp(6px, 0.7vw, 9px) clamp(10px, 1vw, 14px) !important;
+  font-size: clamp(0.8rem, 0.95vw, 0.92rem) !important;
+}
+
+.glass-sidebar .sidebar-icon {
+  width: clamp(28px, 2.4vw, 34px) !important;
+  height: clamp(28px, 2.4vw, 34px) !important;
+}
+
+.sidebar-body {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+  padding-bottom: 0px !important;
+}
+
+/* Outer sidebar custom scrollbar: clearly visible cyan thumb with translucent track */
+.glass-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.glass-sidebar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 4px;
+}
+
+.glass-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.6);
+  border-radius: 4px;
+}
+
+.glass-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.9);
 }
 
 .sidebar-toggle,
@@ -5104,11 +5198,13 @@ video, canvas:not(#map canvas) {
 }
 
 .ffd-history-chart {
-  height: clamp(130px, 16vw, 220px) !important;
+  height: clamp(180px, 22vh, 230px) !important;
+  flex-shrink: 0 !important;
 }
 
 .ffd-history-panel.controls-open .ffd-history-chart {
-  height: clamp(120px, 15vw, 200px) !important;
+  height: clamp(160px, 18vh, 200px) !important;
+  flex-shrink: 0 !important;
 }
 
 .ffd-history-compare button {
@@ -5496,6 +5592,8 @@ video, canvas:not(#map canvas) {
     height: auto !important;
     max-height: calc(100% - 20px) !important;
     padding: 8px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 
   .glass-sidebar .sidebar-section-btn {

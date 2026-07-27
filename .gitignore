@@ -1,1 +1,24 @@
-.\venv
+# Byte-compiled / Python cache files
+__pycache__/
+/**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# SQLite temporary WAL / SHM files
+*.sqlite-shm
+*.sqlite-wal
+
+# Temporary / swap files
+*.tmp
+*.temp
+
+# Temporary HTML dumps
+river-state.html
+fallbacknewhtml.html
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/

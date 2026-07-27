@@ -157,7 +157,7 @@
 
       <!-- Dropdown Sections -->
       <div class="sidebar-body">
-        <div class="sidebar-sections space-y-4">
+        <div class="sidebar-sections space-y-2">
         <!-- Boundaries Section -->
         <div class="rounded-md overflow-hidden border border-white">
           <button
@@ -617,6 +617,20 @@
                   <div class="relative">
                     <input type="checkbox" id="ffd" class="hidden" onchange="toggleHighlight(this)" />
                     <label for="ffd" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">FFD Rivers</span>
+                  <div class="relative">
+                    <input type="checkbox" id="ffd_rivers" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="ffd_rivers" class="cursor-pointer"></label>
+                  </div>
+                </label>
+                <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
+                  <span class="text-xs">KP Flood Cell Irrigation Department</span>
+                  <div class="relative">
+                    <input type="checkbox" id="kp_flood_cell" class="hidden" onchange="toggleHighlight(this)" />
+                    <label for="kp_flood_cell" class="cursor-pointer"></label>
                   </div>
                 </label>
                 <label class="flex items-center justify-between p-2 hover:bg-gray-600 rounded">
@@ -1591,6 +1605,26 @@
                 </label>                
               </div>
             </div>
+
+            <!-- 2026 Flood Extent Subsection -->
+            <div class="rounded-md overflow-hidden border border-cyan-400">
+              <button
+                class="w-full px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium flex items-center justify-between rounded-md transition-colors sidebar-subsection-btn glass-tile"
+                onclick="toggleSection('flood2026Extent')" title="2026 Extents">
+                <div class="flex items-center gap-2">
+                  <span class="sidebar-icon sm" aria-hidden="true">
+                    <img src="media/UI/sidebaricons/2026extentandevent.gif" alt="" class="sidebar-icon-img" />
+                  </span>
+                  <span class="sidebar-label">2026 Extents</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div id="flood2026Extent" class="hidden p-2 space-y-1 section-panel">
+              </div>
+            </div>
+
             <!-- Potential Sites Subsection -->
             <div class="rounded-md overflow-hidden border border-orange-400">
               <button
@@ -3316,15 +3350,13 @@
         if (typeof map1 !== 'undefined' && map1.getLayer("ffd_point")) {
           map1.setLayoutProperty("ffd_point", "visibility", isVisible ? "visible" : "none");
         }
+        if (typeof map1 !== 'undefined' && map1.getLayer("ffd_forecast_square")) {
+          map1.setLayoutProperty("ffd_forecast_square", "visibility", isVisible ? "visible" : "none");
+        }
         if (typeof map1 !== 'undefined' && map1.getLayer("ffd_label")) {
           map1.setLayoutProperty("ffd_label", "visibility", isVisible ? "visible" : "none");
         }
-        // ffdLegend(); // Commented out: do not show FFD legend on toggle
-        if (isVisible) {
-          showFloodLegend();
-        } else {
-          hideFloodLegend();
-        }
+        ffdLegend();
       }
 
       // Optional: custom logic for other flood legend updates
@@ -3371,7 +3403,9 @@
   </script>
   <!-- <script src="script/mosques.js"></script>
   <script src="script/towers.js"></script> -->
-  <script src="script/ft_and_percentage.js"></script>
+  <script>
+    document.write('<script src="script/ft_and_percentage.js?v=' + Date.now() + '"><\/script>');
+  </script>
   <script src="script/geojson/layer_telemetries.js"></script>
   <!-- <script src="script/breach.js"></script> -->
   <script src="script/geojson/layer_urbanfloodsindh.js"></script>
