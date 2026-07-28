@@ -8615,48 +8615,44 @@ function addHydrometLayersToMap(map) {
 
         // Format the From and Lag Hours information using flood routing data
         let fromAndLagHTML = '';
-        if (props.from && props.lag_hours) {
+        
+        let fromArray = [];
+        let lagArray = [];
+        
+        // Manual overrides based on user mapping
+        if (props.name && (props.name.toUpperCase() === 'KABUL' || props.name.toUpperCase() === 'NOWSHERA')) {
+            fromArray = ['Charsadda', 'Warsak'];
+            lagArray = ['6', '10'];
+        } else if (props.from && props.lag_hours) {
           try {
-            // Handle both string arrays and actual arrays
-            let fromArray = Array.isArray(props.from) ? props.from : JSON.parse(props.from);
-            let lagArray = Array.isArray(props.lag_hours) ? props.lag_hours : JSON.parse(props.lag_hours);
-
-            if (fromArray.length > 0 && lagArray.length > 0) {
-              fromAndLagHTML = `
-                                <div class="upstream-section">
-                                    <h4 class="section-title">
-                                        <i class="fas fa-arrow-up"></i> Upstream Stations
-                                    </h4>
-                                    <div class="upstream-list">`;
-
-              for (let i = 0; i < fromArray.length; i++) {
-                const lagTime = lagArray[i] ? `${lagArray[i]} hours` : 'N/A';
-                fromAndLagHTML += `
-                                    <div class="upstream-item">
-                                        <span class="station-name"><strong>${fromArray[i]}</strong></span>
-                                        <span class="lag-time"><strong>Lag: ${lagTime}</strong></span>
-                                    </div>`;
-              }
-
-              fromAndLagHTML += `</div></div>`;
-            }
+            fromArray = Array.isArray(props.from) ? props.from : JSON.parse(props.from);
+            lagArray = Array.isArray(props.lag_hours) ? props.lag_hours : JSON.parse(props.lag_hours);
           } catch (error) {
             console.warn('Error parsing from/lag_hours:', error);
             if (props.from && props.from.length > 0) {
-              fromAndLagHTML = `
-                                <div class="upstream-section">
-                                    <h4 class="section-title">
-                                        <i class="fas fa-arrow-up"></i> Upstream Stations
-                                    </h4>
-                                    <div class="upstream-simple">
-                                        <div class="upstream-item">
-                                            <span class="station-name"><strong>${props.from}</strong></span>
-                                            ${props.lag_hours ? `<span class="lag-time"><strong>Lag: ${props.lag_hours} hours</strong></span>` : ''}
-                                        </div>
-                                    </div>
-                                </div>`;
+              fromArray = [props.from];
+              lagArray = [props.lag_hours || ''];
             }
           }
+        }
+
+        if (fromArray.length > 0) {
+          fromAndLagHTML = `
+                            <div class="upstream-section">
+                                <h4 class="section-title">
+                                    <i class="fas fa-arrow-up"></i> UPSTREAM STATIONS
+                                </h4>
+                                <div class="upstream-list">`;
+
+          for (let i = 0; i < fromArray.length; i++) {
+            const lagTime = lagArray[i] ? `${lagArray[i]} hours` : 'N/A';
+            fromAndLagHTML += `
+                                <div class="upstream-item">
+                                    <span class="station-name"><strong>${fromArray[i]}</strong></span>
+                                    <span class="lag-time"><strong>Lag: ${lagTime}</strong></span>
+                                </div>`;
+          }
+          fromAndLagHTML += `</div></div>`;
         }
 
         // Get status color for consistent theming
@@ -9604,9 +9600,395 @@ function addHydrometLayersToMap(map) {
 
   // Toggle visibility for KP flood cell irrigation department
   if (document.getElementById("kp_flood_cell") && !document.getElementById("kp_flood_cell")._kpFloodCellListenerAdded) {
-    document.getElementById("kp_flood_cell").addEventListener("change", function () {
+    document.getElementById("kp_flood_cell").addEventListener("change", async function () {
       const isVisible = this.checked;
-      ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'].forEach(layerId => {
+      
+      if (isVisible && !map1.getSource('kp_flood_cell')) {
+        try {
+          // Fetch dynamic data from SQLite via proxy API
+          let kpDataMap = {};
+          try {
+            const apiRes = await fetch(`${proxyBase}/api/kp-stations`);
+            if (apiRes.ok) {
+              const resJson = await apiRes.json();
+              if (resJson.data) {
+                resJson.data.forEach(row => {
+                  let normLoc = (row.location || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  kpDataMap[normLoc] = row;
+                });
+              }
+            }
+          } catch(e) {
+            console.error("Failed to fetch KP stations data", e);
+          }
+          window.kpDataMap = kpDataMap;
+
+          // Fetch GeoJSON points from GeoServer
+          const geoUrl = `${proxyBase}/proxy_ahad/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026:Gauges_pdma_kp&outputFormat=application/json`;
+          const geoRes = await fetch(geoUrl);
+          const geoJson = await geoRes.json();
+          
+          // Helper function for fuzzy matching location strings
+          const getEditDistance = (a, b) => {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+              for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                  matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                  matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+                }
+              }
+            }
+            return matrix[b.length][a.length];
+          };
+          
+          const findBestMatch = (loc, dataMap) => {
+            if (!dataMap) return null;
+            let normLoc = (loc || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (dataMap[normLoc]) return normLoc; // Exact match
+            
+            let bestKey = null;
+            let bestDist = Infinity;
+            for (let key in dataMap) {
+              let dist = getEditDistance(normLoc, key);
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestKey = key;
+              }
+            }
+            if (bestDist <= 4) return bestKey; // Allow up to 4 typos
+            
+            for (let key in dataMap) {
+                if (normLoc.includes(key) || key.includes(normLoc)) return key;
+            }
+            return null;
+          };
+
+          // Merge dynamic data into GeoJSON properties
+          if (geoJson.features) {
+            geoJson.features.forEach(f => {
+              const loc = f.properties.LOCATION;
+              let matchKey = findBestMatch(loc, window.kpDataMap);
+              
+              if (matchKey && window.kpDataMap[matchKey]) {
+                f.properties.flow_status = window.kpDataMap[matchKey].flow_status;
+                f.properties.discharge = window.kpDataMap[matchKey].discharge;
+              } else {
+                f.properties.flow_status = "Normal";
+                f.properties.discharge = "N/A";
+              }
+            });
+          }
+          
+          map1.addSource('kp_flood_cell', {
+            type: 'geojson',
+            data: geoJson
+          });
+
+          map1.addLayer({
+            id: 'kp_flood_cell_point',
+            type: 'circle',
+            source: 'kp_flood_cell',
+            paint: {
+              'circle-color': [
+                'match',
+                ['coalesce', ['get', 'flow_status'], ''],
+                'NORMAL', '#288846',
+                'Normal', '#288846',
+                'LOW', '#2c65bd',
+                'Low', '#2c65bd',
+                'LOW FLOOD', '#2c65bd',
+                'Low Flood', '#2c65bd',
+                'MEDIUM', '#f6c445',
+                'Medium', '#f6c445',
+                'MEDIUM FLOOD', '#f6c445',
+                'Medium Flood', '#f6c445',
+                'HIGH', '#f78339',
+                'High', '#f78339',
+                'HIGH FLOOD', '#f78339',
+                'High Flood', '#f78339',
+                'VERY HIGH', '#ef3742',
+                'Very High', '#ef3742',
+                'VERY HIGH FLOOD', '#ef3742',
+                'Very High Flood', '#ef3742',
+                'EX HIGH', '#a51f2b',
+                'EXCEPTIONALLY HIGH', '#a51f2b',
+                'Exceptionally High', '#a51f2b',
+                'EXCEPTIONALLY HIGH FLOOD', '#a51f2b',
+                '#808080'
+              ],
+              'circle-radius': 7,
+              'circle-opacity': 1,
+              'circle-stroke-color': '#fff',
+              'circle-stroke-width': 2
+            }
+          });
+          
+          map1.addLayer({
+            id: 'kp_flood_cell_label',
+            type: 'symbol',
+            source: 'kp_flood_cell',
+            layout: {
+              'visibility': 'visible',
+              'text-field': ['concat', ['get', 'LOCATION'], '\n', ['to-string', ['get', 'discharge']]],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+              'text-size': 12,
+              'text-offset': [0, 1.5],
+              'text-anchor': 'top'
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 1
+            }
+          });
+          
+          // Click event for popups
+          map1.on('click', 'kp_flood_cell_point', (e) => {
+             const loc = e.features[0].properties.LOCATION;
+             let riv = e.features[0].properties.RIVER;
+             const discharge = e.features[0].properties.discharge;
+             const flowStatus = e.features[0].properties.flow_status;
+             
+             let matchKey = findBestMatch(loc, window.kpDataMap);
+             let recordDate = '';
+             let recordTime = '';
+             if (matchKey && window.kpDataMap[matchKey]) {
+                 let dbRiv = window.kpDataMap[matchKey].river;
+                 if (dbRiv && dbRiv.length > 2 && !dbRiv.includes('...')) {
+                     riv = dbRiv;
+                 }
+                 recordDate = window.kpDataMap[matchKey].date || '';
+                 recordTime = window.kpDataMap[matchKey].time || '';
+             }
+             
+             const lagTimes = {
+               'Amandara': 'Lag from Khawaza Khela: 12 Hours',
+               'Munda': 'Lag from Amandara: 9 Hours',
+               'Charsadda Road': 'Lag from Munda: 6.5 Hours',
+               'Nowshera': 'Lag from Charsadda: 6 Hours & Warsak: 10 Hours',
+               'Kabul': 'Lag from Charsadda: 6 Hours & Warsak: 10 Hours'
+             };
+             let lagHtmlText = '';
+             for (let key in lagTimes) {
+               if (loc && loc.includes(key)) {
+                 lagHtmlText = lagTimes[key];
+                 break;
+               }
+             }
+
+             const getKpStatusColor = (status) => {
+               const norm = (status || '').toUpperCase().trim();
+               if (norm === 'HIGH' || norm === 'HIGH FLOOD') return '#f78339';
+               if (norm === 'MEDIUM' || norm === 'MEDIUM FLOOD') return '#f6c445';
+               if (norm === 'LOW' || norm === 'LOW FLOOD') return '#2c65bd';
+               if (norm === 'VERY HIGH' || norm === 'VERY HIGH FLOOD') return '#ef3742';
+               if (norm.includes('EX') || norm.includes('EXCEPTIONALLY')) return '#a51f2b';
+               return '#288846'; // Default Normal
+             };
+             
+             const statusColor = getKpStatusColor(flowStatus);
+             
+             const formatDischarge = (value, label, isInflow = false) => {
+               if (!value || value === 'N/A' || String(value).toLowerCase() === 'n/a' || String(value).trim() === '') {
+                 return `
+                                 <div class="discharge-item">
+                                     <span class="discharge-label">${label}:</span>
+                                     <span class="discharge-value no-data">N/A</span>
+                                 </div>`;
+               }
+               const numericValue = parseFloat(value);
+               const formattedValue = !isNaN(numericValue) ? numericValue.toLocaleString() : value;
+               return `
+                             <div class="discharge-item">
+                                 <span class="discharge-label">${label}:</span>
+                                 <span class="discharge-value ${isInflow ? 'inflow-highlight' : 'outflow-bold'}">
+                                     ${formattedValue} cusecs
+                                 </span>
+                             </div>`;
+             };
+
+             const html = `
+                    <div class="ffd-popup-container">
+                        <!-- Header Section -->
+                        <div class="popup-header" style="border-left: 4px solid ${statusColor};">
+                            <div class="station-info">
+                                <h3 class="station-name">${loc}</h3>
+                                <div class="status-badge" style="background-color: ${statusColor};">
+                                    <i class="fas fa-water"></i>
+                                    ${flowStatus}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="popup-content">
+                            <!-- River Metadata -->
+                            <div class="popup-meta-section">
+                                <div class="popup-meta-grid">
+                                    <div class="popup-meta-item">
+                                        <span class="popup-meta-label">River:</span>
+                                        <span class="popup-meta-value">${riv}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Discharge Information -->
+                            <div class="discharge-section">
+                                <div class="discharge-grid">
+                                    ${formatDischarge(discharge, 'Discharge', true)}
+                                </div>
+                            </div>
+
+                            ${(recordDate || recordTime) ? `
+                            <div class="timestamp-section">
+                                <div class="timestamp-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span class="timestamp-value">Last Updated: ${recordDate} ${recordTime}</span>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            ${lagHtmlText ? `
+                            <div class="upstream-section">
+                                <h4 class="section-title">
+                                    <i class="fas fa-arrow-up"></i> UPSTREAM STATIONS
+                                </h4>
+                                <div class="upstream-item">
+                                    <span class="station-name"><strong>${lagHtmlText.split(':')[0].replace('Lag from ', '')}</strong></span>
+                                    <span class="lag-time"><strong>Lag: ${lagHtmlText.split(':')[1].trim()}</strong></span>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <style>
+                      .ffd-popup-container {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        width: 280px;
+                        background: #ffffff;
+                        border-radius: 12px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+                        overflow: hidden;
+                        border: 2px solid #2196f3;
+                        position: relative;
+                      }
+                      .popup-header {
+                        background: #f8f9fa;
+                        padding: 8px 12px;
+                        border-bottom: 2px solid #e3f2fd;
+                      }
+                      .station-info {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        gap: 12px;
+                      }
+                      .station-name {
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: #1a1a1a;
+                        margin: 0;
+                        line-height: 1.2;
+                        flex: 1;
+                      }
+                      .status-badge {
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 16px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.3px;
+                        display: flex;
+                        align-items: center;
+                        gap: 3px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                        white-space: nowrap;
+                      }
+                      .popup-content {
+                        padding: 8px 12px 12px;
+                      }
+                      .popup-meta-section, .discharge-section, .timestamp-section, .upstream-section {
+                        margin-bottom: 8px;
+                      }
+                      .popup-meta-grid, .discharge-grid {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                      }
+                      .popup-meta-item, .discharge-item, .upstream-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 4px 8px;
+                        background: #f8f9fa;
+                        border-radius: 6px;
+                        border: 1px solid #e3f2fd;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                      }
+                      .popup-meta-label, .discharge-label, .section-title {
+                        font-size: 13px;
+                        font-weight: 500;
+                        color: #495057;
+                      }
+                      .section-title {
+                        margin: 4px 0 8px 0;
+                        text-transform: uppercase;
+                        font-size: 11px;
+                        letter-spacing: 0.5px;
+                      }
+                      .popup-meta-value, .discharge-value {
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #212529;
+                      }
+                      .inflow-highlight { color: #1976d2; }
+                      .timestamp-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        justify-content: flex-end;
+                        font-size: 11px;
+                        color: #6c757d;
+                        margin-top: 4px;
+                      }
+                      .lag-time {
+                        background: #e3f2fd;
+                        padding: 2px 8px;
+                        border-radius: 12px;
+                        font-size: 12px;
+                        color: #1976d2;
+                      }
+                      .mapboxgl-popup-close-button { display: none !important; }
+                      .mapboxgl-popup-content { padding: 0 !important; border-radius: 8px !important; }
+                      .mapboxgl-popup-tip { border-top-color: #ffffff !important; }
+                    </style>
+             `;
+             new mapboxgl.Popup({
+               closeButton: false,
+               closeOnClick: true,
+               maxWidth: '300px',
+               className: 'ffd-enhanced-popup'
+             })
+               .setLngLat(e.lngLat)
+               .setHTML(html)
+               .addTo(map1);
+          });
+          map1.on('mouseenter', 'kp_flood_cell_point', () => { map1.getCanvas().style.cursor = 'pointer'; });
+          map1.on('mouseleave', 'kp_flood_cell_point', () => { map1.getCanvas().style.cursor = ''; });
+
+        } catch (e) {
+          console.error("Failed to load KP flood cell layer:", e);
+        }
+      }
+
+      ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_label', 'kp_flood_cell_outline'].forEach(layerId => {
         if (map1.getLayer(layerId)) {
           map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
         }

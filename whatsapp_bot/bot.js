@@ -158,6 +158,23 @@ function runIngestionOnly() {
   }
 }
 
+function runKpIngestionOnly() {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const cwd = config.projectRoot;
+  try {
+    log('  INGEST: Running kp_stations_db.py...');
+    execSync(`${pythonCmd} "${path.join(cwd, 'res_kp', 'kp_stations_db.py')}"`, {
+      cwd, stdio: 'inherit', timeout: 120_000,
+    });
+    log('  INGEST: kp_stations_db.py completed.');
+    return true;
+  } catch (err) {
+    console.error(`  INGEST: kp_stations_db.py failed: ${err.message}`);
+    return false;
+  }
+}
+
 function runStoragesUpdate() {
   const pythonCmd = findPython();
   if (!pythonCmd) return false;
@@ -208,6 +225,9 @@ function pushChanges() {
       'res_storages/Historical Daily Storages',
       'data/daily_water_situation.sqlite',
       'script/ft_and_percentage.js',
+      'res_kp/Flood Report.pdf',
+      'res_kp/Historical KP Reports',
+      'data/kp_stations_data.sqlite'
     ];
     execSync(`git add ${gitFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
     try {
@@ -275,7 +295,10 @@ async function main() {
 
       // Check filename in msg.body (which represents the document filename on WA Web)
       const bodyText = (msg.body || '').toLowerCase();
-      if (!bodyText.includes(config.pdfNameFilter.toLowerCase())) {
+      let isDailyWater = bodyText.includes(config.pdfNameFilter.toLowerCase());
+      let isKpReport = bodyText.includes(config.kpPdfNameFilter.toLowerCase());
+      
+      if (!isDailyWater && !isKpReport) {
         return false;
       }
 
@@ -298,10 +321,12 @@ async function main() {
         return false;
       }
 
-      // Compute hash and check against DB
+      // Compute hash and check against DB (we only check daily_water_reports for simplicity, or we can just run it)
+      // Actually we'll skip hash check if it's KP report, or we can check kp_water_reports too.
       const buffer = Buffer.from(media.data, 'base64');
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      if (isHashIngested(hash)) {
+      
+      if (isDailyWater && isHashIngested(hash)) {
         log(`  ⚠ Skipped: already ingested (hash: ${hash.slice(0, 12)}...)`);
         return false;
       }
@@ -309,13 +334,23 @@ async function main() {
       log(`────────────────────────────────────────────`);
       log(`Found NEW PDF: "${media.filename}" (${Math.round(buffer.length / 1024)} KB, hash: ${hash.slice(0, 12)}...)`);
 
-      // Save to res_storages/Daily Water Situation.pdf
-      const savePath = path.join(config.projectRoot, 'res_storages', config.pdfSaveName);
-      fs.writeFileSync(savePath, buffer);
-
-      // Phase 1 ONLY: ingest into SQLite + archive
-      if (config.autoRunPipeline) {
-        runIngestionOnly();
+      if (isDailyWater) {
+        // Save to res_storages/Daily Water Situation.pdf
+        const savePath = path.join(config.projectRoot, 'res_storages', config.pdfSaveName);
+        fs.writeFileSync(savePath, buffer);
+  
+        // Phase 1 ONLY: ingest into SQLite + archive
+        if (config.autoRunPipeline) {
+          runIngestionOnly();
+        }
+      } else if (isKpReport) {
+        // Save to res_kp/Flood Report.pdf
+        const savePath = path.join(config.projectRoot, 'res_kp', config.kpPdfSaveName);
+        fs.writeFileSync(savePath, buffer);
+  
+        if (config.autoRunPipeline) {
+          runKpIngestionOnly();
+        }
       }
 
       log(`────────────────────────────────────────────`);

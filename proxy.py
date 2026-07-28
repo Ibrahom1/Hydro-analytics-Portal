@@ -4,6 +4,8 @@ from flask import Flask, request, Response
 app = Flask(__name__)
 
 import os
+import sqlite3
+import json
 
 # Read ports from environment variables or use default fallback
 PROXY_PORT = int(os.environ.get('PROXY_PORT', 8000))
@@ -78,6 +80,39 @@ def sync_now():
     """Instant trigger endpoint to sync Google Sheets data on demand"""
     run_auto_sync()
     return {"status": "success", "message": "Google Sheets data synced successfully"}, 200
+
+@app.route('/api/kp-stations', methods=['GET'])
+def kp_stations_api():
+    """Endpoint to fetch the latest KP stations data"""
+    try:
+        repo_root = Path(__file__).resolve().parent
+        db_path = repo_root / "data" / "kp_stations_data.sqlite"
+        if not db_path.exists():
+            return {"status": "error", "message": "Database not found"}, 404
+            
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # Get the most recent date and time
+        c.execute("SELECT date, time FROM kp_water_reports ORDER BY id DESC LIMIT 1")
+        latest = c.fetchone()
+        
+        if not latest:
+            conn.close()
+            return {"status": "success", "data": []}
+            
+        latest_date, latest_time = latest['date'], latest['time']
+        
+        # Fetch all records for that date and time
+        c.execute("SELECT * FROM kp_water_reports WHERE date=? AND time=?", (latest_date, latest_time))
+        rows = c.fetchall()
+        conn.close()
+        
+        result = [dict(row) for row in rows]
+        return {"status": "success", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])

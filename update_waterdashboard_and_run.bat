@@ -151,13 +151,19 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo Ingesting KP Flood Report PDF into SQLite and historical archive...
+"%VENV_PYTHON%" "%REPO_ROOT%res_kp\kp_stations_db.py"
+if errorlevel 1 (
+  echo Warning: Failed to ingest KP Flood Report PDF into SQLite.
+)
+
 if defined HAS_GIT (
   echo Committing Daily Water Situation PDF, SQLite, archive, and dashboard JS updates...
   pushd "%REPO_ROOT%" >nul
   if errorlevel 1 (
     echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
   ) else (
-    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js"
+    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite"
     if errorlevel 1 (
       echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
     ) else (

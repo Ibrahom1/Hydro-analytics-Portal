@@ -22,6 +22,10 @@ module.exports = {
   projectRoot: path.resolve(__dirname, '..'),
   pdfSaveName: 'Daily Water Situation.pdf',
 
+  // ── KP PDF Detection ──────────────────────────────────────────────────
+  kpPdfNameFilter: 'flood report',
+  kpPdfSaveName: 'Flood Report.pdf',
+
   // ── Listening Window ─────────────────────────────────────────────────
   // The bot connects, listens for this many MINUTES, then gracefully
   // disconnects to avoid long-running sessions that could trigger bans.
