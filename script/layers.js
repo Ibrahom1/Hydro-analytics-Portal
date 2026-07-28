@@ -7806,14 +7806,45 @@ function addHydrometLayersToMap(map) {
                   title: (items) => items[0]?.label ? items[0].label : '',
                   label: (ctx) => {
                     if (ctx.parsed.y == null) return null;
-                    return `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(3)} MAF`;
+                    const val = Number(ctx.parsed.y);
+                    const label = ctx.dataset.label || '';
+                    const isToday = label.includes('Today');
+                    const mainLine = `${label}: ${val.toFixed(2)} MAF`;
+
+                    if (!isToday || !ctx.dataset.data || ctx.dataIndex <= 0) {
+                      return mainLine;
+                    }
+
+                    let prevVal = null;
+                    for (let k = ctx.dataIndex - 1; k >= 0; k--) {
+                      const v = ctx.dataset.data[k];
+                      if (v != null && !isNaN(v)) {
+                        prevVal = Number(v);
+                        break;
+                      }
+                    }
+
+                    if (prevVal != null && prevVal > 0) {
+                      const pct = ((val - prevVal) / prevVal) * 100;
+                      if (!isNaN(pct)) {
+                        const sign = pct > 0 ? '+' : '';
+                        return [
+                          mainLine,
+                          `%change yesterday: ${sign}${pct.toFixed(1)}%`
+                        ];
+                      }
+                    }
+
+                    return mainLine;
                   }
                 },
-                backgroundColor: 'rgba(6, 24, 44, 0.92)',
-                borderColor: 'rgba(6, 182, 212, 0.3)',
+                backgroundColor: 'rgba(6, 24, 44, 0.95)',
+                borderColor: 'rgba(6, 182, 212, 0.4)',
                 borderWidth: 1,
                 titleColor: '#22d3ee',
-                bodyColor: '#e2e8f0',
+                bodyColor: '#f8fafc',
+                padding: 10,
+                boxPadding: 4,
               },
               zoom: isFullscreen ? {
                 zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
@@ -7990,11 +8021,47 @@ function addHydrometLayersToMap(map) {
                   },
                   label: function (context) {
                     if (context.parsed.y === null) return null;
+                    const val = Number(context.parsed.y);
+                    const label = context.dataset.label || '';
                     const detail = context.dataset.historyTooltips?.[context.dataIndex];
                     const suffix = detail ? ` (${detail})` : '';
-                    return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString()} cusecs${suffix}`;
+                    const mainLine = `${label}: ${val.toLocaleString()} cusecs${suffix}`;
+                    const isPrimary = label === 'Inflow' || label === 'Outflow';
+
+                    if (!isPrimary || !context.dataset.data || context.dataIndex <= 0) {
+                      return mainLine;
+                    }
+
+                    let prevVal = null;
+                    for (let k = context.dataIndex - 1; k >= 0; k--) {
+                      const v = context.dataset.data[k];
+                      if (v != null && !isNaN(v)) {
+                        prevVal = Number(v);
+                        break;
+                      }
+                    }
+
+                    if (prevVal != null && prevVal > 0) {
+                      const pct = ((val - prevVal) / prevVal) * 100;
+                      if (!isNaN(pct)) {
+                        const sign = pct > 0 ? '+' : '';
+                        return [
+                          mainLine,
+                          `%change yesterday: ${sign}${pct.toFixed(1)}%`
+                        ];
+                      }
+                    }
+
+                    return mainLine;
                   }
-                }
+                },
+                backgroundColor: 'rgba(6, 24, 44, 0.95)',
+                borderColor: 'rgba(56, 189, 248, 0.4)',
+                borderWidth: 1,
+                titleColor: '#38bdf8',
+                bodyColor: '#f8fafc',
+                padding: 10,
+                boxPadding: 4,
               },
               zoom: isFullscreen ? {
                 zoom: {
@@ -8622,12 +8689,8 @@ function addHydrometLayersToMap(map) {
         // Get status color for consistent theming
         const statusColor = getStatusColor(props.status);
 
-        // Add last update time to popup
-        const lastUpdateInfo = lastUpdateTime ?
-          `<div class="update-info">
-                        <i class="fas fa-sync-alt"></i>
-                        Last updated: ${lastUpdateTime.toLocaleTimeString()}
-                    </div>` : '';
+        // Last update info removed per request
+        const lastUpdateInfo = '';
 
         // Format discharge values with proper units and highlighting - NO UNITS FOR N/A
         const formatDischarge = (value, label, isInflow = false) => {
