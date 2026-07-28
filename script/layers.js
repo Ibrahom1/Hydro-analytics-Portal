@@ -8025,34 +8025,7 @@ function addHydrometLayersToMap(map) {
                     const label = context.dataset.label || '';
                     const detail = context.dataset.historyTooltips?.[context.dataIndex];
                     const suffix = detail ? ` (${detail})` : '';
-                    const mainLine = `${label}: ${val.toLocaleString()} cusecs${suffix}`;
-                    const isPrimary = label === 'Inflow' || label === 'Outflow';
-
-                    if (!isPrimary || !context.dataset.data || context.dataIndex <= 0) {
-                      return mainLine;
-                    }
-
-                    let prevVal = null;
-                    for (let k = context.dataIndex - 1; k >= 0; k--) {
-                      const v = context.dataset.data[k];
-                      if (v != null && !isNaN(v)) {
-                        prevVal = Number(v);
-                        break;
-                      }
-                    }
-
-                    if (prevVal != null && prevVal > 0) {
-                      const pct = ((val - prevVal) / prevVal) * 100;
-                      if (!isNaN(pct)) {
-                        const sign = pct > 0 ? '+' : '';
-                        return [
-                          mainLine,
-                          `%change yesterday: ${sign}${pct.toFixed(1)}%`
-                        ];
-                      }
-                    }
-
-                    return mainLine;
+                    return `${label}: ${val.toLocaleString()} cusecs${suffix}`;
                   }
                 },
                 backgroundColor: 'rgba(6, 24, 44, 0.95)',
