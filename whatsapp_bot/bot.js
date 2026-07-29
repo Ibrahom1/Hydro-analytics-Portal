@@ -117,11 +117,20 @@ function findPython() {
   return null;
 }
 
-/**
- * Checks the local SQLite database to see if a file with this SHA-256 hash
- * has already been ingested.
- */
-function isHashIngested(hash) {
+function getLocalDateStr(timestampMs = Date.now()) {
+  const d = new Date(timestampMs);
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' });
+  return formatter.format(d);
+}
+
+function getTodayDateFormats() {
+  const yyyy_mm_dd = getLocalDateStr(Date.now());
+  const [y, m, d] = yyyy_mm_dd.split('-');
+  const dd_mm_yyyy = `${d}/${m}/${y}`;
+  return { yyyy_mm_dd, dd_mm_yyyy };
+}
+
+function isDailyWaterHashIngested(hash) {
   const pythonCmd = findPython();
   if (!pythonCmd) return false;
   const dbPath = path.join(config.projectRoot, 'data', 'daily_water_situation.sqlite');
@@ -133,6 +142,55 @@ function isHashIngested(hash) {
   } catch (err) {
     return false;
   }
+}
+
+function isKpHashIngested(hash) {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const dbPath = path.join(config.projectRoot, 'data', 'kp_stations_data.sqlite');
+  if (!fs.existsSync(dbPath)) return false;
+  try {
+    const cmd = `${pythonCmd} -c "import sqlite3; conn=sqlite3.connect(r'${dbPath}'); cursor=conn.execute('SELECT 1 FROM kp_water_reports WHERE source_sha256=\\'${hash}\\''); print(bool(cursor.fetchone()))"`;
+    const output = execSync(cmd).toString().trim();
+    return output === 'True';
+  } catch (err) {
+    return false;
+  }
+}
+
+function isDailyWaterIngestedForDate(dateStr) {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const dbPath = path.join(config.projectRoot, 'data', 'daily_water_situation.sqlite');
+  if (!fs.existsSync(dbPath)) return false;
+  try {
+    const cmd = `${pythonCmd} -c "import sqlite3; conn=sqlite3.connect(r'${dbPath}'); cursor=conn.execute('SELECT 1 FROM daily_water_reports WHERE report_date=\\'${dateStr}\\' LIMIT 1'); print(bool(cursor.fetchone()))"`;
+    const output = execSync(cmd).toString().trim();
+    return output === 'True';
+  } catch (err) {
+    return false;
+  }
+}
+
+function isKpIngestedForDate(dd_mm_yyyy) {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const dbPath = path.join(config.projectRoot, 'data', 'kp_stations_data.sqlite');
+  if (!fs.existsSync(dbPath)) return false;
+  try {
+    const cmd = `${pythonCmd} -c "import sqlite3; conn=sqlite3.connect(r'${dbPath}'); cursor=conn.execute('SELECT 1 FROM kp_water_reports WHERE date=\\'${dd_mm_yyyy}\\' LIMIT 1'); print(bool(cursor.fetchone()))"`;
+    const output = execSync(cmd).toString().trim();
+    return output === 'True';
+  } catch (err) {
+    return false;
+  }
+}
+
+function isTodayReportsInDb() {
+  const { yyyy_mm_dd, dd_mm_yyyy } = getTodayDateFormats();
+  const dwDone = isDailyWaterIngestedForDate(yyyy_mm_dd);
+  const kpDone = isKpIngestedForDate(dd_mm_yyyy);
+  return { dwDone, kpDone, allDone: dwDone && kpDone, dateStr: yyyy_mm_dd };
 }
 
 // ── Pipeline Phases ────────────────────────────────────────────────────
@@ -273,25 +331,25 @@ async function main() {
 
   /**
    * Checks whether a message contains a new Daily Water Situation PDF
-   * that hasn't been ingested yet. If so, saves it and runs ONLY the
-   * ingestion script (daily_water_situation_db.py) — NOT storages.py.
+   * or KP Flood Report PDF that hasn't been ingested yet. If so, saves it
+   * and runs the appropriate ingestion script.
    *
-   * Returns true if a new PDF was ingested.
+   * Returns { ingested: boolean, isToday: boolean, type: string }
    */
   async function processMessage(msg) {
     try {
       // 1. Filter: check if message is from target group
       if (targetChatId) {
-        if (msg.from !== targetChatId) return false;
+        if (msg.from !== targetChatId) return { ingested: false };
       } else {
         const chat = await msg.getChat();
-        if (!chat.isGroup) return false;
-        if (!chat.name.toLowerCase().includes(config.groupNameFilter.toLowerCase())) return false;
+        if (!chat.isGroup) return { ingested: false };
+        if (!chat.name.toLowerCase().includes(config.groupNameFilter.toLowerCase())) return { ingested: false };
       }
 
       // 2. Filter: must have media attachment and be a document type (e.g. PDF)
-      if (!msg.hasMedia) return false;
-      if (msg.type !== 'document') return false;
+      if (!msg.hasMedia) return { ingested: false };
+      if (msg.type !== 'document') return { ingested: false };
 
       // Check filename in msg.body (which represents the document filename on WA Web)
       const bodyText = (msg.body || '').toLowerCase();
@@ -299,11 +357,12 @@ async function main() {
       let isKpReport = bodyText.includes(config.kpPdfNameFilter.toLowerCase());
       
       if (!isDailyWater && !isKpReport) {
-        return false;
+        return { ingested: false };
       }
 
-      const msgDate = new Date(msg.timestamp * 1000).toISOString().split('T')[0];
-      log(`  Downloading PDF from ${msgDate}...`);
+      const msgDate = getLocalDateStr(msg.timestamp * 1000);
+      const todayStr = getLocalDateStr(Date.now());
+      const isTodayMsg = (msgDate === todayStr);
 
       // 30-second timeout to prevent hanging forever
       const downloadPromise = msg.downloadMedia();
@@ -312,27 +371,30 @@ async function main() {
       );
       const media = await Promise.race([downloadPromise, timeoutPromise]);
       if (!media) {
-        log(`  ⚠ Download returned null for ${msgDate} (media not available on server)`);
-        return false;
+        log(`  ⚠ Could not fetch media headers for attachment from ${msgDate}`);
+        return { ingested: false };
       }
-      log(`  ✓ Downloaded: mimetype=${media.mimetype}, filename="${media.filename}", size=${media.data ? media.data.length : 0} chars`);
+      
       if (!media.mimetype || !media.mimetype.includes('pdf')) {
-        log(`  ⚠ Skipped: not a PDF (mimetype: ${media.mimetype})`);
-        return false;
+        return { ingested: false };
       }
 
-      // Compute hash and check against DB (we only check daily_water_reports for simplicity, or we can just run it)
-      // Actually we'll skip hash check if it's KP report, or we can check kp_water_reports too.
       const buffer = Buffer.from(media.data, 'base64');
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      
-      if (isDailyWater && isHashIngested(hash)) {
-        log(`  ⚠ Skipped: already ingested (hash: ${hash.slice(0, 12)}...)`);
-        return false;
+      const fileName = media.filename || (isDailyWater ? 'Daily Water Situation.pdf' : 'Flood Report.pdf');
+
+      if (isDailyWater && isDailyWaterHashIngested(hash)) {
+        log(`  ℹ [${msgDate}] "${fileName}" → Already ingested in DB (Skipped)`);
+        return { ingested: false };
+      }
+
+      if (isKpReport && isKpHashIngested(hash)) {
+        log(`  ℹ [${msgDate}] "${fileName}" → Already ingested in DB (Skipped)`);
+        return { ingested: false };
       }
 
       log(`────────────────────────────────────────────`);
-      log(`Found NEW PDF: "${media.filename}" (${Math.round(buffer.length / 1024)} KB, hash: ${hash.slice(0, 12)}...)`);
+      log(`📥 NEW UNINGESTED PDF FOUND: "${fileName}" (${Math.round(buffer.length / 1024)} KB, Msg Date: ${msgDate})`);
 
       if (isDailyWater) {
         // Save to res_storages/Daily Water Situation.pdf
@@ -354,15 +416,15 @@ async function main() {
       }
 
       log(`────────────────────────────────────────────`);
-      return true;
+      return { ingested: true, isToday: isTodayMsg, type: isDailyWater ? 'daily_water' : 'kp' };
     } catch (err) {
       if (config.verboseLogging) {
         console.error('Error processing message:', err);
       } else {
-        const msgDate = new Date(msg.timestamp * 1000).toISOString().split('T')[0];
+        const msgDate = getLocalDateStr(msg.timestamp * 1000);
         log(`[INFO] Could not download media for message from ${msgDate}: ${err.message}`);
       }
-      return false;
+      return { ingested: false };
     }
   }
 
@@ -485,19 +547,27 @@ async function main() {
         log(`Fetched ${messages.length} messages. Scanning for missing PDFs...`);
 
         let newCount = 0;
+        let todayIngestedCount = 0;
         for (const msg of messages) {
-          if (await processMessage(msg)) newCount++;
+          const res = await processMessage(msg);
+          if (res.ingested) {
+            newCount++;
+            if (res.isToday) todayIngestedCount++;
+          }
         }
 
         if (newCount > 0) {
           finalize(newCount);
-          if (config.disconnectAfterDownload) {
-            if (shutdownTimer) clearTimeout(shutdownTimer);
-            gracefulShutdown(client, `History sync complete: ${newCount} new PDF(s).`);
-            return;
-          }
+        }
+
+        const todayCheck = isTodayReportsInDb();
+        if (config.disconnectAfterDownload && todayCheck.allDone) {
+          if (shutdownTimer) clearTimeout(shutdownTimer);
+          gracefulShutdown(client, `Both reports for today (${todayCheck.dateStr}) are fully ingested. Mission accomplished.`);
+          return;
         } else {
-          log('No new PDFs found in recent history. Waiting for new messages...');
+          log(`[STATUS] Today's reports (${todayCheck.dateStr}) status: Daily Water = ${todayCheck.dwDone ? '✓ Ingested' : '⏳ Pending'}, KP Report = ${todayCheck.kpDone ? '✓ Ingested' : '⏳ Pending'}.`);
+          log(`Bot will STAY ONLINE and listen for incoming messages until listen window (${config.listenWindowMinutes}m) expires...`);
         }
       } else {
         log(`Target group "${config.groupNameFilter}" not found in chat list.`);
@@ -511,11 +581,17 @@ async function main() {
   // For live messages, each new PDF is ingested immediately and then
   // finalized (storages.py + git push) right away.
   client.on('message', async (msg) => {
-    if (await processMessage(msg)) {
+    const res = await processMessage(msg);
+    if (res.ingested) {
       finalize(1);
-      if (config.disconnectAfterDownload) {
+      const todayCheck = isTodayReportsInDb();
+      if (config.disconnectAfterDownload && todayCheck.allDone) {
         if (shutdownTimer) clearTimeout(shutdownTimer);
-        gracefulShutdown(client, 'Live PDF downloaded. Mission accomplished.');
+        gracefulShutdown(client, `Both reports for today (${todayCheck.dateStr}) are fully ingested. Mission accomplished.`);
+      } else {
+        log(`[STATUS] Ingested ${res.type === 'daily_water' ? 'Daily Water' : 'KP Report'} PDF for ${todayCheck.dateStr}.`);
+        log(`[STATUS] Today's reports (${todayCheck.dateStr}) status: Daily Water = ${todayCheck.dwDone ? '✓ Ingested' : '⏳ Pending'}, KP Report = ${todayCheck.kpDone ? '✓ Ingested' : '⏳ Pending'}.`);
+        log(`Bot will STAY ONLINE and listen for remaining reports until listen window (${config.listenWindowMinutes}m) expires...`);
       }
     }
   });
