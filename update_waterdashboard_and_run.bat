@@ -252,7 +252,7 @@ echo Preparing Hydro GIS Uploader API runner...
   echo.
   echo if exist "%%VENV_ACTIVATE%%" call "%%VENV_ACTIVATE%%"
   echo cd /d "%%REPO_ROOT%%"
-  echo "%%VENV_PYTHON%%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port %GIS_PORT%
+  echo "%%VENV_PYTHON%%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port %GIS_PORT% --reload
   echo pause
 ) > "%GIS_RUNNER%"
 

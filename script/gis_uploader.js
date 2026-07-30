@@ -312,6 +312,48 @@
       throw new Error(body.detail || `GIS uploader API returned ${response.status}`);
     }
     const layers = Array.isArray(body.layers) ? body.layers : [];
+
+    if (body.existing_styles && typeof body.existing_styles === 'object') {
+      const remoteStyles = body.existing_styles;
+      const store = readExistingLayerStyleStore();
+      let changed = false;
+      Object.entries(remoteStyles).forEach(([layerId, presentation]) => {
+        const localTime = parseSavedAt(store[layerId]?.saved_at);
+        const remoteTime = parseSavedAt(presentation?.saved_at);
+        if (!store[layerId] || remoteTime >= localTime) {
+          store[layerId] = presentation;
+          changed = true;
+        }
+      });
+      if (changed) {
+        writeExistingLayerStyleStore(store);
+        restoreExistingLayerStyles();
+      }
+    }
+
+    // Auto-migrate: If local browser has presentation for an uploaded layer that is missing or older on backend, push it now!
+    const localStore = readLocalPresentationStore();
+    for (const layer of layers) {
+      const localPres = localStore[layer.id];
+      if (localPres && (!layer.style || parseSavedAt(localPres.saved_at) > parseSavedAt(layer.updated_at))) {
+        try {
+          const patchResp = await fetch(`${API_BASE}/layers/${encodeURIComponent(layer.id)}/style`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localPres)
+          });
+          if (patchResp.ok) {
+            const patchBody = await patchResp.json().catch(() => ({}));
+            if (patchBody.layer) {
+              Object.assign(layer, patchBody.layer);
+            }
+          }
+        } catch (err) {
+          console.warn('[GIS uploader] Auto-push local layer style failed:', err);
+        }
+      }
+    }
+
     return layers.map(mergeLayerWithLocalPresentation);
   }
 
@@ -347,22 +389,98 @@
     }
   }
 
-  function saveExistingLayerStyle(layerId, payload) {
+  async function fetchAndSyncExistingLayerStyles() {
+    try {
+      const response = await fetch(apiUrl('/existing-styles', true), { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json().catch(() => ({}));
+      const remoteStyles = data?.styles || {};
+      const store = readExistingLayerStyleStore();
+      let changed = false;
+
+      // 1. Merge remote styles into local store if newer or missing locally
+      Object.entries(remoteStyles).forEach(([layerId, presentation]) => {
+        const localTime = parseSavedAt(store[layerId]?.saved_at);
+        const remoteTime = parseSavedAt(presentation?.saved_at);
+        if (!store[layerId] || remoteTime >= localTime) {
+          store[layerId] = presentation;
+          changed = true;
+        }
+      });
+
+      // 2. Auto-migrate: Upload any styles previously saved in this browser that are missing on backend
+      for (const [layerId, presentation] of Object.entries(store)) {
+        const localTime = parseSavedAt(presentation?.saved_at) || 1;
+        const remoteTime = parseSavedAt(remoteStyles[layerId]?.saved_at);
+        if (!remoteStyles[layerId] || localTime > remoteTime) {
+          try {
+            await fetch(`${API_BASE}/existing-styles/${encodeURIComponent(layerId)}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(presentation)
+            });
+          } catch (uploadError) {
+            console.warn('[GIS uploader] Could not push local style to backend:', uploadError);
+          }
+        }
+      }
+
+      if (changed) {
+        writeExistingLayerStyleStore(store);
+        restoreExistingLayerStyles();
+      }
+    } catch (error) {
+      console.warn('[GIS uploader] Could not fetch remote existing layer styles:', error);
+    }
+  }
+
+  async function saveExistingLayerStyle(layerId, payload) {
     if (!layerId) return;
     const store = readExistingLayerStyleStore();
-    store[layerId] = {
+    const presentation = {
       ...presentationPayloadCopy(payload),
       saved_at: new Date().toISOString()
     };
+    store[layerId] = presentation;
     writeExistingLayerStyleStore(store);
+
+    try {
+      await fetch(`${API_BASE}/existing-styles/${encodeURIComponent(layerId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(presentation)
+      });
+    } catch (error) {
+      console.warn('[GIS uploader] Could not sync existing layer style to backend:', error);
+    }
   }
 
-  function removeExistingLayerStyle(layerId) {
+  async function removeExistingLayerStyle(layerId) {
     if (!layerId) return;
     const store = readExistingLayerStyleStore();
-    if (!store[layerId]) return;
-    delete store[layerId];
-    writeExistingLayerStyleStore(store);
+    if (store[layerId]) {
+      delete store[layerId];
+      writeExistingLayerStyleStore(store);
+    }
+    try {
+      await fetch(`${API_BASE}/existing-styles/${encodeURIComponent(layerId)}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('[GIS uploader] Could not delete existing layer style from backend:', error);
+    }
+  }
+
+  function resolveGeoJsonUrl(url, layerId) {
+    if (!url) return `${API_BASE}/layers/${encodeURIComponent(layerId)}/geojson`;
+    if (url.startsWith('/api/gis')) {
+      return `${API_BASE}${url.slice('/api/gis'.length)}`;
+    }
+    if (url.includes('localhost:8001/api/gis')) {
+      const pathIndex = url.indexOf('/api/gis');
+      return `${API_BASE}${url.slice(pathIndex + '/api/gis'.length)}`;
+    }
+    return url;
   }
 
   function presentationPayloadCopy(payload) {
@@ -1489,7 +1607,7 @@
       } else {
         map.addSource(source, {
           type: 'geojson',
-          data: layer.geojson_url
+          data: resolveGeoJsonUrl(layer.geojson_url, layer.id)
         });
       }
     }
@@ -2043,10 +2161,10 @@
       try {
         const map = getMapInstance();
         if (map) applySavedLayerPresentation(map, styledLayer);
-        saveExistingLayerStyle(layer.id, payload);
+        await saveExistingLayerStyle(layer.id, payload);
         layerDrafts.delete(key);
         renderEditPanel();
-        setEditStatus('Existing layer style saved in this browser.', 'success');
+        setEditStatus('Style saved & synced across devices.', 'success');
       } catch (error) {
         setEditStatus(error.message || 'Existing layer style save failed.', 'error');
       }
@@ -3065,5 +3183,7 @@
     bindSidebarToggleTracking();
     initializeMapBindings();
     loadSavedLayers();
+    fetchAndSyncExistingLayerStyles();
+    setInterval(fetchAndSyncExistingLayerStyles, 30000);
   });
 })();

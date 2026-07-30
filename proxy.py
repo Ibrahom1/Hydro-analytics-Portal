@@ -1,4 +1,6 @@
 import requests
+import gzip
+import hashlib
 from flask import Flask, request, Response
 
 app = Flask(__name__)
@@ -73,7 +75,7 @@ def start_background_auto_sync():
 
     t = threading.Thread(target=loop, daemon=True)
     t.start()
-    print("🔄 Background Auto-Sync Thread started (Google Sheets synced every 5 min)")
+    print("Background Auto-Sync Thread started (Google Sheets synced every 5 min)")
 
 @app.route('/api/sync-now', methods=['GET', 'POST'])
 def sync_now():
@@ -115,13 +117,13 @@ def kp_stations_api():
         return {"status": "error", "message": str(e)}, 500
 
 @app.route('/', defaults={'path': ''})
-@app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+@app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'])
 def proxy(path):
     # Handle CORS Preflight automatically
     if request.method == 'OPTIONS':
         return Response('', 204, headers={
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         })
 
@@ -156,10 +158,9 @@ def proxy(path):
 
 def forward_request(req, url):
     try:
-        # Exclude 'Host' header to prevent issues with target servers
-        headers = {k: v for k, v in req.headers if k.lower() != 'host'}
+        # Exclude 'Host' and 'Accept-Encoding' so proxy gets raw response to compress/cache
+        headers = {k: v for k, v in req.headers if k.lower() not in ['host', 'accept-encoding']}
         
-        # Stream the request
         resp = requests.request(
             method=req.method,
             url=url,
@@ -167,32 +168,51 @@ def forward_request(req, url):
             data=req.get_data(),
             cookies=req.cookies,
             allow_redirects=False,
-            stream=True
+            stream=False
         )
         
-        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-credentials', 'access-control-allow-headers']
+        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-credentials', 'access-control-allow-headers', 'etag']
         response_headers = [(k, v) for k, v in resp.raw.headers.items() if k.lower() not in excluded_headers]
 
         # Ensure permissive CORS on all responses
         response_headers.append(('Access-Control-Allow-Origin', '*'))
 
-        # Prevent remote browsers (Tailscale / Cloudflare / HTTP proxy) from serving stale cached JS/API data
-        if 'ft_and_percentage.js' in url or 'api' in url:
+        content = resp.content
+        content_type = resp.headers.get('Content-Type', '').lower()
+        url_lower = url.lower()
+
+        # Dynamic State APIs vs Static Map / Asset Caching
+        is_dynamic_api = any(k in url_lower for k in ['ft_and_percentage.js', 'existing-styles', 'sync-now', 'kp-stations']) or ('layers' in url_lower and 'geojson' not in url_lower)
+
+        if is_dynamic_api:
             response_headers.append(('Cache-Control', 'no-cache, no-store, must-revalidate'))
             response_headers.append(('Pragma', 'no-cache'))
             response_headers.append(('Expires', '0'))
+        else:
+            # Add browser caching headers for static assets, map layers, GeoJSON, JS/CSS, images, tiles
+            if req.method == 'GET' and resp.status_code == 200 and content:
+                etag = f'"{hashlib.md5(content).hexdigest()}"'
+                response_headers.append(('ETag', etag))
 
-        # Stream the response back (important for large map tiles/images)
-        def generate():
-            try:
-                for chunk in resp.iter_content(chunk_size=8192):
-                    if chunk:
-                        yield chunk
-            except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError) as e:
-                # Mapbox aggressively cancels tile requests when panning. This is totally normal.
-                pass
-                    
-        return Response(generate(), resp.status_code, response_headers)
+                # Check If-None-Match for 304 Not Modified
+                client_etag = req.headers.get('If-None-Match', '').strip('"\'' + '\\')
+                clean_etag = etag.strip('"\'' + '\\')
+                if client_etag and client_etag == clean_etag:
+                    return Response('', 304, response_headers)
+
+                response_headers.append(('Cache-Control', 'public, max-age=86400, must-revalidate'))
+
+        # Check client Accept-Encoding for GZip
+        accept_encoding = req.headers.get('Accept-Encoding', '').lower()
+        compressible = any(t in content_type for t in ['json', 'geojson', 'text', 'javascript', 'css', 'html', 'xml', 'pbf', 'protobuf']) or any(ext in url_lower for ext in ['.js', '.css', '.json', '.geojson', '.pbf', '.html', '.svg'])
+
+        if 'gzip' in accept_encoding and compressible and len(content) > 300:
+            compressed_content = gzip.compress(content)
+            response_headers.append(('Content-Encoding', 'gzip'))
+            response_headers.append(('Content-Length', str(len(compressed_content))))
+            return Response(compressed_content, resp.status_code, response_headers)
+
+        return Response(content, resp.status_code, response_headers)
         
     except requests.exceptions.RequestException as e:
         print(f"Proxy connection error for {url}: {str(e)}")
@@ -200,7 +220,7 @@ def forward_request(req, url):
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🚀 HYDRO ANALYTICS REVERSE PROXY STARTING 🚀")
+    print("HYDRO ANALYTICS REVERSE PROXY STARTING")
     print("=" * 60)
     print(f"UI Router: Forwarding to {UI_URL}")
     print(f"GeoServers Proxied: {len(ROUTES) - 3}")

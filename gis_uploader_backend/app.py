@@ -13,6 +13,7 @@ import requests
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
 
 load_dotenv()
@@ -21,6 +22,7 @@ APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 REGISTRY_PATH = DATA_DIR / "layers.json"
+EXISTING_STYLES_PATH = DATA_DIR / "existing_styles.json"
 
 GEOSERVER_URL = os.getenv("GIS_GEOSERVER_URL", "http://172.18.1.85:8080/geoserver").rstrip("/")
 GEOSERVER_WORKSPACE = os.getenv("GIS_GEOSERVER_WORKSPACE", "HydroAnalytics2026")
@@ -79,6 +81,7 @@ STYLE_BUCKETS_BY_LAYER: Dict[str, Tuple[str, ...]] = {
 }
 
 app = FastAPI(title="Hydro GIS Uploader API", version="1.0.0")
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -133,6 +136,21 @@ def load_registry() -> List[Dict[str, Any]]:
 def save_registry(layers: List[Dict[str, Any]]) -> None:
     ensure_data_dirs()
     REGISTRY_PATH.write_text(json.dumps(layers, indent=2), encoding="utf-8")
+
+
+def load_existing_styles() -> Dict[str, Any]:
+    ensure_data_dirs()
+    if not EXISTING_STYLES_PATH.exists():
+        return {}
+    try:
+        return json.loads(EXISTING_STYLES_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_existing_styles(styles: Dict[str, Any]) -> None:
+    ensure_data_dirs()
+    EXISTING_STYLES_PATH.write_text(json.dumps(styles, indent=2), encoding="utf-8")
 
 
 def no_cache_json(payload: Dict[str, Any]) -> JSONResponse:
@@ -660,7 +678,7 @@ def layer_metadata_base(
 
 
 def vector_proxy_url(layer_id: str) -> str:
-    return f"http://localhost:8001/api/gis/layers/{layer_id}/geojson"
+    return f"/api/gis/layers/{layer_id}/geojson"
 
 
 def raster_wms_tile_url(layer_name: str, style_name: str) -> str:
@@ -684,9 +702,39 @@ def health() -> Dict[str, Any]:
     }
 
 
+@app.get("/api/gis/existing-styles")
+def get_existing_styles() -> JSONResponse:
+    return no_cache_json({"styles": load_existing_styles()})
+
+
+@app.patch("/api/gis/existing-styles/{layer_id:path}")
+def update_existing_style(layer_id: str, payload: Dict[str, Any] = Body(...)) -> JSONResponse:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
+    styles = load_existing_styles()
+    styles[layer_id] = {
+        "style": payload.get("style") or None,
+        "filter": payload.get("filter") or None,
+        "feature_colors": payload.get("feature_colors") or None,
+        "label": payload.get("label") or None,
+        "saved_at": now_iso()
+    }
+    save_existing_styles(styles)
+    return no_cache_json({"styles": styles, "updated_layer": layer_id})
+
+
+@app.delete("/api/gis/existing-styles/{layer_id:path}")
+def delete_existing_style(layer_id: str) -> JSONResponse:
+    styles = load_existing_styles()
+    if layer_id in styles:
+        del styles[layer_id]
+        save_existing_styles(styles)
+    return no_cache_json({"styles": styles, "deleted_layer": layer_id})
+
+
 @app.get("/api/gis/layers")
 def list_layers() -> JSONResponse:
-    return no_cache_json({"layers": load_registry()})
+    return no_cache_json({"layers": load_registry(), "existing_styles": load_existing_styles()})
 
 
 @app.delete("/api/gis/layers/{layer_id}")
