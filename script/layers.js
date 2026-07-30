@@ -13216,7 +13216,7 @@ document.getElementById("di_ht").addEventListener("change", function () {
       },
       paint: {
         "circle-color": "red",
-        "circle-radius": 4,
+        "circle-radius": 6,
       }
     });
   }
