@@ -304,6 +304,18 @@
     activePopups = [];
   }
 
+  function getEffectiveRain(props) {
+    if (!props) return null;
+    const isAvailable = (val) => val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
+    if (isAvailable(props.rain_24h)) {
+      return props.rain_24h;
+    }
+    if (isAvailable(props.rain_3h)) {
+      return props.rain_3h;
+    }
+    return null;
+  }
+
   function renderRainMarkers(obsData) {
     clearRainMarkers();
     if (!obsData || !obsData.features || typeof map1 === 'undefined' || !map1) return;
@@ -322,16 +334,16 @@
 
       const props = feature.properties || {};
       const stationName = props.name || 'Unknown';
-      const rain24h = props.rain_24h;
+      const effectiveRain = getEffectiveRain(props);
       const iconKey = getWeatherIcon(props);
-      const rain24hDisplay = formatRain(rain24h);
+      const rainDisplay = formatRain(effectiveRain);
 
       const el = document.createElement('div');
       el.className = 'pmd-nwfc-map-marker pmd-rain-marker';
       el.title = `${stationName}`;
       el.innerHTML = `
         <div class="pmd-marker-icon">${getSVGIcon(iconKey)}</div>
-        <div class="pmd-marker-badge" style="${getRainBadgeStyle(rain24h)}">${rain24hDisplay}</div>
+        <div class="pmd-marker-badge" style="${getRainBadgeStyle(effectiveRain)}">${rainDisplay}</div>
       `;
 
       el.addEventListener('click', (e) => {
