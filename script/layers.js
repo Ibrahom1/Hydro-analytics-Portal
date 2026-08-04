@@ -1,6 +1,6 @@
 // Global GeoServer IP variables
 const _hostname = window.location.hostname;
-const isLocalNetwork = _hostname === 'localhost' || _hostname === '127.0.0.1' || _hostname.startsWith('192.168.') || _hostname.startsWith('172.') || _hostname.startsWith('10.');
+const isLocalNetwork = _hostname === 'localhost' || _hostname === '127.0.0.1' || _hostname.startsWith('192.168.') || _hostname.startsWith('172.') || _hostname.startsWith('10.') || _hostname.startsWith('100.');
 const isProxied = (!isLocalNetwork && window.location.protocol !== 'file:') || window.location.port === '8000';
 const proxyBase = window.location.origin;
 
@@ -20,7 +20,7 @@ const apiDewHost = isProxied ? `${proxyBase}/proxy_api_dew` : 'http://172.18.1.1
 
 const _host = window.location.protocol === 'file:' ? 'localhost' : (window.location.hostname || 'localhost');
 const apiDailyHost = isProxied ? `${proxyBase}/proxy_api_daily` : `http://${_host}:5000`;
-const apiPrecipGeojsonHost = isProxied ? `${proxyBase}/proxy_api_precip` : 'http://172.18.0.19:5000';
+const apiMeteoblueHost = isProxied ? `${proxyBase}/proxy_api_meteoblue` : `http://${_host}:8000/proxy_api_meteoblue`;
 const ffdRiversHost = isProxied ? `${proxyBase}/proxy_ffd_rivers` : 'http://172.18.7.21';
 
 const mapDiv = document.getElementById("map1");
@@ -367,8 +367,43 @@ function initLayerToggleRowHighlighting() {
 let selectedTehsils = [];
 let selectedDistrict = [];
 let blinkInterval = null;
+let isBlinkSelectionActive = false;
 
-//This is for blink button Tehsils (Tehsil Layer)
+function updateBlinkBtnUI() {
+  const btn = document.getElementById("blinkLayersBtn");
+  if (!btn) return;
+  const label = btn.querySelector("span");
+  
+  const tehsilCheckbox = document.getElementById('tslBoundary');
+  const districtCheckbox = document.getElementById('dstBoundary');
+
+  let activeType = "Districts";
+  if (tehsilCheckbox?.checked && !districtCheckbox?.checked) {
+    activeType = "Tehsils";
+  } else if (tehsilCheckbox?.checked && districtCheckbox?.checked) {
+    activeType = "Regions";
+  }
+
+  const totalSelected = (selectedDistrict?.length || 0) + (selectedTehsils?.length || 0);
+
+  if (blinkInterval) {
+    if (label) label.textContent = "Stop Blinking";
+    btn.className = "flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-700 text-white rounded shadow-lg hover:from-rose-600 hover:to-red-800 transition font-semibold animate-pulse";
+  } else if (isBlinkSelectionActive) {
+    if (totalSelected > 0) {
+      if (label) label.textContent = `Start Blinking (${totalSelected} Selected)`;
+      btn.className = "flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded shadow-lg hover:from-emerald-500 hover:to-teal-800 transition font-semibold ring-2 ring-emerald-300 animate-bounce";
+    } else {
+      if (label) label.textContent = `Click Map to Select ${activeType}`;
+      btn.className = "flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded shadow-lg hover:from-amber-600 hover:to-orange-700 transition font-semibold ring-2 ring-amber-300";
+    }
+  } else {
+    if (label) label.textContent = `Blink ${activeType}`;
+    btn.className = "flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded shadow-lg hover:from-blue-500 hover:to-indigo-800 transition font-semibold";
+  }
+}
+
+//This is for blink button Tehsils & Districts
 function updateBlinkLayersButtonVisibility() {
   const btn = document.getElementById('blinkLayersBtn');
   if (!btn) return;
@@ -376,6 +411,20 @@ function updateBlinkLayersButtonVisibility() {
   const districtCheckbox = document.getElementById('dstBoundary');
   const shouldShow = Boolean(tehsilCheckbox?.checked || districtCheckbox?.checked);
   btn.style.display = shouldShow ? 'flex' : 'none';
+  if (!shouldShow) {
+    if (blinkInterval) {
+      clearInterval(blinkInterval);
+      blinkInterval = null;
+    }
+    isBlinkSelectionActive = false;
+    selectedDistrict = [];
+    selectedTehsils = [];
+    if (typeof map1 !== 'undefined' && map1) {
+      if (map1.getLayer("DistrictBoundaryHighlight")) map1.setFilter("DistrictBoundaryHighlight", ["in", "name", ""]);
+      if (map1.getLayer("TehsilBoundaryHighlight")) map1.setFilter("TehsilBoundaryHighlight", ["in", "name", ""]);
+    }
+    updateBlinkBtnUI();
+  }
 }
 
 // Reusable popup creator for feature layers
@@ -1073,8 +1122,7 @@ function addBoundaryLayers(map) {
       const visibility = map.getLayoutProperty("districtBoundary_label", "visibility");
       if (visibility !== "visible") return;
 
-      if (blinkInterval) {
-        console.log("Blinking is active - district selection is locked");
+      if (!isBlinkSelectionActive || blinkInterval) {
         return;
       }
 
@@ -1089,11 +1137,14 @@ function addBoundaryLayers(map) {
         }
 
         map.setFilter("DistrictBoundaryHighlight", ["in", "name", ...selectedDistrict]);
+        updateBlinkBtnUI();
       }
     });
 
     map.on("mouseenter", "DistrictBoundary", () => {
-      map.getCanvas().style.cursor = "pointer";
+      if (isBlinkSelectionActive && !blinkInterval) {
+        map.getCanvas().style.cursor = "pointer";
+      }
     });
 
     map.on("mouseleave", "DistrictBoundary", () => {
@@ -1105,8 +1156,7 @@ function addBoundaryLayers(map) {
       const visibility = map.getLayoutProperty("tehsilBoundary_label", "visibility");
       if (visibility !== "visible") return;
 
-      if (blinkInterval) {
-        console.log("Blinking is active - tehsil selection is locked");
+      if (!isBlinkSelectionActive || blinkInterval) {
         return;
       }
 
@@ -1121,11 +1171,14 @@ function addBoundaryLayers(map) {
         }
 
         map.setFilter("TehsilBoundaryHighlight", ["in", "name", ...selectedTehsils]);
+        updateBlinkBtnUI();
       }
     });
 
     map.on("mouseenter", "TehsilBoundary", () => {
-      map.getCanvas().style.cursor = "pointer";
+      if (isBlinkSelectionActive && !blinkInterval) {
+        map.getCanvas().style.cursor = "pointer";
+      }
     });
 
     map.on("mouseleave", "TehsilBoundary", () => {
@@ -1634,27 +1687,13 @@ class WeatherLayerController {
 
   async loadWeeklyDates() {
     try {
-      const url = `${apiPrecipGeojsonHost}/api/layers`;
+      const url = `${apiMeteoblueHost}/weekly/dates`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (data && data.precip && data.precip.length > 0) {
-        let dates = data.precip;
-        if (dates.length > 7) {
-          const todayStr = getNextNDays(0); // YYYY-MM-DD
-          let idx = dates.indexOf(todayStr);
-          if (idx !== -1) {
-            // Adjust start index if there are not enough future days to make 7 days
-            if (dates.length - idx < 7) {
-              idx = Math.max(0, idx - (7 - (dates.length - idx)));
-            }
-            dates = dates.slice(idx, idx + 7);
-          } else {
-            dates = dates.slice(-7);
-          }
-        }
-        this.weeklyDates = dates;
-        console.log("Successfully fetched weekly precipitation geojson dates from API:", this.weeklyDates);
+        this.weeklyDates = data.precip;
+        console.log("Successfully fetched weekly precipitation dates from proxy:", this.weeklyDates);
         
         // Re-initialize weekly controller config with the new count and layer IDs
         const wkyController = this.controllers.get('wky');
@@ -1683,15 +1722,16 @@ class WeatherLayerController {
         }
       }
     } catch (e) {
-      console.warn("Failed to fetch available weekly geojson dates from API, using fallback local dates:", e);
-      // Fallback: populate weeklyDates with 8 days starting today
-      this.weeklyDates = Array.from({ length: 8 }, (_, i) => getNextNDays(i));
+      console.warn("Failed to fetch weekly dates from proxy, using fallback local dates:", e);
+      // Fallback: populate weeklyDates with 7 days starting today
+      this.weeklyDates = Array.from({ length: 7 }, (_, i) => getNextNDays(i));
     }
   }
 
   // Use existing global functions for time formatting
   getNextNHoursWithTime(offset = 0) {
     const currentDate = new Date();
+    currentDate.setMinutes(0, 0, 0); // Zero out minutes, seconds, milliseconds to round to top of the hour
     const futureDate = new Date(currentDate.getTime() + (offset * 60 * 60 * 1000));
     return futureDate.toISOString().replace(/\.[0-9]+Z$/, 'Z');
   }
@@ -1722,24 +1762,24 @@ class WeatherLayerController {
     }
   }
 
-  // Add Meteoblue hourly precipitation layers to the map (vector)
+  // Add Meteoblue hourly precipitation layers to the map (vector tiles via cached proxy)
   addMeteoblueHourlyLayers() {
     if (this.hourlyLayersAdded) return;
    
-    const metbluT = '1c9f9d57164f';
     const model = "NEMSIN";
    
     for (let hourOffset = 0; hourOffset < 11; hourOffset++) {
       const time = this.getNextNHoursWithTime(hourOffset);
       const sourceId = `meteoblue_nems_cloudprecipitation_hourly_forecast_${hourOffset}`;
-      const baseUrl = `https://maps-api.meteoblue.com/v1/map/vector/${model}/${time}/cloudsLow~73~low cld lay~hourly~none~contourSteps~20.0~40.0~60.0~80.0~95.0_cloudsMid~74~mid cld lay~hourly~none~contourSteps~20.0~40.0~60.0~80.0~95.0_precip~61~sfc~hourly~none~contourSteps~0.1~0.25~0.5~1.0~1.5~2.0~3.0~5.0~7.0~10.0~15.0~20.0~30.0_snow~679~sfc~hourly~none~contourSteps~0.2/{z}/{x}/{y}?apikey=${metbluT}`;
+      const baseUrl = `${apiMeteoblueHost}/v1/map/vector/${model}/${time}/cloudsLow~73~low cld lay~hourly~none~contourSteps~20.0~40.0~60.0~80.0~95.0_cloudsMid~74~mid cld lay~hourly~none~contourSteps~20.0~40.0~60.0~80.0~95.0_precip~61~sfc~hourly~none~contourSteps~0.1~0.25~0.5~1.0~1.5~2.0~3.0~5.0~7.0~10.0~15.0~20.0~30.0_snow~679~sfc~hourly~none~contourSteps~0.2/{z}/{x}/{y}`;
      
       // Add source if it doesn't exist
       if (!this.sourceExists(sourceId)) {
         try {
           map1.addSource(sourceId, {
             type: "vector",
-            tiles: [baseUrl]
+            tiles: [baseUrl],
+            bounds: [58.0, 5.0, 105.0, 42.0]
           });
         } catch (error) {
           console.warn(`Failed to add source ${sourceId}:`, error);
@@ -1800,40 +1840,34 @@ class WeatherLayerController {
     
     // Ensure we have weeklyDates populated
     if (!this.weeklyDates || this.weeklyDates.length === 0) {
-      this.weeklyDates = Array.from({ length: 8 }, (_, i) => getNextNDays(i));
+      this.weeklyDates = Array.from({ length: 7 }, (_, i) => getNextNDays(i));
     }
 
-    console.log("Adding weekly precipitation geojson layers for dates:", this.weeklyDates);
+    console.log("Adding weekly precipitation vector tile layers for dates:", this.weeklyDates);
 
-    // Fetch GeoJSON for each date and add sources/layers to the map
-    const fetchPromises = this.weeklyDates.map(async (date, index) => {
+    const model = "NEMSIN";
+
+    // Add vector tile source+layer for each daily date
+    for (let index = 0; index < this.weeklyDates.length; index++) {
+      const date = this.weeklyDates[index];
+      const time = `${date}T00:00:00Z`;
       const sourceId = `meteoblue_geojson_source_${index}`;
       const layerId = `meteoblue_geojson_precipitation_forecast_${index}`;
-      
-      // Construct API url for fetching geojson of this specific date
-      const url = `${apiPrecipGeojsonHost}/api/layer?layer=precip&date=${date}`;
-      
-      let geojson = { type: "FeatureCollection", features: [] };
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          geojson = await response.json();
-        } else {
-          console.warn(`Failed to fetch geojson for date ${date}: HTTP ${response.status}`);
-        }
-      } catch (e) {
-        console.warn(`Failed to fetch geojson for date ${date}:`, e);
-      }
+
+      // Use same vector tile proxy as hourly, but with daily aggregation
+      const baseUrl = `${apiMeteoblueHost}/v1/map/vector/${model}/${time}/precip~61~sfc~daily~none~contourSteps~1.0~2.0~3.0~4.0~5.0~6.0~8.0~10.0~12.0~16.0~18.0~20.0~25.0~30.0~35.0~40.0~50.0~60.0~70.0~80.0~90.0~100.0~125.0~150.0/{z}/{x}/{y}`;
 
       // Add source
       if (!this.sourceExists(sourceId)) {
         try {
           map1.addSource(sourceId, {
-            type: "geojson",
-            data: geojson
+            type: "vector",
+            tiles: [baseUrl],
+            bounds: [58.0, 5.0, 105.0, 42.0]
           });
         } catch (error) {
-          console.warn(`Failed to add geojson source ${sourceId}:`, error);
+          console.warn(`Failed to add vector tile source ${sourceId}:`, error);
+          continue;
         }
       }
 
@@ -1844,13 +1878,14 @@ class WeatherLayerController {
             id: layerId,
             type: "fill",
             source: sourceId,
+            "source-layer": "precip",
             paint: {
               "fill-antialias": false,
               "fill-opacity": 0,
               "fill-opacity-transition": { duration: 300 },
-              // Standard precipitation colors using minValue or value properties
+              // Standard precipitation colors using minValue property from vector tiles
               "fill-color": [
-                "interpolate", ["linear"], ["coalesce", ["get", "minValue"], ["get", "value"], 0],
+                "interpolate", ["linear"], ["get", "minValue"],
                 1, "rgba(240,249,255,1.0)",   /* very light cyan */
                 2, "rgba(222,243,252,1.0)",
                 3, "rgba(191,235,250,1.0)",
@@ -1880,14 +1915,13 @@ class WeatherLayerController {
             layout: { visibility: "none" }
           }, 'nationalBoundary');
         } catch (error) {
-          console.warn(`Failed to add geojson layer ${layerId}:`, error);
+          console.warn(`Failed to add weekly vector tile layer ${layerId}:`, error);
         }
       }
-    });
+    }
 
-    await Promise.all(fetchPromises);
     this.weeklyLayersAdded = true;
-    console.log('Weekly precipitation geojson layers added successfully');
+    console.log('Weekly precipitation vector tile layers added successfully');
   }
 
   // Generic controller factory
@@ -2337,6 +2371,95 @@ function closeHourlyRainfall() {
 
 function closeWeeklyRainfall() {
   return weatherController?.closeRainfall('wky');
+}
+
+function toggleControlBoxDrag(containerId, buttonEl) {
+  const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+  if (!container) return;
+
+  if (!container.__dragState) {
+    container.__dragState = {
+      enabled: false,
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      initialLeft: 0,
+      initialTop: 0
+    };
+  }
+  const state = container.__dragState;
+  state.enabled = !state.enabled;
+
+  if (state.enabled) {
+    container.classList.add('is-draggable');
+    if (buttonEl) {
+      buttonEl.classList.add('is-active');
+      buttonEl.title = 'Disable dragging';
+    }
+  } else {
+    container.classList.remove('is-draggable', 'is-dragging');
+    if (buttonEl) {
+      buttonEl.classList.remove('is-active');
+      buttonEl.title = 'Enable dragging';
+    }
+    return;
+  }
+
+  if (container.__dragListenersBound) return;
+  container.__dragListenersBound = true;
+
+  const onMouseDown = (e) => {
+    if (!state.enabled) return;
+    // Prevent drag when interacting with controls inside box
+    if (e.target.closest('input, button, label, a, .precip-legend-text')) return;
+
+    state.isDragging = true;
+    container.classList.add('is-dragging');
+    state.startX = e.clientX;
+    state.startY = e.clientY;
+
+    const rect = container.getBoundingClientRect();
+    state.initialLeft = rect.left;
+    state.initialTop = rect.top;
+
+    // Lock exact width so size remains 100% identical when dragging!
+    container.style.width = `${rect.width}px`;
+    container.style.position = 'fixed';
+    container.style.left = `${rect.left}px`;
+    container.style.top = `${rect.top}px`;
+    container.style.transform = 'none';
+    container.style.margin = '0';
+
+    const onMouseMove = (moveEvt) => {
+      if (!state.enabled || !state.isDragging) return;
+      const dx = moveEvt.clientX - state.startX;
+      const dy = moveEvt.clientY - state.startY;
+
+      let newLeft = state.initialLeft + dx;
+      let newTop = state.initialTop + dy;
+
+      const maxX = window.innerWidth - container.offsetWidth;
+      const maxY = window.innerHeight - container.offsetHeight;
+      newLeft = Math.max(0, Math.min(newLeft, maxX));
+      newTop = Math.max(0, Math.min(newTop, maxY));
+
+      container.style.left = `${newLeft}px`;
+      container.style.top = `${newTop}px`;
+    };
+
+    const onMouseUp = () => {
+      state.isDragging = false;
+      container.classList.remove('is-dragging');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    e.preventDefault();
+  };
+
+  container.addEventListener('mousedown', onMouseDown);
 }
 
 // Cleanup on page unload
@@ -2866,33 +2989,61 @@ document.addEventListener('DOMContentLoaded', () => {
 // Access the blink button using its id
 const blinkBtn = document.getElementById("blinkLayersBtn");
 // Attach click event listener to the button
-blinkBtn.addEventListener("click", function () {
-  // Check if blinking is already active
-  if (blinkInterval) {
-    // Stop blinking: clear the interval and reset the fill opacity
-    clearInterval(blinkInterval);
-    blinkInterval = null;
-    map1.setPaintProperty("TehsilBoundaryHighlight", "fill-opacity", 0.3);
-    map1.setPaintProperty("DistrictBoundaryHighlight", "fill-opacity", 0.3);
-    blinkBtn.textContent = "Start Blinking";
-    
-    // ADDED: Log that selection is now unlocked
-    console.log("Blinking stopped - district and tehsil selection is now unlocked");
-  } else {
-    // Begin blinking effect: toggle the opacity every 500 milliseconds
-    // ADDED: Log that selection is now locked
-    console.log("Blinking started - district and tehsil selection is now locked");
-    
-    let isVisible = true;
-    blinkInterval = setInterval(() => {
-      // Toggle opacity between 0.5 (visible) and 0 (invisible)
-      map1.setPaintProperty("TehsilBoundaryHighlight", "fill-opacity", isVisible ? 0 : 0.3);
-      map1.setPaintProperty("DistrictBoundaryHighlight", "fill-opacity", isVisible ? 0 : 0.3);
-      isVisible = !isVisible;
-    }, 500);
-    blinkBtn.textContent = "Stop Blinking";
-  }
-});
+if (blinkBtn) {
+  blinkBtn.addEventListener("click", function () {
+    const totalSelected = (selectedDistrict?.length || 0) + (selectedTehsils?.length || 0);
+
+    // 1. If currently blinking -> STOP BLINKING & RESET
+    if (blinkInterval) {
+      clearInterval(blinkInterval);
+      blinkInterval = null;
+      isBlinkSelectionActive = false;
+      selectedDistrict = [];
+      selectedTehsils = [];
+      if (typeof map1 !== 'undefined' && map1) {
+        if (map1.getLayer("TehsilBoundaryHighlight")) {
+          map1.setPaintProperty("TehsilBoundaryHighlight", "fill-opacity", 0.3);
+          map1.setFilter("TehsilBoundaryHighlight", ["in", "name", ""]);
+        }
+        if (map1.getLayer("DistrictBoundaryHighlight")) {
+          map1.setPaintProperty("DistrictBoundaryHighlight", "fill-opacity", 0.3);
+          map1.setFilter("DistrictBoundaryHighlight", ["in", "name", ""]);
+        }
+      }
+      updateBlinkBtnUI();
+      console.log("Blinking stopped - district selection reset");
+      return;
+    }
+
+    // 2. If selection mode is NOT active -> ACTIVATE SELECTION MODE
+    if (!isBlinkSelectionActive) {
+      isBlinkSelectionActive = true;
+      updateBlinkBtnUI();
+      console.log("Selection mode activated - click map districts to select");
+      return;
+    }
+
+    // 3. If selection mode IS active and features ARE selected -> START BLINKING!
+    if (isBlinkSelectionActive && totalSelected > 0) {
+      isBlinkSelectionActive = false; // Lock selection mode while blinking
+      let isVisible = true;
+      blinkInterval = setInterval(() => {
+        if (typeof map1 !== 'undefined' && map1) {
+          if (map1.getLayer("TehsilBoundaryHighlight")) map1.setPaintProperty("TehsilBoundaryHighlight", "fill-opacity", isVisible ? 0 : 0.3);
+          if (map1.getLayer("DistrictBoundaryHighlight")) map1.setPaintProperty("DistrictBoundaryHighlight", "fill-opacity", isVisible ? 0 : 0.3);
+        }
+        isVisible = !isVisible;
+      }, 500);
+      updateBlinkBtnUI();
+      console.log("Blinking started for selected features");
+      return;
+    }
+
+    // 4. If user clicks button again while in selection mode with 0 features selected -> Cancel selection mode
+    isBlinkSelectionActive = false;
+    updateBlinkBtnUI();
+  });
+}
 
 
 function handleHECRASVideo(checkbox, file) {
@@ -6205,6 +6356,106 @@ function applyPendingBasemapConfig(map) {
 // Global variable to store FFD data to avoid re-fetching on basemap changes
 let ffdGeojsonData = null;
 
+// ============================================================================
+// FLOOD LIMITS OF RIVERS & NULLAHS (Standard FFD Thresholds)
+// All river values in Lakh Cusecs (1 Lakh = 100,000 cusecs); Nullahs in Cusecs
+// ============================================================================
+const FLOOD_LIMITS_DATA = {
+  // Indus River (Unit: Lakh Cusecs)
+  "Tarbela": { river: "Indus River", unit: "lakh_cusecs", design: 15.0, low: 2.5, medium: 3.75, high: 5.0, veryHigh: 6.5, exceptional: 8.0 },
+  "Tarbela Dam": { river: "Indus River", unit: "lakh_cusecs", design: 15.0, low: 2.5, medium: 3.75, high: 5.0, veryHigh: 6.5, exceptional: 8.0 },
+  "Attock": { river: "Indus River", unit: "lakh_cusecs", design: null, low: 2.5, medium: 3.75, high: 5.0, veryHigh: 6.5, exceptional: 8.0 },
+  "Kalabagh": { river: "Indus River", unit: "lakh_cusecs", design: 9.5, low: 2.5, medium: 3.75, high: 5.0, veryHigh: 6.5, exceptional: 8.0 },
+  "Chashma": { river: "Indus River", unit: "lakh_cusecs", design: 9.5, low: 2.5, medium: 3.75, high: 5.0, veryHigh: 6.5, exceptional: 8.0 },
+  "Taunsa": { river: "Indus River", unit: "lakh_cusecs", design: 10.0, low: 2.5, medium: 3.75, high: 5.0, veryHigh: 6.5, exceptional: 8.0 },
+  "Guddu": { river: "Indus River", unit: "lakh_cusecs", design: 12.0, low: 2.0, medium: 3.5, high: 5.0, veryHigh: 7.0, exceptional: 9.0 },
+  "Sukkur": { river: "Indus River", unit: "lakh_cusecs", design: 9.0, low: 2.0, medium: 3.5, high: 5.0, veryHigh: 7.0, exceptional: 9.0 },
+  "Kotri": { river: "Indus River", unit: "lakh_cusecs", design: 8.75, low: 2.0, medium: 3.0, high: 4.5, veryHigh: 6.5, exceptional: 8.0 },
+
+  // Kabul River (Unit: Lakh Cusecs)
+  "WARSAK": { river: "Kabul River", unit: "lakh_cusecs", design: 5.4, low: 0.4, medium: 0.6, high: 1.0, veryHigh: 1.5, exceptional: null },
+  "Warsak": { river: "Kabul River", unit: "lakh_cusecs", design: 5.4, low: 0.4, medium: 0.6, high: 1.0, veryHigh: 1.5, exceptional: null },
+  "NOWSHERA": { river: "Kabul River", unit: "lakh_cusecs", design: null, low: 0.6, medium: 0.9, high: 1.4, veryHigh: 2.0, exceptional: null },
+  "Nowshera": { river: "Kabul River", unit: "lakh_cusecs", design: null, low: 0.6, medium: 0.9, high: 1.4, veryHigh: 2.0, exceptional: null },
+  "Kabul": { river: "Kabul River", unit: "lakh_cusecs", design: null, low: 0.6, medium: 0.9, high: 1.4, veryHigh: 2.0, exceptional: null },
+  "KABUL": { river: "Kabul River", unit: "lakh_cusecs", design: null, low: 0.6, medium: 0.9, high: 1.4, veryHigh: 2.0, exceptional: null },
+  "Kabul River": { river: "Kabul River", unit: "lakh_cusecs", design: null, low: 0.6, medium: 0.9, high: 1.4, veryHigh: 2.0, exceptional: null },
+
+  // Jhelum River (Unit: Lakh Cusecs)
+  "Kohala": { river: "Jhelum River", unit: "lakh_cusecs", design: null, low: 1.0, medium: 1.5, high: 2.0, veryHigh: 3.0, exceptional: 4.0 },
+  "Mangla": { river: "Jhelum River", unit: "lakh_cusecs", design: 10.6, low: 0.75, medium: 1.1, high: 1.5, veryHigh: 2.25, exceptional: 3.0 },
+  "Mangla Dam": { river: "Jhelum River", unit: "lakh_cusecs", design: 10.6, low: 0.75, medium: 1.1, high: 1.5, veryHigh: 2.25, exceptional: 3.0 },
+  "Rasul": { river: "Jhelum River", unit: "lakh_cusecs", design: 8.5, low: 0.75, medium: 1.1, high: 1.5, veryHigh: 2.25, exceptional: 3.0 },
+
+  // Chenab River (Unit: Lakh Cusecs)
+  "Jammu Tawi": { river: "Chenab River", unit: "lakh_cusecs", design: null, low: 0.2, medium: 0.7, high: 0.83, veryHigh: 1.7, exceptional: null },
+  "Akhnur": { river: "Chenab River", unit: "lakh_cusecs", design: null, low: 0.75, medium: 1.97, high: 2.97, veryHigh: 3.5, exceptional: null },
+  "Akhnoor": { river: "Chenab River", unit: "lakh_cusecs", design: null, low: 0.75, medium: 1.97, high: 2.97, veryHigh: 3.5, exceptional: null },
+  "Marala": { river: "Chenab River", unit: "lakh_cusecs", design: 11.0, low: 1.0, medium: 1.5, high: 2.0, veryHigh: 4.0, exceptional: 6.0 },
+  "Khanki": { river: "Chenab River", unit: "lakh_cusecs", design: 11.0, low: 1.0, medium: 1.5, high: 2.0, veryHigh: 4.0, exceptional: 6.0 },
+  "Qadirabad": { river: "Chenab River", unit: "lakh_cusecs", design: 9.0, low: 1.0, medium: 1.5, high: 2.0, veryHigh: 4.0, exceptional: 6.0 },
+  "Q.Abad": { river: "Chenab River", unit: "lakh_cusecs", design: 9.0, low: 1.0, medium: 1.5, high: 2.0, veryHigh: 4.0, exceptional: 6.0 },
+  "Chiniot Bridge": { river: "Chenab River", unit: "lakh_cusecs", design: 8.07, low: 1.0, medium: 1.5, high: 2.0, veryHigh: 4.0, exceptional: 6.0 },
+  "Trimmu": { river: "Chenab River", unit: "lakh_cusecs", design: 8.75, low: 1.5, medium: 2.0, high: 3.0, veryHigh: 4.5, exceptional: 6.0 },
+  "Panjnad": { river: "Chenab River", unit: "lakh_cusecs", design: 8.65, low: 1.5, medium: 2.5, high: 4.0, veryHigh: 5.5, exceptional: 7.0 },
+
+  // Ravi River (Unit: Lakh Cusecs)
+  "Jassar": { river: "Ravi River", unit: "lakh_cusecs", design: 2.75, low: 0.5, medium: 0.75, high: 1.0, veryHigh: 1.5, exceptional: 2.0 },
+  "Syphon": { river: "Ravi River", unit: "lakh_cusecs", design: 4.5, low: 0.4, medium: 0.65, high: 0.9, veryHigh: 1.35, exceptional: 1.8 },
+  "Shahdara": { river: "Ravi River", unit: "lakh_cusecs", design: 2.5, low: 0.4, medium: 0.65, high: 0.9, veryHigh: 1.35, exceptional: 1.8 },
+  "Balloki": { river: "Ravi River", unit: "lakh_cusecs", design: 3.8, low: 0.4, medium: 0.65, high: 0.9, veryHigh: 1.35, exceptional: 1.8 },
+  "Sidhnai": { river: "Ravi River", unit: "lakh_cusecs", design: 1.5, low: 0.3, medium: 0.46, high: 0.6, veryHigh: 0.9, exceptional: 1.3 },
+
+  // Sutlej River (Unit: Lakh Cusecs)
+  "Suleimanki": { river: "Sutlej River", unit: "lakh_cusecs", design: 3.25, low: 0.5, medium: 0.8, high: 1.2, veryHigh: 1.75, exceptional: 2.25 },
+  "Islam": { river: "Sutlej River", unit: "lakh_cusecs", design: 3.0, low: 0.5, medium: 0.8, high: 1.2, veryHigh: 1.75, exceptional: 2.25 },
+  "G.S. Wala": { river: "Sutlej River", unit: "lakh_cusecs", design: null, low: 0.5, medium: 0.8, high: 1.2, veryHigh: 1.75, exceptional: 2.25 },
+  "Ganda Singh Wala": { river: "Sutlej River", unit: "lakh_cusecs", design: null, low: 0.5, medium: 0.8, high: 1.2, veryHigh: 1.75, exceptional: 2.25 },
+
+  // Nullahs (Unit: Cusecs directly)
+  "Bein (Chak Amru)": { river: "Nullahs", unit: "cusecs", design: null, low: 1300, medium: 7000, high: 20000, veryHigh: 30000, exceptional: 35000 },
+  "Bein (Shakargarh)": { river: "Nullahs", unit: "cusecs", design: null, low: 1600, medium: 3000, high: 24000, veryHigh: 26000, exceptional: 43000 },
+  "Aik (Ura)": { river: "Nullahs", unit: "cusecs", design: null, low: 2000, medium: 9000, high: 13000, veryHigh: 16000, exceptional: 33000 },
+  "Basantar (Jassar)": { river: "Nullahs", unit: "cusecs", design: null, low: 4100, medium: 4700, high: 7500, veryHigh: 11600, exceptional: 17800 },
+  "Deg (Kingra Bridge)": { river: "Nullahs", unit: "cusecs", design: null, low: 10000, medium: 15000, high: 22000, veryHigh: 30000, exceptional: null },
+  "Palku (Wazirabad)": { river: "Nullahs", unit: "cusecs", design: null, low: 2500, medium: 3100, high: 5000, veryHigh: 25000, exceptional: 26000 }
+};
+
+window.FLOOD_LIMITS_DATA = FLOOD_LIMITS_DATA;
+
+window.getStationFloodLimits = function(stationName) {
+  if (!stationName) return null;
+  const norm = stationName.toLowerCase().trim();
+  let key = Object.keys(FLOOD_LIMITS_DATA).find(
+    k => k.toLowerCase().trim() === norm
+  );
+  if (!key) {
+    key = Object.keys(FLOOD_LIMITS_DATA).find(
+      k => norm.includes(k.toLowerCase().trim()) || k.toLowerCase().trim().includes(norm)
+    );
+  }
+  return key ? FLOOD_LIMITS_DATA[key] : null;
+};
+
+window.calculateFloodCategoryByDischarge = function(stationName, cusecs) {
+  const limits = window.getStationFloodLimits(stationName);
+  if (!limits || cusecs === null || cusecs === undefined || isNaN(cusecs)) return "NORMAL_FLOW";
+  
+  const multiplier = limits.unit === "lakh_cusecs" ? 100000 : 1;
+  const low = limits.low !== null ? limits.low * multiplier : Infinity;
+  const medium = limits.medium !== null ? limits.medium * multiplier : Infinity;
+  const high = limits.high !== null ? limits.high * multiplier : Infinity;
+  const veryHigh = limits.veryHigh !== null ? limits.veryHigh * multiplier : Infinity;
+  const exceptional = limits.exceptional !== null ? limits.exceptional * multiplier : Infinity;
+
+  if (cusecs >= exceptional && limits.exceptional !== null) return "EXCEPTIONALLY_HIGH_FLOOD";
+  if (cusecs >= veryHigh && limits.veryHigh !== null) return "VERY_HIGH_FLOOD";
+  if (cusecs >= high && limits.high !== null) return "HIGH_FLOOD";
+  if (cusecs >= medium && limits.medium !== null) return "MEDIUM_FLOOD";
+  if (cusecs >= low && limits.low !== null) return "LOW_FLOOD";
+  return "NORMAL_FLOW";
+};
+
 // Flood routing map for lag times
 const FLOOD_ROUTING_MAP = {
   // Indus
@@ -8804,6 +9055,44 @@ function addHydrometLayersToMap(map) {
                                 </div>
                             </div>` : '';
 
+        // Flood Limits Section
+        const limits = window.getStationFloodLimits(props.name);
+        const formatLimitVal = (val, unit) => {
+            if (val === null || val === undefined) return '—';
+            if (unit === 'lakh_cusecs') return `${val}L`;
+            return val >= 1000 ? `${(val/1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : `${val}`;
+        };
+
+        const floodLimitsHTML = limits ? `
+                            <div class="flood-limits-section">
+                                <div class="flood-limits-header">
+                                    <span class="limits-title"><i class="fas fa-shield-alt"></i> FLOOD LIMITS</span>
+                                    <span class="limits-unit">${limits.unit === 'lakh_cusecs' ? '(Lakh Cusecs)' : '(Cusecs)'}</span>
+                                </div>
+                                <div class="flood-limits-grid">
+                                    <div class="limit-pill limit-low" title="Low Flood">
+                                        <span class="limit-tag">LOW</span>
+                                        <span class="limit-val">${formatLimitVal(limits.low, limits.unit)}</span>
+                                    </div>
+                                    <div class="limit-pill limit-med" title="Medium Flood">
+                                        <span class="limit-tag">MED</span>
+                                        <span class="limit-val">${formatLimitVal(limits.medium, limits.unit)}</span>
+                                    </div>
+                                    <div class="limit-pill limit-high" title="High Flood">
+                                        <span class="limit-tag">HIGH</span>
+                                        <span class="limit-val">${formatLimitVal(limits.high, limits.unit)}</span>
+                                    </div>
+                                    <div class="limit-pill limit-vhigh" title="Very High Flood">
+                                        <span class="limit-tag">V.HIGH</span>
+                                        <span class="limit-val">${formatLimitVal(limits.veryHigh, limits.unit)}</span>
+                                    </div>
+                                    <div class="limit-pill limit-exhigh" title="Exceptionally High Flood">
+                                        <span class="limit-tag">EX.HIGH</span>
+                                        <span class="limit-val">${formatLimitVal(limits.exceptional, limits.unit)}</span>
+                                    </div>
+                                </div>
+                            </div>` : '';
+
         const popupHTML = `
                     <div class="ffd-popup-container">
                         <!-- Header Section -->
@@ -8815,6 +9104,10 @@ function addHydrometLayersToMap(map) {
                                     ${props.status || 'Unknown'}
                                 </div>
                             </div>
+                            ${props.recording_time ? `
+                            <div class="header-time-pill">
+                                <i class="far fa-clock"></i> ${escapePopupText(props.recording_time)}
+                            </div>` : ''}
                         </div>
 
                         <!-- Main Content -->
@@ -8840,13 +9133,8 @@ function addHydrometLayersToMap(map) {
                                 </div>
                             ` : ''}
 
-                            <!-- Timestamp -->
-                            <div class="timestamp-section">
-                                <div class="timestamp-item">
-                                    <i class="fas fa-clock"></i>
-                                    <span class="timestamp-value">${props.recording_time || 'Unknown'}</span>
-                                </div>
-                            </div>
+                            <!-- Flood Limits Threshold Grid -->
+                            ${floodLimitsHTML}
 
                             <!-- Forecast (24h) -->
                             ${forecastHTML}
@@ -8881,6 +9169,107 @@ function addHydrometLayersToMap(map) {
                             padding: 8px 12px;
                             border-bottom: 2px solid #e3f2fd;
                         }
+
+                        .header-time-pill {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 4px;
+                            font-size: 10.5px;
+                            font-weight: 600;
+                            color: #475569;
+                            background: #e2e8f0;
+                            padding: 2px 8px;
+                            border-radius: 10px;
+                            margin-top: 5px;
+                            border: 1px solid #cbd5e1;
+                        }
+
+                        .header-time-pill i {
+                            color: #0284c7;
+                            font-size: 10px;
+                        }
+
+                        .flood-limits-section {
+                            margin-bottom: 8px;
+                            background: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                            padding: 6px 8px;
+                            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                        }
+
+                        .flood-limits-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 5px;
+                        }
+
+                        .limits-title {
+                            font-size: 10px;
+                            font-weight: 700;
+                            color: #475569;
+                            letter-spacing: 0.4px;
+                            display: flex;
+                            align-items: center;
+                            gap: 4px;
+                        }
+
+                        .limits-title i {
+                            color: #0284c7;
+                        }
+
+                        .limits-unit {
+                            font-size: 9.5px;
+                            color: #64748b;
+                            font-weight: 600;
+                        }
+
+                        .flood-limits-grid {
+                            display: grid;
+                            grid-template-columns: repeat(5, minmax(0, 1fr));
+                            gap: 3px;
+                        }
+
+                        .limit-pill {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            padding: 3px 2px;
+                            border-radius: 5px;
+                            border: 1px solid rgba(0, 0, 0, 0.08);
+                            text-align: center;
+                            background: #ffffff;
+                        }
+
+                        .limit-tag {
+                            font-size: 8.5px;
+                            font-weight: 700;
+                            line-height: 1;
+                            margin-bottom: 2px;
+                        }
+
+                        .limit-val {
+                            font-size: 10px;
+                            font-weight: 800;
+                            line-height: 1.1;
+                            color: #0f172a;
+                        }
+
+                        .limit-low .limit-tag { color: #2563eb; }
+                        .limit-low { border-left: 2px solid #2563eb; background: #eff6ff; }
+
+                        .limit-med .limit-tag { color: #d97706; }
+                        .limit-med { border-left: 2px solid #d97706; background: #fffbeb; }
+
+                        .limit-high .limit-tag { color: #ea580c; }
+                        .limit-high { border-left: 2px solid #ea580c; background: #fff7ed; }
+
+                        .limit-vhigh .limit-tag { color: #dc2626; }
+                        .limit-vhigh { border-left: 2px solid #dc2626; background: #fef2f2; }
+
+                        .limit-exhigh .limit-tag { color: #991b1b; }
+                        .limit-exhigh { border-left: 2px solid #991b1b; background: #fdf2f2; }
 
                         .station-info {
                             display: flex;
@@ -9606,7 +9995,9 @@ function addHydrometLayersToMap(map) {
       if (isVisible && !map1.getSource('kp_flood_cell')) {
         try {
           // Fetch dynamic data from SQLite via proxy API
+          // Fetch dynamic data from SQLite via proxy API
           let kpDataMap = {};
+          let kpCompositeMap = {};
           try {
             const apiRes = await fetch(`${proxyBase}/api/kp-stations`);
             if (apiRes.ok) {
@@ -9614,7 +10005,16 @@ function addHydrometLayersToMap(map) {
               if (resJson.data) {
                 resJson.data.forEach(row => {
                   let normLoc = (row.location || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  let normRiv = (row.river || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  let normSno = String(row.s_no || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  
                   kpDataMap[normLoc] = row;
+                  if (normRiv && normLoc) {
+                    kpCompositeMap[normRiv + '_' + normLoc] = row;
+                  }
+                  if (normSno && normLoc) {
+                    kpCompositeMap[normSno + '_' + normLoc] = row;
+                  }
                 });
               }
             }
@@ -9622,6 +10022,7 @@ function addHydrometLayersToMap(map) {
             console.error("Failed to fetch KP stations data", e);
           }
           window.kpDataMap = kpDataMap;
+          window.kpCompositeMap = kpCompositeMap;
 
           // Fetch GeoJSON points from GeoServer
           const geoUrl = `${proxyBase}/proxy_ahad/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026:Gauges_pdma_kp&outputFormat=application/json`;
@@ -9669,15 +10070,44 @@ function addHydrometLayersToMap(map) {
             return null;
           };
 
+          const findBestRowForFeature = (f) => {
+            if (!f || !f.properties) return null;
+            const props = f.properties;
+            const loc = props.LOCATION || props.location || '';
+            const riv = props.RIVER || props.river || '';
+            const sno = props.SNO || props.s_no || '';
+
+            const normLoc = loc.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normRiv = riv.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normSno = String(sno).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            if (normRiv && normLoc && window.kpCompositeMap[normRiv + '_' + normLoc]) {
+              return window.kpCompositeMap[normRiv + '_' + normLoc];
+            }
+            if (normSno && normLoc && window.kpCompositeMap[normSno + '_' + normLoc]) {
+              return window.kpCompositeMap[normSno + '_' + normLoc];
+            }
+            for (let key in window.kpCompositeMap) {
+              if (key.includes(normLoc) && (key.includes(normRiv) || normRiv.includes(key.split('_')[0]))) {
+                return window.kpCompositeMap[key];
+              }
+            }
+            const matchKey = findBestMatch(loc, window.kpDataMap);
+            if (matchKey && window.kpDataMap[matchKey]) {
+              return window.kpDataMap[matchKey];
+            }
+            return null;
+          };
+          window.findBestRowForFeature = findBestRowForFeature;
+
           // Merge dynamic data into GeoJSON properties
           if (geoJson.features) {
             geoJson.features.forEach(f => {
-              const loc = f.properties.LOCATION;
-              let matchKey = findBestMatch(loc, window.kpDataMap);
-              
-              if (matchKey && window.kpDataMap[matchKey]) {
-                f.properties.flow_status = window.kpDataMap[matchKey].flow_status;
-                f.properties.discharge = window.kpDataMap[matchKey].discharge;
+              let matchedRow = findBestRowForFeature(f);
+              if (matchedRow) {
+                f.properties.flow_status = matchedRow.flow_status;
+                f.properties.discharge = matchedRow.discharge;
+                if (matchedRow.river) f.properties.RIVER = matchedRow.river;
               } else {
                 f.properties.flow_status = "Normal";
                 f.properties.discharge = "N/A";
@@ -9750,22 +10180,15 @@ function addHydrometLayersToMap(map) {
           
           // Click event for popups
           map1.on('click', 'kp_flood_cell_point', (e) => {
-             const loc = e.features[0].properties.LOCATION;
-             let riv = e.features[0].properties.RIVER;
-             const discharge = e.features[0].properties.discharge;
-             const flowStatus = e.features[0].properties.flow_status;
-             
-             let matchKey = findBestMatch(loc, window.kpDataMap);
-             let recordDate = '';
-             let recordTime = '';
-             if (matchKey && window.kpDataMap[matchKey]) {
-                 let dbRiv = window.kpDataMap[matchKey].river;
-                 if (dbRiv && dbRiv.length > 2 && !dbRiv.includes('...')) {
-                     riv = dbRiv;
-                 }
-                 recordDate = window.kpDataMap[matchKey].date || '';
-                 recordTime = window.kpDataMap[matchKey].time || '';
-             }
+             const feature = e.features[0];
+             const matchedRow = window.findBestRowForFeature(feature);
+
+             const loc = feature.properties.LOCATION;
+             let riv = matchedRow?.river || feature.properties.RIVER;
+             const discharge = matchedRow?.discharge || feature.properties.discharge;
+             const flowStatus = matchedRow?.flow_status || feature.properties.flow_status;
+             const recordDate = matchedRow?.date || '';
+             const recordTime = matchedRow?.time || '';
              
              const lagTimes = {
                'Amandara': 'Lag from Khawaza Khela: 12 Hours',
@@ -13220,14 +13643,38 @@ document.getElementById("di_ht").addEventListener("change", function () {
       }
     });
   }
+  if (!map1.getLayer("gis-existing-indian-label")) {
+    map1.addLayer({
+      id: "gis-existing-indian-label",
+      type: "symbol",
+      source: "indian",
+      "source-layer": "indian_structure",
+      layout: {
+        visibility: "none",
+        "text-field": ["coalesce", ["get", "Name"], ["get", "name"], ""],
+        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+        "text-size": 12,
+        "text-anchor": "top",
+        "text-offset": [0, 1.2],
+        "text-allow-overlap": false,
+        "text-ignore-placement": false
+      },
+      paint: {
+        "text-color": "#ffffff",
+        "text-halo-color": "#000000",
+        "text-halo-width": 1
+      }
+    });
+  }
   // 3. Toggle visibility on checkbox change
   document.getElementById("india").addEventListener("change", function () {
     const isVisible = this.checked;
-    map1.setLayoutProperty(
-      "indian",
-      "visibility",
-      isVisible ? "visible" : "none"
-    );
+    if (map1.getLayer("indian")) {
+      map1.setLayoutProperty("indian", "visibility", isVisible ? "visible" : "none");
+    }
+    if (map1.getLayer("gis-existing-indian-label")) {
+      map1.setLayoutProperty("gis-existing-indian-label", "visibility", isVisible ? "visible" : "none");
+    }
   });
 
   map1.on("click", "indian", function (e) {
@@ -17745,7 +18192,7 @@ function getMap1VisibilityStates() {
     { checkboxId: 'ffd_rivers', layers: ['ffd_rivers_layer', 'ffd_rivers_outline'] },
     { checkboxId: 'kp_flood_cell', layers: ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'] },
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
-    { checkboxId: 'india', layers: ['indian'] },
+    { checkboxId: 'india', layers: ['indian', 'gis-existing-indian-label'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },
     { checkboxId: 'gmrcWapda', layers: ['gmrc_wapda_stations'] },
     { checkboxId: 'pmdStations', layers: ['pmd_stations'] },

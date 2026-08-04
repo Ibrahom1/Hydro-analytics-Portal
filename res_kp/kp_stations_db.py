@@ -17,6 +17,7 @@ def setup_db(db_path):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT,
             time TEXT,
+            date_iso TEXT,
             s_no TEXT,
             river TEXT,
             location TEXT,
@@ -24,8 +25,13 @@ def setup_db(db_path):
             flow_status TEXT,
             remarks TEXT,
             source_sha256 TEXT,
-            UNIQUE(date, time, location)
+            UNIQUE(date, time, s_no, river, location)
         )
+    ''')
+    c.execute('''
+        CREATE VIEW IF NOT EXISTS v_kp_water_reports AS
+        SELECT * FROM kp_water_reports
+        ORDER BY date_iso DESC, time DESC, CAST(s_no AS INT) ASC
     ''')
     conn.commit()
     return conn
@@ -119,6 +125,15 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
         conn.close()
         return
 
+    try:
+        parts = date_val.split('/')
+        if len(parts) == 3:
+            date_iso = f"{parts[2]}-{parts[1]:0>2}-{parts[0]:0>2}"
+        else:
+            date_iso = date_val
+    except Exception:
+        date_iso = date_val
+
     inserted = 0
     for row in rows:
         # Expected columns: S.No, Name of Rivers, Locations, Discharge, Flow Status, Remarks
@@ -130,13 +145,12 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
             flow_status = row[4]
             remarks = row[5] if len(row) > 5 else ""
             
-            # Clean up discharge (remove commas, handle text like 'N/A')
             try:
                 c.execute('''
                     INSERT OR IGNORE INTO kp_water_reports 
-                    (date, time, s_no, river, location, discharge, flow_status, remarks, source_sha256)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (date_val, time_val, s_no, river, location, discharge, flow_status, remarks, file_hash))
+                    (date, time, date_iso, s_no, river, location, discharge, flow_status, remarks, source_sha256)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (date_val, time_val, date_iso, s_no, river, location, discharge, flow_status, remarks, file_hash))
                 if c.rowcount > 0:
                     inserted += 1
             except Exception as e:
@@ -144,27 +158,74 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
                 
     conn.commit()
     conn.close()
+
+    if inserted > 0:
+        reorder_database_by_date(db_path)
     
     print(f"Successfully inserted {inserted} new records from {pdf_path}.")
-    
+
     # Archive the file
-    # We parse the date for filename: DD/MM/YYYY -> YYYY-MM-DD
     try:
         parts = date_val.split('/')
         if len(parts) == 3:
-            # assuming DD/MM/YYYY
-            iso_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+            iso_date = f"{parts[2]}-{parts[1]:0>2}-{parts[0]:0>2}"
         else:
             iso_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    except:
+    except Exception:
         iso_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
         
     archive_path = os.path.join(archive_dir, f"{iso_date}.pdf")
-    shutil.copy2(pdf_path, archive_path)
-    print(f"Archived to {archive_path}")
+    if os.path.abspath(pdf_path) != os.path.abspath(archive_path):
+        shutil.copy2(pdf_path, archive_path)
+        print(f"Archived to {archive_path}")
+
+def reorder_database_by_date(db_path):
+    try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS kp_water_reports_temp AS
+            SELECT date, time, date_iso, s_no, river, location, discharge, flow_status, remarks, source_sha256
+            FROM kp_water_reports
+            ORDER BY date_iso ASC, time ASC, CAST(s_no AS INT) ASC
+        ''')
+        c.execute("DROP TABLE IF EXISTS kp_water_reports")
+        c.execute('''
+            CREATE TABLE kp_water_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                time TEXT,
+                date_iso TEXT,
+                s_no TEXT,
+                river TEXT,
+                location TEXT,
+                discharge TEXT,
+                flow_status TEXT,
+                remarks TEXT,
+                source_sha256 TEXT,
+                UNIQUE(date, time, s_no, river, location)
+            )
+        ''')
+        c.execute('''
+            INSERT INTO kp_water_reports 
+            (date, time, date_iso, s_no, river, location, discharge, flow_status, remarks, source_sha256)
+            SELECT date, time, date_iso, s_no, river, location, discharge, flow_status, remarks, source_sha256
+            FROM kp_water_reports_temp
+            ORDER BY date_iso ASC, time ASC, CAST(s_no AS INT) ASC
+        ''')
+        c.execute("DROP TABLE IF EXISTS kp_water_reports_temp")
+        c.execute('''
+            CREATE VIEW IF NOT EXISTS v_kp_water_reports AS
+            SELECT * FROM kp_water_reports
+            ORDER BY date_iso ASC, time ASC, CAST(s_no AS INT) ASC
+        ''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error reordering database: {e}")
 
 if __name__ == '__main__':
     project_root = Path(__file__).resolve().parent.parent

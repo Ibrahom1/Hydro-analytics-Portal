@@ -1,19 +1,45 @@
 import requests
 import gzip
 import hashlib
-from flask import Flask, request, Response
+from flask import Flask, request, Response, jsonify
+from urllib.parse import quote
 
 app = Flask(__name__)
 
 import os
 import sqlite3
 import json
+import datetime
+
+# ── Load env/.env ───────────────────────────────────────────────────────
+def load_dotenv_file(env_path):
+    """Manually load key=value pairs from a .env file into os.environ"""
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, _, value = line.partition('=')
+            key, value = key.strip(), value.strip().strip('"').strip("'")
+            os.environ.setdefault(key, value)
+
+repo_root_path = os.path.dirname(os.path.abspath(__file__))
+load_dotenv_file(os.path.join(repo_root_path, 'env', '.env'))
 
 # Read ports from environment variables or use default fallback
 PROXY_PORT = int(os.environ.get('PROXY_PORT', 8000))
 UI_PORT = int(os.environ.get('UI_PORT', 5504))
 DASHBOARD_PORT = int(os.environ.get('DASHBOARD_PORT', 5000))
 GIS_PORT = int(os.environ.get('GIS_PORT', 8001))
+
+# Meteoblue API Token (loaded from env/.env)
+METEOBLUE_TOKEN = os.environ.get('METEOBLUE_TOKEN', '')
+if not METEOBLUE_TOKEN:
+    print("[WARNING] METEOBLUE_TOKEN not found in env/.env — Meteoblue precipitation will not work!")
+else:
+    print(f"[METEOBLUE] Token loaded: {METEOBLUE_TOKEN[:4]}...{METEOBLUE_TOKEN[-4:]}")
 
 # Map of proxy prefixes to target local/network IP bases
 ROUTES = {
@@ -29,12 +55,156 @@ ROUTES = {
     '/proxy_api_dew/': 'http://172.18.1.108:8000/',
     '/proxy_api_daily/': f'http://127.0.0.1:{DASHBOARD_PORT}/',
     '/proxy_api_gis/': f'http://127.0.0.1:{GIS_PORT}/api/gis/',
-    '/proxy_api_precip/': 'http://172.18.0.19:5000/',
     '/proxy_ffd_rivers/': 'http://172.18.7.21/',
 }
 
 # The default UI server (Live Server or Python HTTP server)
 UI_URL = f"http://127.0.0.1:{UI_PORT}/"
+
+# ── Meteoblue Server-Side Cache ─────────────────────────────────────────
+METEOBLUE_CACHE_DIR = os.path.join(repo_root_path, 'data', 'meteoblue_cache')
+os.makedirs(METEOBLUE_CACHE_DIR, exist_ok=True)
+
+import threading
+_meteoblue_cache_lock = threading.Lock()
+
+# Cache TTLs in seconds
+HOURLY_TILE_TTL = 3 * 3600    # 3 hours for hourly vector tiles
+WEEKLY_GEOJSON_TTL = 6 * 3600 # 6 hours for weekly GeoJSON
+
+def _cache_key(url_path):
+    """Generate a filesystem-safe cache key from a URL path"""
+    return hashlib.sha256(url_path.encode('utf-8')).hexdigest()
+
+def _cache_get(cache_key):
+    """Read cached response if it exists and hasn't expired. Returns (content_bytes, content_type) or (None, None)"""
+    meta_path = os.path.join(METEOBLUE_CACHE_DIR, f"{cache_key}.meta.json")
+    data_path = os.path.join(METEOBLUE_CACHE_DIR, f"{cache_key}.data")
+    try:
+        if not os.path.exists(meta_path) or not os.path.exists(data_path):
+            return None, None
+        with open(meta_path, 'r') as f:
+            meta = json.load(f)
+        cached_time = meta.get('timestamp', 0)
+        ttl = meta.get('ttl_seconds', HOURLY_TILE_TTL)
+        if (datetime.datetime.utcnow().timestamp() - cached_time) > ttl:
+            # Expired: delete old files immediately
+            try:
+                if os.path.exists(meta_path): os.remove(meta_path)
+                if os.path.exists(data_path): os.remove(data_path)
+            except Exception:
+                pass
+            return None, None  # Expired
+        with open(data_path, 'rb') as f:
+            content = f.read()
+        return content, meta.get('content_type', 'application/octet-stream')
+    except Exception:
+        return None, None
+
+def _cache_set(cache_key, content_bytes, content_type, ttl_seconds, url=""):
+    """Write response to disk cache (overwrites existing file)"""
+    meta_path = os.path.join(METEOBLUE_CACHE_DIR, f"{cache_key}.meta.json")
+    data_path = os.path.join(METEOBLUE_CACHE_DIR, f"{cache_key}.data")
+    try:
+        meta = {
+            'timestamp': datetime.datetime.utcnow().timestamp(),
+            'ttl_seconds': ttl_seconds,
+            'content_type': content_type,
+            'url': url,
+            'cached_at': datetime.datetime.utcnow().isoformat() + 'Z'
+        }
+        with open(data_path, 'wb') as f:
+            f.write(content_bytes)
+        with open(meta_path, 'w') as f:
+            json.dump(meta, f)
+    except Exception as e:
+        print(f"[METEOBLUE CACHE] Write error: {e}")
+
+def _purge_expired_cache():
+    """Remove expired cache entries (>12h) to keep disk clean"""
+    removed = 0
+    try:
+        now = datetime.datetime.utcnow().timestamp()
+        for fname in os.listdir(METEOBLUE_CACHE_DIR):
+            if not fname.endswith('.meta.json'):
+                continue
+            meta_path = os.path.join(METEOBLUE_CACHE_DIR, fname)
+            data_path = meta_path.replace('.meta.json', '.data')
+            try:
+                with open(meta_path, 'r') as f:
+                    meta = json.load(f)
+                ttl = meta.get('ttl_seconds', HOURLY_TILE_TTL)
+                # Remove if past TTL + 1 hour grace
+                if (now - meta.get('timestamp', 0)) > (ttl + 3600):
+                    if os.path.exists(meta_path): os.remove(meta_path)
+                    if os.path.exists(data_path): os.remove(data_path)
+                    removed += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+    if removed > 0:
+        print(f"[METEOBLUE CACHE] Purged {removed} expired cache files from disk")
+
+# Purge expired cache on import
+_purge_expired_cache()
+
+# ── Meteoblue Proxy Routes ──────────────────────────────────────────────
+
+@app.route('/proxy_api_meteoblue/weekly/dates', methods=['GET'])
+def meteoblue_weekly_dates():
+    """Return next 7 days as a JSON list (no API call needed)"""
+    today = datetime.date.today()
+    dates = [(today + datetime.timedelta(days=i)).isoformat() for i in range(7)]
+    resp = jsonify({"precip": dates})
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+@app.route('/proxy_api_meteoblue/weekly/geojson/<date>', methods=['GET'])
+def meteoblue_weekly_geojson(date):
+    """Legacy endpoint — weekly precipitation now uses vector tiles via /proxy_api_meteoblue/v1/map/vector/
+    This returns an empty FeatureCollection for backwards compatibility."""
+    return jsonify({"type": "FeatureCollection", "features": [], "info": "Weekly precipitation now uses vector tiles. See /proxy_api_meteoblue/v1/map/vector/"}), 200
+
+@app.route('/proxy_api_meteoblue/v1/map/vector/<path:tile_path>', methods=['GET'])
+def meteoblue_vector_tile(tile_path):
+    """Proxy Meteoblue hourly vector tiles with disk caching"""
+    if not METEOBLUE_TOKEN:
+        return "METEOBLUE_TOKEN not configured", 500
+
+    cache_id = _cache_key(f"vector_tile_{tile_path}")
+
+    with _meteoblue_cache_lock:
+        cached_content, cached_ct = _cache_get(cache_id)
+        if cached_content is not None:
+            resp = Response(cached_content, 200)
+            resp.headers['Content-Type'] = cached_ct
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['X-Cache'] = 'HIT'
+            resp.headers['Cache-Control'] = 'public, max-age=10800'
+            return resp
+
+    # Cache MISS — fetch from Meteoblue
+    upstream_url = f"https://maps-api.meteoblue.com/v1/map/vector/{tile_path}?apikey={METEOBLUE_TOKEN}"
+    try:
+        resp = requests.get(upstream_url, timeout=30, headers={'User-Agent': 'HydroAnalytics/1.0'})
+        if resp.status_code == 200:
+            content = resp.content
+            ct = resp.headers.get('Content-Type', 'application/x-protobuf')
+            with _meteoblue_cache_lock:
+                _cache_set(cache_id, content, ct, HOURLY_TILE_TTL, upstream_url)
+            response = Response(content, 200)
+            response.headers['Content-Type'] = ct
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['X-Cache'] = 'MISS'
+            response.headers['Cache-Control'] = 'public, max-age=10800'
+            return response
+        else:
+            return Response(resp.content, resp.status_code)
+    except Exception as e:
+        print(f"[METEOBLUE] Vector tile fetch error: {e}")
+        return "Proxy Error: Could not reach Meteoblue", 502
 
 import threading
 import time
@@ -96,8 +266,19 @@ def kp_stations_api():
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         
-        # Get the most recent date and time
-        c.execute("SELECT date, time FROM kp_water_reports ORDER BY id DESC LIMIT 1")
+        # Get the most recent calendar date and time (regardless of ingestion order)
+        c.execute("""
+            SELECT date, time 
+            FROM kp_water_reports 
+            ORDER BY 
+                CASE 
+                    WHEN date LIKE '__/__/____' THEN substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)
+                    ELSE date 
+                END DESC,
+                time DESC,
+                id DESC
+            LIMIT 1
+        """)
         latest = c.fetchone()
         
         if not latest:
@@ -182,7 +363,7 @@ def forward_request(req, url):
         url_lower = url.lower()
 
         # Dynamic State APIs vs Static Map / Asset Caching
-        is_dynamic_api = any(k in url_lower for k in ['ft_and_percentage.js', 'existing-styles', 'sync-now', 'kp-stations']) or ('layers' in url_lower and 'geojson' not in url_lower)
+        is_dynamic_api = any(k in url_lower for k in ['ft_and_percentage.js', 'daily', 'reservoir', 'storages', 'existing-styles', 'sync-now', 'kp-stations']) or ('layers' in url_lower and 'geojson' not in url_lower)
 
         if is_dynamic_api:
             response_headers.append(('Cache-Control', 'no-cache, no-store, must-revalidate'))
@@ -224,7 +405,9 @@ if __name__ == '__main__':
     print("=" * 60)
     print(f"UI Router: Forwarding to {UI_URL}")
     print(f"GeoServers Proxied: {len(ROUTES) - 3}")
-    print(f"APIs Proxied: 3")
+    print(f"APIs Proxied: 3 + Meteoblue (cached)")
+    print(f"Meteoblue Cache: {METEOBLUE_CACHE_DIR}")
+    print(f"Meteoblue Token: {'[OK] Loaded' if METEOBLUE_TOKEN else '[!] MISSING'}")
     print("-" * 60)
     print("INSTRUCTIONS TO SHARE OVER THE INTERNET:")
     print(f"1. Forward port {PROXY_PORT} and set visibility to Public.")

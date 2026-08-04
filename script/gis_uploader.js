@@ -1330,8 +1330,10 @@
   }
 
   function labelConfigForLayer(layer) {
+    const isIndian = layer?.id === 'indian' || layer?.id === 'gis-existing-indian-label' || layer?.map_layer_id === 'indian';
     return {
       ...DEFAULT_LABEL_STYLE,
+      ...(isIndian ? { enabled: true, field: 'Name' } : {}),
       ...(layer?.label || {})
     };
   }
@@ -1345,9 +1347,10 @@
     const label = labelConfigForLayer(layer);
     return {
       visibility: isLabelEnabled(layer) ? visibility : 'none',
-      'text-field': ['to-string', ['get', label.field || '']],
+      'text-field': ['to-string', ['coalesce', ['get', label.field || 'Name'], ['get', 'name'], '']],
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
       'text-size': Number(label.size) || DEFAULT_LABEL_STYLE.size,
-      'text-anchor': 'center',
+      'text-anchor': 'top',
       'text-offset': [0, layer.render_type === 'point' ? 1.2 : 0],
       'text-allow-overlap': false,
       'text-ignore-placement': false,

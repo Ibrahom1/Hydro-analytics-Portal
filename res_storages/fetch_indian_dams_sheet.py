@@ -43,8 +43,8 @@ def normalize_label(label: str) -> str:
     return re.sub(r"\s+", " ", label.strip().lower())
 
 def replace_js_variable(content: str, variable_name: str, rhs_value: str) -> str:
-    """Safely replace a 'let <var> = <rhs_value>' definition in JS content."""
-    pattern = re.compile(rf"(let\s+{re.escape(variable_name)}\s*=\s*)([^\r\n]+)")
+    """Safely replace a 'var <var> = <rhs_value>' definition in JS content."""
+    pattern = re.compile(rf"(var\s+{re.escape(variable_name)}\s*=\s*)([^\r\n]+)")
     updated, count = pattern.subn(rf"\g<1>{rhs_value}", content, count=1)
     if count != 1:
         print(f"[WARNING] Could not find or update variable '{variable_name}' in ft_and_percentage.js")

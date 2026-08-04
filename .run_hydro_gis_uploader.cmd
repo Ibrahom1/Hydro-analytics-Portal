@@ -14,5 +14,5 @@ if not exist "%VENV_PYTHON%" (
 
 if exist "%VENV_ACTIVATE%" call "%VENV_ACTIVATE%"
 cd /d "%REPO_ROOT%"
-"%VENV_PYTHON%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port 8002 --reload
+"%VENV_PYTHON%" -m uvicorn gis_uploader_backend.app:app --host 0.0.0.0 --port 8001 --reload
 pause

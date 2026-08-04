@@ -600,7 +600,7 @@ def compute_percentages(storage_today: Dict[str, str], storage_max: Dict[str, st
 
 
 def replace_js_variable(content: str, variable_name: str, rhs_value: str) -> str:
-	pattern = re.compile(rf"(let\s+{re.escape(variable_name)}\s*=\s*)([^\r\n]+)")
+	pattern = re.compile(rf"(var\s+{re.escape(variable_name)}\s*=\s*)([^\r\n]+)")
 	updated, count = pattern.subn(rf"\g<1>{rhs_value}", content, count=1)
 	if count != 1:
 		raise ValueError(f"Could not update variable '{variable_name}' in ft_and_percentage.js")

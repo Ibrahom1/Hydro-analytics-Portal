@@ -22,3 +22,6 @@ fallbacknewhtml.html
 venv/
 ENV/
 env/
+
+# Meteoblue API cache files
+data/meteoblue_cache/
