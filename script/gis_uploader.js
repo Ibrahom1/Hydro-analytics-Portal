@@ -64,7 +64,7 @@
     { checkboxId: 'linkCanals', layers: ['link_canals_line'] },
     { checkboxId: 'distributaries', layers: ['distributories_line'] },
     { checkboxId: 'ffd', layers: ['ffd_point'] },
-    { checkboxId: 'other_gauges', layers: ['other_gauges_point', 'other_gauges_label'] },
+    { checkboxId: 'other_gauges', layers: ['other_gauges_forecast_square', 'other_gauges_point', 'other_gauges_label'] },
     { checkboxId: 'lowerIndusHighFlood', layers: ['lihfex'] },
     { checkboxId: 'lowerIndusMediumFlood', layers: ['limfex'] },
     { checkboxId: 'lowerIndusLowFlood', layers: ['lilfex'] },

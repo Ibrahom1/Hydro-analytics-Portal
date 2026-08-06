@@ -108,7 +108,10 @@ def filter_stations(raw_data):
 
         filtered.append({
             "name": name,
+            "name_ur": s.get("name_ur") or "",
             "river": s.get("river") or s.get("area_name") or "",
+            "area_name": s.get("area_name") or "",
+            "kind": s.get("kind") or "",
             "status": s.get("status") or "NORMAL",
             "outflow": outflow,
             "inflow": inflow,
@@ -117,8 +120,15 @@ def filter_stations(raw_data):
             "latitude": s.get("latitude"),
             "longitude": s.get("longitude"),
             "recording_time": s.get("recording_time") or "",
-            "area_name": s.get("area_name") or "",
             "height": s.get("height") or "",
+            "max_peak": s.get("cyp_discharge") or "N/A",
+            "cyp_status": s.get("cyp_status") or "",
+            "cyp_date": s.get("cyp_date") or "",
+            "forecast_status": s.get("forecast_status") or "",
+            "forecast_qual": s.get("forecast_qual") or "",
+            "forecast_quant": s.get("forecast_quant") or "",
+            "high_threshold": s.get("high_threshold"),
+            "is_nullah": bool(s.get("is_nullah", False)),
             "stale": s.get("stale", False),
         })
 
@@ -228,11 +238,15 @@ def init_db():
     """Create the SQLite database and table if they don't exist."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     conn.execute("""
         CREATE TABLE IF NOT EXISTS ffd_gauge_readings (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             name            TEXT NOT NULL,
+            name_ur         TEXT,
             river           TEXT,
+            area_name       TEXT,
+            kind            TEXT,
             status          TEXT,
             outflow         REAL,
             inflow          REAL,
@@ -241,6 +255,15 @@ def init_db():
             latitude        REAL,
             longitude       REAL,
             recording_time  TEXT,
+            height          TEXT,
+            max_peak        TEXT,
+            cyp_status      TEXT,
+            cyp_date        TEXT,
+            forecast_status TEXT,
+            forecast_qual   TEXT,
+            forecast_quant  TEXT,
+            high_threshold  INTEGER,
+            is_nullah       INTEGER,
             fetched_at      TEXT
         )
     """)
@@ -248,23 +271,88 @@ def init_db():
     return conn
 
 
+def cleanup_existing_duplicates(conn):
+    """Purge any historical duplicate records keeping only the most recent id."""
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM ffd_gauge_readings
+        WHERE id NOT IN (
+            SELECT MAX(id)
+            FROM ffd_gauge_readings
+            GROUP BY name, recording_time, status, outflow, inflow, outflow_trend, inflow_trend
+        )
+    """)
+    deleted = cursor.rowcount
+    conn.commit()
+    if deleted > 0:
+        print(f"  Cleaned up {deleted} duplicate rows from database.")
+
+
+def is_duplicate_reading(conn, station):
+    """
+    Check if this station reading is a duplicate of the latest entry in DB.
+    Returns True if the reading matches the latest record (same recording_time + same values).
+    """
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT recording_time, status, outflow, inflow, outflow_trend, inflow_trend
+        FROM ffd_gauge_readings
+        WHERE name = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (station["name"],))
+    last = cursor.fetchone()
+
+    if not last:
+        return False
+
+    rec_time_match = (
+        bool(station["recording_time"])
+        and last["recording_time"] == station["recording_time"]
+    )
+    values_match = (
+        (last["status"] or "").upper() == (station["status"] or "").upper()
+        and last["outflow"] == station["outflow"]
+        and last["inflow"] == station["inflow"]
+        and (last["outflow_trend"] or "") == (station["outflow_trend"] or "")
+        and (last["inflow_trend"] or "") == (station["inflow_trend"] or "")
+    )
+
+    if rec_time_match or values_match:
+        return True
+
+    return False
+
+
 def save_to_db(conn, stations, fetched_at):
-    """Insert filtered station data into SQLite."""
+    """Insert filtered station data into SQLite only if values/recording_time changed."""
+    cleanup_existing_duplicates(conn)
+
+    inserted_count = 0
+    skipped_count = 0
+
     for s in stations:
+        if is_duplicate_reading(conn, s):
+            skipped_count += 1
+            continue
+
         conn.execute("""
             INSERT INTO ffd_gauge_readings
-                (name, river, status, outflow, inflow, outflow_trend, inflow_trend,
-                 latitude, longitude, recording_time, fetched_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (name, name_ur, river, area_name, kind, status, outflow, inflow, outflow_trend, inflow_trend,
+                 latitude, longitude, recording_time, height, max_peak, cyp_status, cyp_date,
+                 forecast_status, forecast_qual, forecast_quant, high_threshold, is_nullah, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            s["name"], s["river"], s["status"],
-            s["outflow"], s["inflow"],
-            s["outflow_trend"], s["inflow_trend"],
-            s["latitude"], s["longitude"],
-            s["recording_time"], fetched_at,
+            s["name"], s.get("name_ur", ""), s["river"], s.get("area_name", ""), s.get("kind", ""),
+            s["status"], s["outflow"], s["inflow"], s["outflow_trend"], s["inflow_trend"],
+            s["latitude"], s["longitude"], s["recording_time"], s.get("height", ""), s.get("max_peak", ""),
+            s.get("cyp_status", ""), s.get("cyp_date", ""), s.get("forecast_status", ""), s.get("forecast_qual", ""),
+            s.get("forecast_quant", ""), s.get("high_threshold"), 1 if s.get("is_nullah") else 0, fetched_at,
         ))
+        inserted_count += 1
+
     conn.commit()
-    print(f"  Inserted {len(stations)} rows into {DB_PATH.name}")
+    print(f"  DB Sync: Inserted {inserted_count} new/updated rows, skipped {skipped_count} unchanged duplicate rows.")
 
 
 # ── Main ─────────────────────────────────────────────────────────────────

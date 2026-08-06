@@ -1515,7 +1515,7 @@ function toggleHighlight(checkbox) {
     }
   }
 
-  if (checkbox.id === 'ffd') {
+  if (['ffd', 'kp_flood_cell', 'other_gauges'].includes(checkbox.id)) {
     if (typeof ffdLegend === 'function') {
       ffdLegend();
     }
@@ -10416,42 +10416,103 @@ function addHydrometLayersToMap(map) {
           map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
         }
       });
+      if (typeof ffdLegend === 'function') ffdLegend();
     });
     document.getElementById("kp_flood_cell")._kpFloodCellListenerAdded = true;
   }
 
   // ── Other Gauges (FFD) Toggle ───────────────────────────────────────────
-  if (document.getElementById("other_gauges") && !document.getElementById("other_gauges")._otherGaugesListenerAdded) {
-    document.getElementById("other_gauges").addEventListener("change", async function () {
-      const isVisible = this.checked;
+  const initOtherGaugesToggle = () => {
+    const checkbox = document.getElementById("other_gauges");
+    if (!checkbox || checkbox._otherGaugesListenerAdded) return;
 
-      if (isVisible && !map1.getSource('other_gauges')) {
+    const formatDischargeVal = (val) => {
+      if (val === null || val === undefined || val === 'null' || val === 'N/A' || String(val).trim() === '') return 'N/A';
+      const num = parseFloat(String(val).replace(/,/g, ''));
+      return !isNaN(num) ? num.toLocaleString() : String(val);
+    };
+
+    const formatTrendInfo = (trend) => {
+      if (!trend) return { text: 'N/A', cssClass: 'trend-steady' };
+      const t = String(trend).toLowerCase().trim();
+      if (t === 'rising' || t === 'up') return { text: '↑ Rising', cssClass: 'trend-rising' };
+      if (t === 'falling' || t === 'down') return { text: '↓ Falling', cssClass: 'trend-falling' };
+      if (t === 'steady' || t === 'stable' || t === 'same') return { text: '→ Steady', cssClass: 'trend-steady' };
+      return { text: trend, cssClass: 'trend-steady' };
+    };
+
+    const loadAndRenderOtherGauges = async () => {
+      if (!map1.getSource('other_gauges')) {
         try {
-          const resp = await fetch('/api/other-gauges');
-          const json = await resp.json();
-          if (json.status !== 'success' || !json.data || !json.data.stations) {
-            console.error('Other Gauges API returned unexpected format:', json);
+          let json = null;
+          const proxyUrl = (typeof proxyBase !== 'undefined' && proxyBase) ? `${proxyBase}/api/other-gauges` : '/api/other-gauges';
+          try {
+            const resp = await fetch(proxyUrl);
+            if (resp.ok) json = await resp.json();
+          } catch (fetchErr) {
+            console.warn('Proxy API fetch for other-gauges failed, trying direct JSON fallback:', fetchErr);
+          }
+
+          if (!json) {
+            try {
+              const respFallback = await fetch('latest_all_gauges.json');
+              if (respFallback.ok) json = await respFallback.json();
+            } catch (fallbackErr) {
+              console.error('Failed to fetch latest_all_gauges.json fallback:', fallbackErr);
+            }
+          }
+
+          const stations = (json && json.data && Array.isArray(json.data.stations))
+            ? json.data.stations
+            : (json && Array.isArray(json.stations) ? json.stations : null);
+
+          if (!stations) {
+            console.error('Other Gauges returned invalid or empty station data:', json);
             return;
           }
 
-          const stations = json.data.stations;
+          const features = stations
+            .filter(s => s && s.latitude != null && s.longitude != null)
+            .map(s => {
+              const outflowFormatted = formatDischargeVal(s.outflow != null ? s.outflow : s.discharge);
+              const forecastUpper = (s.forecast_status || s.forecast_qual || '').toUpperCase().trim();
+              const cypDateStr = s.cyp_date ? ` (${s.cyp_date})` : '';
+              const maxPeakFormatted = formatDischargeVal(s.max_peak || s.cyp_discharge || 'N/A') + (s.max_peak && s.max_peak !== 'N/A' ? cypDateStr : '');
+
+              return {
+                type: 'Feature',
+                geometry: {
+                  type: 'Point',
+                  coordinates: [parseFloat(s.longitude), parseFloat(s.latitude)]
+                },
+                properties: {
+                  name: s.name || '',
+                  name_ur: s.name_ur || '',
+                  river: s.river || s.area_name || '',
+                  kind: s.kind || '',
+                  status: (s.status || 'NORMAL').toUpperCase().trim(),
+                  outflow: s.outflow,
+                  inflow: s.inflow,
+                  outflow_text: outflowFormatted,
+                  outflow_trend: s.outflow_trend || '',
+                  inflow_trend: s.inflow_trend || '',
+                  recording_time: s.recording_time || '',
+                  height: s.height || 'N/A',
+                  max_peak: maxPeakFormatted,
+                  cyp_status: s.cyp_status || '',
+                  cyp_date: s.cyp_date || '',
+                  forecast_status: s.forecast_status || s.forecast_qual || '',
+                  forecast_status_upper: forecastUpper,
+                  forecast_quant: s.forecast_quant || '',
+                  high_threshold: s.high_threshold ? formatDischargeVal(s.high_threshold) + ' cusecs' : '',
+                  area_name: s.area_name || ''
+                }
+              };
+            });
+
           const geojson = {
             type: 'FeatureCollection',
-            features: stations.filter(s => s.latitude && s.longitude).map(s => ({
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [s.longitude, s.latitude] },
-              properties: {
-                name: s.name,
-                river: s.river || '',
-                status: s.status || 'NORMAL',
-                outflow: s.outflow,
-                inflow: s.inflow,
-                outflow_trend: s.outflow_trend || '',
-                inflow_trend: s.inflow_trend || '',
-                recording_time: s.recording_time || '',
-                area_name: s.area_name || ''
-              }
-            }))
+            features: features
           };
 
           map1.addSource('other_gauges', {
@@ -10459,10 +10520,46 @@ function addHydrometLayersToMap(map) {
             data: geojson
           });
 
+          // Add forecast status square layer (centered on circle point)
+          map1.addLayer({
+            id: 'other_gauges_forecast_square',
+            type: 'symbol',
+            source: 'other_gauges',
+            filter: ['!=', ['get', 'forecast_status_upper'], ''],
+            layout: {
+              'visibility': 'visible',
+              'icon-image': [
+                'match',
+                ['coalesce', ['get', 'forecast_status_upper'], ''],
+                'NORMAL', 'forecast-sq-normal',
+                'NORMAL_FLOW', 'forecast-sq-normal',
+                'LOW', 'forecast-sq-low',
+                'LOW_FLOOD', 'forecast-sq-low',
+                'MEDIUM', 'forecast-sq-medium',
+                'MEDIUM_FLOOD', 'forecast-sq-medium',
+                'HIGH', 'forecast-sq-high',
+                'HIGH_FLOOD', 'forecast-sq-high',
+                'VERY_HIGH', 'forecast-sq-very-high',
+                'VERY_HIGH_FLOOD', 'forecast-sq-very-high',
+                'EX_HIGH', 'forecast-sq-ex-high',
+                'EXCEPTIONALLY_HIGH', 'forecast-sq-ex-high',
+                'EXCEPTIONALLY_HIGH_FLOOD', 'forecast-sq-ex-high',
+                'forecast-sq-default'
+              ],
+              'icon-size': 1,
+              'icon-offset': [0, 0],
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true
+            }
+          });
+
           map1.addLayer({
             id: 'other_gauges_point',
             type: 'circle',
             source: 'other_gauges',
+            layout: {
+              'visibility': 'visible'
+            },
             paint: {
               'circle-color': [
                 'match',
@@ -10491,7 +10588,7 @@ function addHydrometLayersToMap(map) {
               'circle-radius': 7,
               'circle-stroke-color': '#ffffff',
               'circle-stroke-width': 2,
-              'circle-opacity': 0.9
+              'circle-opacity': 0.95
             }
           });
 
@@ -10500,21 +10597,27 @@ function addHydrometLayersToMap(map) {
             type: 'symbol',
             source: 'other_gauges',
             layout: {
-              'text-field': ['get', 'name'],
-              'text-size': 11,
-              'text-offset': [0, 1.8],
-              'text-anchor': 'top',
-              'text-allow-overlap': false,
-              'text-optional': true
+              'visibility': 'visible',
+              'text-field': ['concat', ['get', 'name'], '\n', ['to-string', ['get', 'outflow_text']]],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+              'text-size': 12,
+              'text-offset': [0, 1.5],
+              'text-anchor': 'top'
             },
             paint: {
               'text-color': '#ffffff',
               'text-halo-color': '#000000',
-              'text-halo-width': 1.5
+              'text-halo-width': 1
             }
           });
 
-          // Popup on click
+          try {
+            if (map1.getLayer('other_gauges_forecast_square')) map1.moveLayer('other_gauges_forecast_square');
+            if (map1.getLayer('other_gauges_point')) map1.moveLayer('other_gauges_point');
+            if (map1.getLayer('other_gauges_label')) map1.moveLayer('other_gauges_label');
+          } catch(e) {}
+
+          // Popup on click matching 1:1 with target design
           map1.on('click', 'other_gauges_point', (e) => {
             const props = e.features[0].properties;
 
@@ -10530,185 +10633,270 @@ function addHydrometLayersToMap(map) {
             };
 
             const statusColor = getStatusColor(props.status);
+            const inTrend = formatTrendInfo(props.inflow_trend);
+            const outTrend = formatTrendInfo(props.outflow_trend);
 
-            const trendIcon = (trend) => {
-              if (!trend) return '';
-              const t = trend.toLowerCase();
-              if (t === 'rising') return '<i class="fas fa-arrow-up" style="color:#ef3742;"></i>';
-              if (t === 'falling') return '<i class="fas fa-arrow-down" style="color:#2c65bd;"></i>';
-              if (t === 'steady') return '<i class="fas fa-arrows-alt-h" style="color:#888;"></i>';
-              return '';
-            };
+            const inflowStr = props.inflow != null && props.inflow !== 'N/A' && props.inflow !== 'null'
+              ? `${formatDischargeVal(props.inflow)} ft³/s`
+              : 'N/A';
+            const outflowStr = props.outflow != null && props.outflow !== 'N/A' && props.outflow !== 'null'
+              ? `${formatDischargeVal(props.outflow)} ft³/s`
+              : 'N/A';
 
-            const formatVal = (value, label, trend) => {
-              if (value === null || value === undefined || value === 'null') {
-                return `
-                  <div class="discharge-item">
-                    <span class="discharge-label">${label}:</span>
-                    <span class="discharge-value no-data">N/A</span>
-                  </div>`;
-              }
-              const num = parseFloat(value);
-              const formatted = !isNaN(num) ? num.toLocaleString() : value;
-              return `
-                <div class="discharge-item">
-                  <span class="discharge-label">${label}: ${trendIcon(trend)}</span>
-                  <span class="discharge-value inflow-highlight">${formatted} cusecs</span>
-                </div>`;
-            };
+            const urduNameHtml = (props.name_ur && props.name_ur !== props.name)
+              ? `<div class="st-name-ur">${props.name_ur}</div>`
+              : '';
+
+            const kindPillHtml = props.kind
+              ? `<span class="st-kind-badge">${props.kind}</span>`
+              : '';
+
+            const forecastHtml = props.forecast_status
+              ? `
+                <div class="card-row-item">
+                  <span class="card-row-label">Forecast Status:</span>
+                  <span class="card-row-val dark" style="color: ${getStatusColor(props.forecast_status)}; font-weight:800;">${props.forecast_status}</span>
+                </div>
+              ` : '';
+
+            const forecastQuantHtml = props.forecast_quant
+              ? `
+                <div class="card-row-item">
+                  <span class="card-row-label">Forecast Range:</span>
+                  <span class="card-row-val blue">${props.forecast_quant} (in '000 cusecs)</span>
+                </div>
+              ` : '';
+
+            const highThresholdHtml = props.high_threshold
+              ? `
+                <div class="card-row-item">
+                  <span class="card-row-label">High Threshold:</span>
+                  <span class="card-row-val dark">${props.high_threshold}</span>
+                </div>
+              ` : '';
 
             const html = `
-              <div class="ffd-popup-container">
-                <div class="popup-header" style="border-left: 4px solid ${statusColor};">
-                  <div class="station-info">
-                    <h3 class="station-name">${props.name}</h3>
-                    <div class="status-badge" style="background-color: ${statusColor};">
-                      <i class="fas fa-water"></i>
-                      ${props.status}
-                    </div>
+              <div class="ffd-exact-popup-card" style="border-left: 5px solid ${statusColor};">
+                <div class="popup-top-header">
+                  <div class="title-time-col">
+                    <div class="st-name">${props.name} ${kindPillHtml}</div>
+                    ${urduNameHtml}
+                    ${props.recording_time ? `<div class="st-time-pill"><i class="far fa-clock"></i> ${props.recording_time}</div>` : ''}
+                  </div>
+                  <div class="st-status-pill" style="background-color: ${statusColor};">
+                    <i class="fas fa-water"></i> ${props.status}
                   </div>
                 </div>
-                <div class="popup-content">
-                  <div class="popup-meta-section">
-                    <div class="popup-meta-grid">
-                      <div class="popup-meta-item">
-                        <span class="popup-meta-label">River:</span>
-                        <span class="popup-meta-value">${props.river || props.area_name || 'N/A'}</span>
-                      </div>
-                    </div>
+
+                <div class="popup-cards-list">
+                  <div class="card-row-item">
+                    <span class="card-row-label">River / Area:</span>
+                    <span class="card-row-val dark">${props.river || props.area_name || 'N/A'}</span>
                   </div>
-                  <div class="discharge-section">
-                    <div class="discharge-grid">
-                      ${formatVal(props.outflow, 'Outflow', props.outflow_trend)}
-                      ${formatVal(props.inflow, 'Inflow', props.inflow_trend)}
-                    </div>
+
+                  <div class="card-row-item">
+                    <span class="card-row-label">Station Height:</span>
+                    <span class="card-row-val dark">${props.height || 'N/A'}</span>
                   </div>
-                  ${props.recording_time ? `
-                  <div class="timestamp-section">
-                    <div class="timestamp-item">
-                      <i class="fas fa-clock"></i>
-                      <span class="timestamp-value">Reading: ${props.recording_time}</span>
-                    </div>
+
+                  <div class="card-row-item">
+                    <span class="card-row-label">Inflow:</span>
+                    <span class="card-row-val blue">${inflowStr}</span>
                   </div>
-                  ` : ''}
+
+                  <div class="card-row-item">
+                    <span class="card-row-label">Outflow:</span>
+                    <span class="card-row-val dark">${outflowStr}</span>
+                  </div>
+
+                  <div class="card-row-item">
+                    <span class="card-row-label">Inflow Trend:</span>
+                    <span class="card-row-val ${inTrend.cssClass}">${inTrend.text}</span>
+                  </div>
+
+                  <div class="card-row-item">
+                    <span class="card-row-label">Outflow Trend:</span>
+                    <span class="card-row-val ${outTrend.cssClass}">${outTrend.text}</span>
+                  </div>
+
+                  <div class="card-row-item">
+                    <span class="card-row-label">Max. Peak:</span>
+                    <span class="card-row-val dark">${props.max_peak || 'N/A'}</span>
+                  </div>
+
+                  ${forecastHtml}
+                  ${forecastQuantHtml}
+                  ${highThresholdHtml}
                 </div>
               </div>
+
               <style>
-                .ffd-popup-container {
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                  width: 280px;
+                .ffd-exact-popup-card {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                  width: 300px;
                   background: #ffffff;
                   border-radius: 12px;
-                  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+                  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                  border: 1.5px solid #60a5fa;
                   overflow: hidden;
-                  border: 2px solid #2196f3;
-                  position: relative;
+                  color: #1e293b;
                 }
-                .popup-header {
-                  background: #f8f9fa;
-                  padding: 8px 12px;
-                  border-bottom: 2px solid #e3f2fd;
-                }
-                .station-info {
+                .popup-top-header {
+                  padding: 12px 14px 8px 14px;
                   display: flex;
                   justify-content: space-between;
-                  align-items: center;
-                  gap: 12px;
+                  align-items: flex-start;
+                  gap: 8px;
+                  background: #ffffff;
                 }
-                .station-name {
-                  font-size: 16px;
-                  font-weight: 700;
-                  color: #1a1a1a;
-                  margin: 0;
-                  line-height: 1.2;
-                  flex: 1;
-                }
-                .status-badge {
-                  color: white;
-                  padding: 4px 8px;
-                  border-radius: 16px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  text-transform: uppercase;
-                  letter-spacing: 0.3px;
-                  display: flex;
-                  align-items: center;
-                  gap: 3px;
-                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                  white-space: nowrap;
-                }
-                .popup-content {
-                  padding: 8px 12px 12px;
-                }
-                .popup-meta-section, .discharge-section, .timestamp-section {
-                  margin-bottom: 8px;
-                }
-                .popup-meta-grid, .discharge-grid {
+                .title-time-col {
                   display: flex;
                   flex-direction: column;
-                  gap: 4px;
+                  align-items: flex-start;
                 }
-                .popup-meta-item, .discharge-item {
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  padding: 4px 8px;
-                  background: #f8f9fa;
-                  border-radius: 6px;
-                  border: 1px solid #e3f2fd;
-                  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-                }
-                .popup-meta-label, .discharge-label {
-                  font-size: 13px;
-                  font-weight: 500;
-                  color: #495057;
-                }
-                .popup-meta-value, .discharge-value {
-                  font-size: 14px;
-                  font-weight: 700;
-                  color: #212529;
-                }
-                .inflow-highlight { color: #1976d2; }
-                .timestamp-item {
+                .st-name {
+                  font-size: 17px;
+                  font-weight: 800;
+                  color: #0f172a;
+                  line-height: 1.25;
+                  margin: 0;
                   display: flex;
                   align-items: center;
                   gap: 6px;
-                  justify-content: flex-end;
+                  flex-wrap: wrap;
+                }
+                .st-name-ur {
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #475569;
+                  margin-top: 2px;
+                  direction: rtl;
+                }
+                .st-kind-badge {
+                  font-size: 10px;
+                  font-weight: 700;
+                  color: #2563eb;
+                  background: #eff6ff;
+                  border: 1px solid #bfdbfe;
+                  padding: 1px 6px;
+                  border-radius: 6px;
+                  text-transform: uppercase;
+                }
+                .st-time-pill {
+                  background: #eef2f6;
+                  color: #475569;
+                  padding: 3px 9px;
+                  border-radius: 10px;
                   font-size: 11px;
-                  color: #6c757d;
-                  margin-top: 4px;
+                  font-weight: 600;
+                  margin-top: 6px;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                }
+                .st-status-pill {
+                  color: #ffffff;
+                  padding: 4px 10px;
+                  border-radius: 16px;
+                  font-size: 11px;
+                  font-weight: 700;
+                  text-transform: uppercase;
+                  letter-spacing: 0.4px;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                  white-space: nowrap;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+                }
+                .popup-cards-list {
+                  padding: 4px 12px 12px 12px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 5px;
+                }
+                .card-row-item {
+                  background: #f8fafc;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 8px;
+                  padding: 6px 10px;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                }
+                .card-row-label {
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #475569;
+                }
+                .card-row-val {
+                  font-size: 14px;
+                  font-weight: 700;
+                }
+                .card-row-val.dark {
+                  color: #0f172a;
+                }
+                .card-row-val.blue {
+                  color: #2563eb;
+                  font-weight: 800;
+                }
+                .card-row-val.trend-rising {
+                  color: #dc2626;
+                  font-weight: 700;
+                }
+                .card-row-val.trend-falling {
+                  color: #16a34a;
+                  font-weight: 700;
+                }
+                .card-row-val.trend-steady {
+                  color: #64748b;
+                  font-weight: 600;
                 }
                 .mapboxgl-popup-close-button { display: none !important; }
-                .mapboxgl-popup-content { padding: 0 !important; border-radius: 8px !important; }
+                .mapboxgl-popup-content { padding: 0 !important; border-radius: 12px !important; background: transparent !important; box-shadow: none !important; }
                 .mapboxgl-popup-tip { border-top-color: #ffffff !important; }
               </style>
             `;
+
             new mapboxgl.Popup({
               closeButton: false,
               closeOnClick: true,
-              maxWidth: '300px',
-              className: 'ffd-enhanced-popup'
+              maxWidth: '320px',
+              className: 'ffd-exact-popup-wrapper'
             })
               .setLngLat(e.lngLat)
               .setHTML(html)
               .addTo(map1);
           });
+
           map1.on('mouseenter', 'other_gauges_point', () => { map1.getCanvas().style.cursor = 'pointer'; });
           map1.on('mouseleave', 'other_gauges_point', () => { map1.getCanvas().style.cursor = ''; });
 
+          console.log(`Other Gauges layer added with ${features.length} station points.`);
         } catch (e) {
           console.error("Failed to load Other Gauges layer:", e);
         }
       }
 
-      ['other_gauges_point', 'other_gauges_label'].forEach(layerId => {
+      ['other_gauges_forecast_square', 'other_gauges_point', 'other_gauges_label'].forEach(layerId => {
         if (map1.getLayer(layerId)) {
-          map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
+          map1.setLayoutProperty(layerId, "visibility", checkbox.checked ? "visible" : "none");
+          if (checkbox.checked) {
+            try { map1.moveLayer(layerId); } catch(err) {}
+          }
         }
       });
-    });
-    document.getElementById("other_gauges")._otherGaugesListenerAdded = true;
-  }
+      if (typeof ffdLegend === 'function') ffdLegend();
+    };
+
+    checkbox.addEventListener("change", loadAndRenderOtherGauges);
+    checkbox._otherGaugesListenerAdded = true;
+
+    if (checkbox.checked) {
+      loadAndRenderOtherGauges();
+    }
+  };
+
+  initOtherGaugesToggle();
 
 
 
@@ -18423,13 +18611,16 @@ if (typeof window !== 'undefined' && !window._ffdLegendResizeAdded) {
 function ffdLegend() {
   createFfdLegend();
   const legend = document.getElementById('ffdLegend');
-  const checkbox = document.getElementById('ffd');
+  const cbFFD = document.getElementById('ffd');
+  const cbKP = document.getElementById('kp_flood_cell');
+  const cbOther = document.getElementById('other_gauges');
   const historyPanel = document.getElementById('ffd-history-panel');
 
   const isHistoryOpen = historyPanel && historyPanel.classList.contains('open');
+  const isAnyChecked = (cbFFD && cbFFD.checked) || (cbKP && cbKP.checked) || (cbOther && cbOther.checked);
 
   if (legend) {
-    if (checkbox && checkbox.checked && !isHistoryOpen) {
+    if (isAnyChecked && !isHistoryOpen) {
       legend.style.display = 'block';
       requestAnimationFrame(() => repositionFFDLegend());
     } else {
@@ -18481,7 +18672,7 @@ function getMap1VisibilityStates() {
     { checkboxId: 'kp_Rivers', layers: ['KP_RIVERS'] },
     { checkboxId: 'ffd_rivers', layers: ['ffd_rivers_layer', 'ffd_rivers_outline'] },
     { checkboxId: 'kp_flood_cell', layers: ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'] },
-    { checkboxId: 'other_gauges', layers: ['other_gauges_point', 'other_gauges_label'] },
+    { checkboxId: 'other_gauges', layers: ['other_gauges_forecast_square', 'other_gauges_point', 'other_gauges_label'] },
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
     { checkboxId: 'india', layers: ['indian', 'gis-existing-indian-label'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },
