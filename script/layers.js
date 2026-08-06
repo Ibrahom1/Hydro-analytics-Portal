@@ -10420,6 +10420,296 @@ function addHydrometLayersToMap(map) {
     document.getElementById("kp_flood_cell")._kpFloodCellListenerAdded = true;
   }
 
+  // ── Other Gauges (FFD) Toggle ───────────────────────────────────────────
+  if (document.getElementById("other_gauges") && !document.getElementById("other_gauges")._otherGaugesListenerAdded) {
+    document.getElementById("other_gauges").addEventListener("change", async function () {
+      const isVisible = this.checked;
+
+      if (isVisible && !map1.getSource('other_gauges')) {
+        try {
+          const resp = await fetch('/api/other-gauges');
+          const json = await resp.json();
+          if (json.status !== 'success' || !json.data || !json.data.stations) {
+            console.error('Other Gauges API returned unexpected format:', json);
+            return;
+          }
+
+          const stations = json.data.stations;
+          const geojson = {
+            type: 'FeatureCollection',
+            features: stations.filter(s => s.latitude && s.longitude).map(s => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [s.longitude, s.latitude] },
+              properties: {
+                name: s.name,
+                river: s.river || '',
+                status: s.status || 'NORMAL',
+                outflow: s.outflow,
+                inflow: s.inflow,
+                outflow_trend: s.outflow_trend || '',
+                inflow_trend: s.inflow_trend || '',
+                recording_time: s.recording_time || '',
+                area_name: s.area_name || ''
+              }
+            }))
+          };
+
+          map1.addSource('other_gauges', {
+            type: 'geojson',
+            data: geojson
+          });
+
+          map1.addLayer({
+            id: 'other_gauges_point',
+            type: 'circle',
+            source: 'other_gauges',
+            paint: {
+              'circle-color': [
+                'match',
+                ['coalesce', ['get', 'status'], ''],
+                'NORMAL', '#288846',
+                'Normal', '#288846',
+                'NORMAL_FLOW', '#288846',
+                'LOW', '#2c65bd',
+                'Low', '#2c65bd',
+                'LOW_FLOOD', '#2c65bd',
+                'MEDIUM', '#f6c445',
+                'Medium', '#f6c445',
+                'MEDIUM_FLOOD', '#f6c445',
+                'HIGH', '#f78339',
+                'High', '#f78339',
+                'HIGH_FLOOD', '#f78339',
+                'VERY_HIGH', '#ef3742',
+                'Very High', '#ef3742',
+                'VERY_HIGH_FLOOD', '#ef3742',
+                'EX_HIGH', '#a51f2b',
+                'EXCEPTIONALLY_HIGH', '#a51f2b',
+                'Exceptionally High', '#a51f2b',
+                'EXCEPTIONALLY_HIGH_FLOOD', '#a51f2b',
+                '#288846'
+              ],
+              'circle-radius': 7,
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-width': 2,
+              'circle-opacity': 0.9
+            }
+          });
+
+          map1.addLayer({
+            id: 'other_gauges_label',
+            type: 'symbol',
+            source: 'other_gauges',
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-size': 11,
+              'text-offset': [0, 1.8],
+              'text-anchor': 'top',
+              'text-allow-overlap': false,
+              'text-optional': true
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 1.5
+            }
+          });
+
+          // Popup on click
+          map1.on('click', 'other_gauges_point', (e) => {
+            const props = e.features[0].properties;
+
+            const getStatusColor = (status) => {
+              const norm = (status || '').toUpperCase().trim();
+              if (norm === 'NORMAL' || norm === 'NORMAL_FLOW') return '#288846';
+              if (norm === 'LOW' || norm === 'LOW_FLOOD') return '#2c65bd';
+              if (norm === 'MEDIUM' || norm === 'MEDIUM_FLOOD') return '#f6c445';
+              if (norm === 'HIGH' || norm === 'HIGH_FLOOD') return '#f78339';
+              if (norm === 'VERY_HIGH' || norm === 'VERY HIGH' || norm === 'VERY_HIGH_FLOOD') return '#ef3742';
+              if (norm.includes('EX') || norm.includes('EXCEPTIONALLY')) return '#a51f2b';
+              return '#288846';
+            };
+
+            const statusColor = getStatusColor(props.status);
+
+            const trendIcon = (trend) => {
+              if (!trend) return '';
+              const t = trend.toLowerCase();
+              if (t === 'rising') return '<i class="fas fa-arrow-up" style="color:#ef3742;"></i>';
+              if (t === 'falling') return '<i class="fas fa-arrow-down" style="color:#2c65bd;"></i>';
+              if (t === 'steady') return '<i class="fas fa-arrows-alt-h" style="color:#888;"></i>';
+              return '';
+            };
+
+            const formatVal = (value, label, trend) => {
+              if (value === null || value === undefined || value === 'null') {
+                return `
+                  <div class="discharge-item">
+                    <span class="discharge-label">${label}:</span>
+                    <span class="discharge-value no-data">N/A</span>
+                  </div>`;
+              }
+              const num = parseFloat(value);
+              const formatted = !isNaN(num) ? num.toLocaleString() : value;
+              return `
+                <div class="discharge-item">
+                  <span class="discharge-label">${label}: ${trendIcon(trend)}</span>
+                  <span class="discharge-value inflow-highlight">${formatted} cusecs</span>
+                </div>`;
+            };
+
+            const html = `
+              <div class="ffd-popup-container">
+                <div class="popup-header" style="border-left: 4px solid ${statusColor};">
+                  <div class="station-info">
+                    <h3 class="station-name">${props.name}</h3>
+                    <div class="status-badge" style="background-color: ${statusColor};">
+                      <i class="fas fa-water"></i>
+                      ${props.status}
+                    </div>
+                  </div>
+                </div>
+                <div class="popup-content">
+                  <div class="popup-meta-section">
+                    <div class="popup-meta-grid">
+                      <div class="popup-meta-item">
+                        <span class="popup-meta-label">River:</span>
+                        <span class="popup-meta-value">${props.river || props.area_name || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="discharge-section">
+                    <div class="discharge-grid">
+                      ${formatVal(props.outflow, 'Outflow', props.outflow_trend)}
+                      ${formatVal(props.inflow, 'Inflow', props.inflow_trend)}
+                    </div>
+                  </div>
+                  ${props.recording_time ? `
+                  <div class="timestamp-section">
+                    <div class="timestamp-item">
+                      <i class="fas fa-clock"></i>
+                      <span class="timestamp-value">Reading: ${props.recording_time}</span>
+                    </div>
+                  </div>
+                  ` : ''}
+                </div>
+              </div>
+              <style>
+                .ffd-popup-container {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  width: 280px;
+                  background: #ffffff;
+                  border-radius: 12px;
+                  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+                  overflow: hidden;
+                  border: 2px solid #2196f3;
+                  position: relative;
+                }
+                .popup-header {
+                  background: #f8f9fa;
+                  padding: 8px 12px;
+                  border-bottom: 2px solid #e3f2fd;
+                }
+                .station-info {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  gap: 12px;
+                }
+                .station-name {
+                  font-size: 16px;
+                  font-weight: 700;
+                  color: #1a1a1a;
+                  margin: 0;
+                  line-height: 1.2;
+                  flex: 1;
+                }
+                .status-badge {
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 16px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  text-transform: uppercase;
+                  letter-spacing: 0.3px;
+                  display: flex;
+                  align-items: center;
+                  gap: 3px;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                  white-space: nowrap;
+                }
+                .popup-content {
+                  padding: 8px 12px 12px;
+                }
+                .popup-meta-section, .discharge-section, .timestamp-section {
+                  margin-bottom: 8px;
+                }
+                .popup-meta-grid, .discharge-grid {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                }
+                .popup-meta-item, .discharge-item {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  padding: 4px 8px;
+                  background: #f8f9fa;
+                  border-radius: 6px;
+                  border: 1px solid #e3f2fd;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                }
+                .popup-meta-label, .discharge-label {
+                  font-size: 13px;
+                  font-weight: 500;
+                  color: #495057;
+                }
+                .popup-meta-value, .discharge-value {
+                  font-size: 14px;
+                  font-weight: 700;
+                  color: #212529;
+                }
+                .inflow-highlight { color: #1976d2; }
+                .timestamp-item {
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  justify-content: flex-end;
+                  font-size: 11px;
+                  color: #6c757d;
+                  margin-top: 4px;
+                }
+                .mapboxgl-popup-close-button { display: none !important; }
+                .mapboxgl-popup-content { padding: 0 !important; border-radius: 8px !important; }
+                .mapboxgl-popup-tip { border-top-color: #ffffff !important; }
+              </style>
+            `;
+            new mapboxgl.Popup({
+              closeButton: false,
+              closeOnClick: true,
+              maxWidth: '300px',
+              className: 'ffd-enhanced-popup'
+            })
+              .setLngLat(e.lngLat)
+              .setHTML(html)
+              .addTo(map1);
+          });
+          map1.on('mouseenter', 'other_gauges_point', () => { map1.getCanvas().style.cursor = 'pointer'; });
+          map1.on('mouseleave', 'other_gauges_point', () => { map1.getCanvas().style.cursor = ''; });
+
+        } catch (e) {
+          console.error("Failed to load Other Gauges layer:", e);
+        }
+      }
+
+      ['other_gauges_point', 'other_gauges_label'].forEach(layerId => {
+        if (map1.getLayer(layerId)) {
+          map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
+        }
+      });
+    });
+    document.getElementById("other_gauges")._otherGaugesListenerAdded = true;
+  }
+
 
 
 
@@ -18191,6 +18481,7 @@ function getMap1VisibilityStates() {
     { checkboxId: 'kp_Rivers', layers: ['KP_RIVERS'] },
     { checkboxId: 'ffd_rivers', layers: ['ffd_rivers_layer', 'ffd_rivers_outline'] },
     { checkboxId: 'kp_flood_cell', layers: ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'] },
+    { checkboxId: 'other_gauges', layers: ['other_gauges_point', 'other_gauges_label'] },
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
     { checkboxId: 'india', layers: ['indian', 'gis-existing-indian-label'] },
     { checkboxId: 'Glofas', layers: ['glofas'] },

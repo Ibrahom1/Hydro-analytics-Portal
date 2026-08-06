@@ -122,11 +122,17 @@ echo Installing Python dependencies...
 "%VENV_PYTHON%" -m pip install ^
   -r "%REPO_ROOT%waterdashboard\backend\requirements.txt" ^
   -r "%REPO_ROOT%gis_uploader_backend\requirements.txt" ^
-  pandas pdfplumber selenium
+  pandas pdfplumber selenium cloudscraper playwright
 if errorlevel 1 (
   echo Dependency installation failed.
   pause
   exit /b 1
+)
+
+echo Installing Playwright Chromium browser for FFD cookie scraping...
+"%VENV_PYTHON%" -m playwright install chromium
+if errorlevel 1 (
+  echo Warning: Playwright Chromium install failed. FFD Other Gauges may not work.
 )
 
 echo Updating Indian dam values from Google Sheet...
@@ -157,13 +163,19 @@ if errorlevel 1 (
   echo Warning: Failed to ingest KP Flood Report PDF into SQLite.
 )
 
+echo Fetching latest FFD Other Gauges data from ffd.pmd.gov.pk...
+"%VENV_PYTHON%" "%REPO_ROOT%fetch_other_gauges.py"
+if errorlevel 1 (
+  echo Warning: FFD Other Gauges fetch failed. Using cached latest_all_gauges.json if available.
+)
+
 if defined HAS_GIT (
   echo Committing Daily Water Situation PDF, SQLite, archive, and dashboard JS updates...
   pushd "%REPO_ROOT%" >nul
   if errorlevel 1 (
     echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
   ) else (
-    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite"
+    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite" "latest_all_gauges.json" "data/other_gauges.sqlite"
     if errorlevel 1 (
       echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
     ) else (

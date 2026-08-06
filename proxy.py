@@ -337,6 +337,25 @@ def kp_stations_api():
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
+@app.route('/api/other-gauges', methods=['GET'])
+def other_gauges_api():
+    """Serve latest_all_gauges.json — the 26 FFD other gauges fetched hourly"""
+    try:
+        json_path = Path(__file__).resolve().parent / "latest_all_gauges.json"
+        if not json_path.exists():
+            return jsonify({"status": "error", "message": "latest_all_gauges.json not found. Run fetch_other_gauges.py first."}), 404
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        resp = Response(
+            json.dumps({"status": "success", "data": data}, ensure_ascii=False),
+            mimetype='application/json'
+        )
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'])
 def proxy(path):

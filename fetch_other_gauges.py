@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""
+fetch_other_gauges.py
+=====================
+Fetches live station data for 26 specific FFD gauge stations from
+https://ffd.pmd.gov.pk/river-state-3d/data?scope=all
+
+Strategy:
+  Tier 1: cloudscraper (auto Cloudflare bypass)
+  Tier 2: Playwright headless Chromium (live cookie scraping)
+  Tier 3: Graceful fallback — keep existing latest_all_gauges.json if present
+
+Output:
+  - latest_all_gauges.json  (root directory)
+  - data/other_gauges.sqlite  (historical archive)
+"""
+
+import json
+import os
+import sqlite3
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent
+OUTPUT_JSON = REPO_ROOT / "latest_all_gauges.json"
+DB_PATH = REPO_ROOT / "data" / "other_gauges.sqlite"
+
+FFD_API_URL = "https://ffd.pmd.gov.pk/river-state-3d/data?scope=all"
+FFD_PAGE_URL = "https://ffd.pmd.gov.pk/river-state-3d"
+
+# ── Strict Allowlist: 26 Stations ────────────────────────────────────────
+ALLOWED_STATIONS = {
+    "Warsak",
+    "Daggar",
+    "Palkhu - Wazirabad",
+    "Phulra",
+    "Ravi Syphon",
+    "Aik - Sialkot",
+    "Arandu Nullah",
+    "Attock Khairabad",
+    "Bain Nullah",
+    "Bassantar Nalah",
+    "Bosak Bridge",
+    "Chak Amru",
+    "Chowni Bridge",
+    "Darashoot",
+    "Deg Nullah",
+    "Dhok Pathan",
+    "Garhiala (Telemetry)",
+    "Japan Bridge",
+    "Jinnah Barrage",
+    "Khair Abad",
+    "Khawagoobo Bridge",
+    "Khiali (Charsada Road)",
+    "Khushab Bridge",
+    "Melsi Syphon",
+    "Sharda",
+    "Shishi Darosh",
+}
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
+
+
+def _parse_discharge(val):
+    """Convert '29,988' or 'N/A' to a float or None."""
+    if val is None or str(val).strip().upper() in ("N/A", "", "NULL"):
+        return None
+    try:
+        return float(str(val).replace(",", ""))
+    except (ValueError, TypeError):
+        return None
+
+
+def _extract_gauge(gauges, gauge_type):
+    """Extract discharge and trend for a given gauge type (OUTFLOW/INFLOW)."""
+    if not gauges:
+        return None, None
+    for g in gauges:
+        if g.get("type", "").upper() == gauge_type.upper():
+            return _parse_discharge(g.get("discharge")), g.get("trend")
+    return None, None
+
+
+def filter_stations(raw_data):
+    """Filter only our 26 allowed stations from the full FFD API response."""
+    stations_raw = raw_data.get("stations", [])
+    if not stations_raw:
+        # Maybe the response IS the list
+        if isinstance(raw_data, list):
+            stations_raw = raw_data
+        else:
+            print(f"Warning: 'stations' key not found. Top-level keys: {list(raw_data.keys()) if isinstance(raw_data, dict) else 'N/A'}")
+            return []
+
+    filtered = []
+    for s in stations_raw:
+        name = (s.get("name") or "").strip()
+        if name not in ALLOWED_STATIONS:
+            continue
+
+        outflow, outflow_trend = _extract_gauge(s.get("gauges"), "OUTFLOW")
+        inflow, inflow_trend = _extract_gauge(s.get("gauges"), "INFLOW")
+
+        filtered.append({
+            "name": name,
+            "river": s.get("river") or s.get("area_name") or "",
+            "status": s.get("status") or "NORMAL",
+            "outflow": outflow,
+            "inflow": inflow,
+            "outflow_trend": outflow_trend,
+            "inflow_trend": inflow_trend,
+            "latitude": s.get("latitude"),
+            "longitude": s.get("longitude"),
+            "recording_time": s.get("recording_time") or "",
+            "area_name": s.get("area_name") or "",
+            "height": s.get("height") or "",
+            "stale": s.get("stale", False),
+        })
+
+    return filtered
+
+
+# ── Tier 1: cloudscraper ─────────────────────────────────────────────────
+def fetch_with_cloudscraper():
+    """Attempt to fetch using cloudscraper (handles JS challenges automatically)."""
+    print("Tier 1: Trying cloudscraper...")
+    import cloudscraper
+    scraper = cloudscraper.create_scraper(
+        browser={"browser": "chrome", "platform": "windows", "desktop": True}
+    )
+    resp = scraper.get(FFD_API_URL, timeout=45, headers={"User-Agent": USER_AGENT})
+    resp.raise_for_status()
+    data = resp.json()
+    print(f"  cloudscraper succeeded. Response has {len(data.get('stations', []))} stations.")
+    return data
+
+
+# ── Tier 2: Playwright Stealth Interception with X-FW-TOKEN ──────────────
+def fetch_with_playwright():
+    """Open FFD in Playwright, extract dynamic X-FW-TOKEN, and fetch scope=all data."""
+    print("Tier 2: Trying Playwright browser with dynamic X-FW-TOKEN...")
+    from playwright.sync_api import sync_playwright
+
+    stealth_args = [
+        "--disable-blink-features=AutomationControlled",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+    ]
+
+    fw_token = [None]
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=stealth_args)
+        context = browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US",
+            timezone_id="Asia/Karachi",
+        )
+
+        context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.chrome = { runtime: {} };
+        """)
+
+        page = context.new_page()
+
+        def handle_req(req):
+            if "river-state-3d/data" in req.url:
+                tok = req.headers.get("x-fw-token")
+                if tok:
+                    fw_token[0] = tok
+
+        page.on("request", handle_req)
+
+        print("  Navigating to FFD river-state-3d page...")
+        try:
+            page.goto(FFD_PAGE_URL, wait_until="domcontentloaded", timeout=45000)
+        except Exception as nav_err:
+            print(f"  Navigation note: {nav_err}")
+
+        # Wait for token capture
+        for _ in range(30):
+            if fw_token[0]:
+                break
+            page.wait_for_timeout(500)
+
+        if not fw_token[0]:
+            browser.close()
+            raise Exception("Failed to capture X-FW-TOKEN from FFD page request")
+
+        tok = fw_token[0]
+        print(f"  Captured X-FW-TOKEN: {tok[:20]}...")
+
+        print("  Executing in-page fetch for scope=all ...")
+        res = page.evaluate(f"""
+            async () => {{
+                const resp = await fetch('/river-state-3d/data?scope=all', {{
+                    headers: {{
+                        'Accept': 'application/json',
+                        'X-FW-TOKEN': '{tok}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }}
+                }});
+                if (resp.ok) return await resp.json();
+                return null;
+            }}
+        """)
+
+        browser.close()
+
+    if res and isinstance(res, dict) and "stations" in res:
+        print(f"  Successfully fetched live data ({len(res['stations'])} total stations)!")
+        return res
+
+    raise Exception("Playwright failed to retrieve scope=all data using X-FW-TOKEN")
+
+
+# ── SQLite Persistence ───────────────────────────────────────────────────
+def init_db():
+    """Create the SQLite database and table if they don't exist."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ffd_gauge_readings (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            river           TEXT,
+            status          TEXT,
+            outflow         REAL,
+            inflow          REAL,
+            outflow_trend   TEXT,
+            inflow_trend    TEXT,
+            latitude        REAL,
+            longitude       REAL,
+            recording_time  TEXT,
+            fetched_at      TEXT
+        )
+    """)
+    conn.commit()
+    return conn
+
+
+def save_to_db(conn, stations, fetched_at):
+    """Insert filtered station data into SQLite."""
+    for s in stations:
+        conn.execute("""
+            INSERT INTO ffd_gauge_readings
+                (name, river, status, outflow, inflow, outflow_trend, inflow_trend,
+                 latitude, longitude, recording_time, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            s["name"], s["river"], s["status"],
+            s["outflow"], s["inflow"],
+            s["outflow_trend"], s["inflow_trend"],
+            s["latitude"], s["longitude"],
+            s["recording_time"], fetched_at,
+        ))
+    conn.commit()
+    print(f"  Inserted {len(stations)} rows into {DB_PATH.name}")
+
+
+# ── Main ─────────────────────────────────────────────────────────────────
+def main():
+    fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    raw_data = None
+
+    # Try Tier 1 first
+    try:
+        raw_data = fetch_with_cloudscraper()
+    except Exception as e:
+        print(f"  cloudscraper failed: {e}")
+
+    # Tier 2: Playwright fallback
+    if raw_data is None:
+        try:
+            raw_data = fetch_with_playwright()
+        except Exception as e:
+            print(f"  Playwright failed: {e}")
+
+    if raw_data is None:
+        print("ERROR: All fetch tiers failed.")
+        if OUTPUT_JSON.exists():
+            print(f"  Keeping existing {OUTPUT_JSON.name} as fallback.")
+            sys.exit(0)
+        else:
+            print(f"  No existing {OUTPUT_JSON.name} available.")
+            sys.exit(1)
+
+    # Filter stations
+    filtered = filter_stations(raw_data)
+    print(f"\nFiltered to {len(filtered)} / 26 allowed stations.")
+
+    if not filtered:
+        print("Warning: No stations matched the allowlist. Check station names.")
+        if OUTPUT_JSON.exists():
+            print(f"  Keeping existing {OUTPUT_JSON.name} as fallback.")
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    # Write JSON output
+    output = {
+        "fetched_at": fetched_at,
+        "total_stations": len(filtered),
+        "stations": filtered,
+    }
+    with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+    print(f"Wrote {OUTPUT_JSON.name} ({len(filtered)} stations)")
+
+    # Save to SQLite
+    conn = init_db()
+    save_to_db(conn, filtered, fetched_at)
+    conn.close()
+
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()
