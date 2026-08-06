@@ -2967,6 +2967,7 @@
     createModal();
     renderPlacementBrowser();
     renderUploadedLayerManager();
+    loadSavedLayers();
     setStatus('');
     modal.classList.remove('hidden');
   }
@@ -3140,14 +3141,49 @@
     }
   }
 
+  const UPLOADED_LAYERS_CACHE_KEY = 'hydro-gis-uploaded-layers-cache-v1';
+
+  function readUploadedLayersCache() {
+    try {
+      const raw = localStorage.getItem(UPLOADED_LAYERS_CACHE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeUploadedLayersCache(layers) {
+    try {
+      if (Array.isArray(layers)) {
+        localStorage.setItem(UPLOADED_LAYERS_CACHE_KEY, JSON.stringify(layers));
+      }
+    } catch (e) {
+      console.warn('[GIS uploader] Could not cache uploaded layers to localStorage:', e);
+    }
+  }
+
   async function loadSavedLayers() {
+    // 1. Immediately populate from local cache so togglers render instantly for every user
+    const cachedLayers = readUploadedLayersCache();
+    if (Array.isArray(cachedLayers) && cachedLayers.length > 0) {
+      cachedLayers.forEach((layer) => addUploadedLayer(layer, false));
+      renderUploadedLayerManager();
+      renderEditPanel();
+    }
+
+    // 2. Fetch remote registry from backend
     try {
       const layers = await fetchSavedLayerRegistry();
-      layers.forEach((layer) => addUploadedLayer(layer, false));
+      if (Array.isArray(layers) && layers.length > 0) {
+        layers.forEach((layer) => addUploadedLayer(layer, false));
+        writeUploadedLayersCache(layers);
+      }
       renderUploadedLayerManager();
       renderEditPanel();
     } catch (error) {
-      console.warn('[GIS uploader] Saved layers were not loaded:', error.message || error);
+      console.warn('[GIS uploader] Saved layers remote fetch warning:', error.message || error);
+      renderUploadedLayerManager();
+      renderEditPanel();
     }
   }
 
