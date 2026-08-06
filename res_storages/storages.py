@@ -783,9 +783,32 @@ def main() -> int:
 		variation5_year_arrow,
 		variation5_year_trend,
 	)
-	percentages = compute_percentages(storage_today, storage_max)
-	last_year_percentages = compute_percentages(last_year_levels, storage_max)
-	avg5_year_percentages = compute_percentages(avg5_year_levels, storage_max)
+	# Custom historical Max Capacities per user requirement:
+	# - Current / Today Max: PDF storage_max (Tarbela: 5.580, Mangla: 7.258, Chashma: usual PDF value)
+	# - Last Year Max: Tarbela = 5.728 MAF, Mangla = 7.277 MAF, Chashma = usual PDF value
+	# - Last 5-Year & 10-Year Max: Tarbela = 5.691 MAF, Mangla = 7.268 MAF, Chashma = usual PDF value
+
+	storage_max_current = {
+		"Tarbela": storage_max.get("Tarbela", "5.580"),
+		"Mangla": storage_max.get("Mangla", "7.258"),
+		"Chashma": storage_max.get("Chashma", "0.311"),
+	}
+
+	storage_max_last_year = {
+		"Tarbela": "5.728",
+		"Mangla": "7.277",
+		"Chashma": storage_max.get("Chashma", "0.311"),
+	}
+
+	storage_max_5year = {
+		"Tarbela": "5.691",
+		"Mangla": "7.268",
+		"Chashma": storage_max.get("Chashma", "0.311"),
+	}
+
+	percentages = compute_percentages(storage_today, storage_max_current)
+	last_year_percentages = compute_percentages(last_year_levels, storage_max_last_year)
+	avg5_year_percentages = compute_percentages(avg5_year_levels, storage_max_5year)
 
 	print("[INFO] Extracted reservoir levels (ft):")
 	for dam in DAM_KEYS:

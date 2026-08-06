@@ -47,7 +47,7 @@ ROUTES = {
     '/proxy_ayman/': 'http://172.18.1.179:8080/',
     '/proxy_ibrahim/': 'http://172.18.1.115:8080/',
     '/proxy_mustafa/': 'http://172.18.1.39:8080/',
-    '/proxy_ahad/': 'http://172.18.1.85:8080/',
+    '/proxy_ahad/': 'http://172.18.1.92:8080/',
     '/proxy_1_4/': 'http://172.18.1.4:8080/',
     '/proxy_1_43/': 'http://172.18.1.43:8080/',
     '/proxy_1_56/': 'http://172.18.1.56:8080/',
@@ -66,11 +66,15 @@ METEOBLUE_CACHE_DIR = os.path.join(repo_root_path, 'data', 'meteoblue_cache')
 os.makedirs(METEOBLUE_CACHE_DIR, exist_ok=True)
 
 import threading
+import time
+
 _meteoblue_cache_lock = threading.Lock()
+_in_flight_locks = {}
+_in_flight_global_lock = threading.Lock()
 
 # Cache TTLs in seconds
-HOURLY_TILE_TTL = 3 * 3600    # 3 hours for hourly vector tiles
-WEEKLY_GEOJSON_TTL = 6 * 3600 # 6 hours for weekly GeoJSON
+HOURLY_TILE_TTL = 6 * 3600    # 6 hours for vector tiles (matches model run updates)
+WEEKLY_GEOJSON_TTL = 12 * 3600 # 12 hours for weekly forecast data
 
 def _cache_key(url_path):
     """Generate a filesystem-safe cache key from a URL path"""
@@ -121,7 +125,7 @@ def _cache_set(cache_key, content_bytes, content_type, ttl_seconds, url=""):
         print(f"[METEOBLUE CACHE] Write error: {e}")
 
 def _purge_expired_cache():
-    """Remove expired cache entries (>12h) to keep disk clean"""
+    """Remove expired cache entries to keep disk clean"""
     removed = 0
     try:
         now = datetime.datetime.utcnow().timestamp()
@@ -146,7 +150,21 @@ def _purge_expired_cache():
     if removed > 0:
         print(f"[METEOBLUE CACHE] Purged {removed} expired cache files from disk")
 
-# Purge expired cache on import
+def _periodic_cache_cleaner():
+    """Background daemon thread to purge disk cache every hour"""
+    while True:
+        try:
+            time.sleep(3600)
+            with _meteoblue_cache_lock:
+                _purge_expired_cache()
+        except Exception:
+            pass
+
+# Start background cleaner thread
+_cleaner_thread = threading.Thread(target=_periodic_cache_cleaner, daemon=True)
+_cleaner_thread.start()
+
+# Initial purge on startup
 _purge_expired_cache()
 
 # ── Meteoblue Proxy Routes ──────────────────────────────────────────────
@@ -157,7 +175,7 @@ def meteoblue_weekly_dates():
     today = datetime.date.today()
     dates = [(today + datetime.timedelta(days=i)).isoformat() for i in range(7)]
     resp = jsonify({"precip": dates})
-    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    resp.headers['Cache-Control'] = 'public, max-age=14400'
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
 
@@ -169,12 +187,13 @@ def meteoblue_weekly_geojson(date):
 
 @app.route('/proxy_api_meteoblue/v1/map/vector/<path:tile_path>', methods=['GET'])
 def meteoblue_vector_tile(tile_path):
-    """Proxy Meteoblue hourly vector tiles with disk caching"""
+    """Proxy Meteoblue hourly vector tiles with disk caching and in-flight request deduplication"""
     if not METEOBLUE_TOKEN:
         return "METEOBLUE_TOKEN not configured", 500
 
     cache_id = _cache_key(f"vector_tile_{tile_path}")
 
+    # 1. Check disk cache first
     with _meteoblue_cache_lock:
         cached_content, cached_ct = _cache_get(cache_id)
         if cached_content is not None:
@@ -182,29 +201,50 @@ def meteoblue_vector_tile(tile_path):
             resp.headers['Content-Type'] = cached_ct
             resp.headers['Access-Control-Allow-Origin'] = '*'
             resp.headers['X-Cache'] = 'HIT'
-            resp.headers['Cache-Control'] = 'public, max-age=10800'
+            resp.headers['Cache-Control'] = 'public, max-age=21600'
             return resp
 
-    # Cache MISS — fetch from Meteoblue
-    upstream_url = f"https://maps-api.meteoblue.com/v1/map/vector/{tile_path}?apikey={METEOBLUE_TOKEN}"
-    try:
-        resp = requests.get(upstream_url, timeout=30, headers={'User-Agent': 'HydroAnalytics/1.0'})
-        if resp.status_code == 200:
-            content = resp.content
-            ct = resp.headers.get('Content-Type', 'application/x-protobuf')
-            with _meteoblue_cache_lock:
-                _cache_set(cache_id, content, ct, HOURLY_TILE_TTL, upstream_url)
-            response = Response(content, 200)
-            response.headers['Content-Type'] = ct
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['X-Cache'] = 'MISS'
-            response.headers['Cache-Control'] = 'public, max-age=10800'
-            return response
-        else:
-            return Response(resp.content, resp.status_code)
-    except Exception as e:
-        print(f"[METEOBLUE] Vector tile fetch error: {e}")
-        return "Proxy Error: Could not reach Meteoblue", 502
+    # 2. Cache MISS — Deduplicate concurrent requests (Single-Flight Lock)
+    with _in_flight_global_lock:
+        if cache_id not in _in_flight_locks:
+            _in_flight_locks[cache_id] = threading.Lock()
+        tile_lock = _in_flight_locks[cache_id]
+
+    with tile_lock:
+        # Check cache once more in case another thread finished while we waited
+        with _meteoblue_cache_lock:
+            cached_content, cached_ct = _cache_get(cache_id)
+            if cached_content is not None:
+                resp = Response(cached_content, 200)
+                resp.headers['Content-Type'] = cached_ct
+                resp.headers['Access-Control-Allow-Origin'] = '*'
+                resp.headers['X-Cache'] = 'HIT (DEDUP)'
+                resp.headers['Cache-Control'] = 'public, max-age=21600'
+                return resp
+
+        # Fetch from upstream Meteoblue API
+        upstream_url = f"https://maps-api.meteoblue.com/v1/map/vector/{tile_path}?apikey={METEOBLUE_TOKEN}"
+        try:
+            resp = requests.get(upstream_url, timeout=30, headers={'User-Agent': 'HydroAnalytics/1.0'})
+            if resp.status_code == 200:
+                content = resp.content
+                ct = resp.headers.get('Content-Type', 'application/x-protobuf')
+                with _meteoblue_cache_lock:
+                    _cache_set(cache_id, content, ct, HOURLY_TILE_TTL, upstream_url)
+                response = Response(content, 200)
+                response.headers['Content-Type'] = ct
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['X-Cache'] = 'MISS'
+                response.headers['Cache-Control'] = 'public, max-age=21600'
+                return response
+            else:
+                return Response(resp.content, resp.status_code)
+        except Exception as e:
+            print(f"[METEOBLUE] Vector tile fetch error: {e}")
+            return "Proxy Error: Could not reach Meteoblue", 502
+        finally:
+            with _in_flight_global_lock:
+                _in_flight_locks.pop(cache_id, None)
 
 import threading
 import time

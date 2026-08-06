@@ -9,7 +9,7 @@ const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.179:8
 const mamHimael = "http://172.18.1.147:8080"; // Not proxied per request
 const ibrahim  = isProxied ? `${proxyBase}/proxy_ibrahim` : "http://172.18.1.115:8080";
 const mustafa = isProxied ? `${proxyBase}/proxy_mustafa` : "http://172.18.1.39:8080"; 
-const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.85:8080";
+const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.92:8080";
 
 const geo_1_4 = isProxied ? `${proxyBase}/proxy_1_4` : 'http://172.18.1.4:8080';
 const geo_1_43 = isProxied ? `${proxyBase}/proxy_1_43` : 'http://172.18.1.43:8080';
@@ -9055,7 +9055,7 @@ function addHydrometLayersToMap(map) {
                                 </div>
                             </div>` : '';
 
-        // Flood Limits Section
+        // Flood Limits
         const limits = window.getStationFloodLimits(props.name);
         const formatLimitVal = (val, unit) => {
             if (val === null || val === undefined) return '—';
@@ -9067,7 +9067,7 @@ function addHydrometLayersToMap(map) {
                             <div class="flood-limits-section">
                                 <div class="flood-limits-header">
                                     <span class="limits-title"><i class="fas fa-shield-alt"></i> FLOOD LIMITS</span>
-                                    <span class="limits-unit">${limits.unit === 'lakh_cusecs' ? '(Lakh Cusecs)' : '(Cusecs)'}</span>
+                                    <span class="limits-unit">${limits.unit === 'lakh_cusecs' ? '(L=Lakh Cusecs)' : '(Cusecs)'}</span>
                                 </div>
                                 <div class="flood-limits-grid">
                                     <div class="limit-pill limit-low" title="Low Flood">
@@ -18770,12 +18770,28 @@ function renderDamInsights(damName, percentage, details = {}) {
     addMetricCard('Last Year', lastYearFill, deltaLastYear);
     addMetricCard('5-Year Avg', normalFill, deltaNormal);
   } else if (country === 'Pakistan') {
+    const getHistoricalMax = (type, defaultMax) => {
+      const norm = String(damName || '').toLowerCase();
+      if (norm.includes('tarbela')) {
+        if (type === 'lastYear') return 5.728;
+        if (type === 'avg5' || type === 'avg10') return 5.691;
+        return 5.580;
+      }
+      if (norm.includes('mangla')) {
+        if (type === 'lastYear') return 7.277;
+        if (type === 'avg5' || type === 'avg10') return 7.268;
+        return 7.258;
+      }
+      return defaultMax;
+    };
+
     if (details.todayStorage !== undefined && details.todayStorage !== null) {
-      const maxStorage = toNumericOrNull(details.maxStorage) || 1.0;
-      const currentFillPct = (toNumericOrNull(details.todayStorage) / maxStorage) * 100;
+      const currentMaxStorage = getHistoricalMax('current', toNumericOrNull(details.maxStorage) || 1.0);
+      const currentFillPct = (toNumericOrNull(details.todayStorage) / currentMaxStorage) * 100;
       
       if (details.lastYearStorage !== null && details.lastYearStorage !== undefined) {
-        const lastYearFillPct = (toNumericOrNull(details.lastYearStorage) / maxStorage) * 100;
+        const lastYearMax = getHistoricalMax('lastYear', currentMaxStorage);
+        const lastYearFillPct = (toNumericOrNull(details.lastYearStorage) / lastYearMax) * 100;
         const delta = currentFillPct - lastYearFillPct;
         addMetricCard('Last Year', lastYearFillPct, delta);
       } else {
@@ -18783,13 +18799,15 @@ function renderDamInsights(damName, percentage, details = {}) {
       }
       
       if (details.avg5YearStorage !== null && details.avg5YearStorage !== undefined) {
-        const avg5YearFillPct = (toNumericOrNull(details.avg5YearStorage) / maxStorage) * 100;
+        const avg5Max = getHistoricalMax('avg5', currentMaxStorage);
+        const avg5YearFillPct = (toNumericOrNull(details.avg5YearStorage) / avg5Max) * 100;
         const delta = currentFillPct - avg5YearFillPct;
         addMetricCard('5-Year Avg', avg5YearFillPct, delta);
       }
       
       if (details.avg10YearStorage !== null && details.avg10YearStorage !== undefined) {
-        const avg10YearFillPct = (toNumericOrNull(details.avg10YearStorage) / maxStorage) * 100;
+        const avg10Max = getHistoricalMax('avg10', currentMaxStorage);
+        const avg10YearFillPct = (toNumericOrNull(details.avg10YearStorage) / avg10Max) * 100;
         const delta = currentFillPct - avg10YearFillPct;
         addMetricCard('10-Year Avg', avg10YearFillPct, delta);
       }
