@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-08-08T18:23:58Z",
+  "fetched_at": "2026-08-08T19:22:51Z",
   "total_stations": 26,
   "stations": [
     {
@@ -40,7 +40,7 @@
       "inflow_trend": null,
       "latitude": 34.85,
       "longitude": 71.78,
-      "recording_time": "07-Aug 00 PKT",
+      "recording_time": "07-Aug-2026 00 PKT",
       "height": "N/A",
       "max_peak": "N/A",
       "cyp_status": "",
@@ -50,7 +50,7 @@
       "forecast_quant": "",
       "high_threshold": 20000,
       "is_nullah": false,
-      "stale": false
+      "stale": true
     },
     {
       "name": "Daggar",
