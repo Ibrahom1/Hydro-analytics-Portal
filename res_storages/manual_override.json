@@ -1,0 +1,15 @@
+{
+  "manual_override_enabled": false,
+  "Tarbela": {
+    "level_ft": "1549.00",
+    "fill_percentage": 98.98
+  },
+  "Mangla": {
+    "level_ft": "1205.95",
+    "fill_percentage": 63.67
+  },
+  "Chashma": {
+    "level_ft": "648.50",
+    "fill_percentage": 91.64
+  }
+}
