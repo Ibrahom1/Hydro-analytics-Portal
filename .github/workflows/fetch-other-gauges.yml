@@ -28,13 +28,13 @@ jobs:
           python -m playwright install chromium --with-deps
 
       - name: Fetch FFD Other Gauges
-        run: python fetch_other_gauges.py
+        run: python FFD_other_gauge_fetch/fetch_other_gauges.py
 
       - name: Commit updated gauges data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add latest_all_gauges.json data/other_gauges.sqlite
+          git add FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite
           if git diff --cached --quiet; then
             echo "No FFD Other Gauges changes to commit."
           else

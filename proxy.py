@@ -341,9 +341,9 @@ def kp_stations_api():
 def other_gauges_api():
     """Serve latest_all_gauges.json — the 26 FFD other gauges fetched hourly"""
     try:
-        json_path = Path(__file__).resolve().parent / "latest_all_gauges.json"
+        json_path = Path(__file__).resolve().parent / "FFD_other_gauge_fetch" / "latest_all_gauges.json"
         if not json_path.exists():
-            return jsonify({"status": "error", "message": "latest_all_gauges.json not found. Run fetch_other_gauges.py first."}), 404
+            return jsonify({"status": "error", "message": "latest_all_gauges.json not found in FFD_other_gauge_fetch. Run fetch_other_gauges.py first."}), 404
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         resp = Response(

@@ -8,12 +8,12 @@ set "PORT=5000"
 
 if not exist "%VENV_PYTHON%" (
   echo Python virtual environment was not found at "%VENV_PYTHON%".
-  echo Run update_waterdashboard_and_run.bat first to create/install dependencies.
+  echo Run the update script first to create/install dependencies.
   pause
   exit /b 1
 )
 
 if exist "%VENV_ACTIVATE%" call "%VENV_ACTIVATE%"
-cd /d "%REPO_ROOT%waterdashboard\backend"
+cd /d "%REPO_ROOT%backend"
 "%VENV_PYTHON%" app.py
 pause

@@ -37,7 +37,7 @@ if not defined BOOTSTRAP_PYTHON (
   exit /b 1
 )
 
-echo Updating Hydro Analytics and waterdashboard repositories if Git is available...
+echo Updating Hydro Analytics repository if Git is available...
 set "HAS_GIT="
 where git >nul 2>&1
 if errorlevel 1 (
@@ -51,17 +51,6 @@ if errorlevel 1 (
     git pull
     if errorlevel 1 (
       echo Warning: Main Hydro Analytics git pull failed. Continuing with local files.
-    )
-    popd >nul
-  )
-
-  pushd "%~dp0waterdashboard" >nul
-  if errorlevel 1 (
-    echo Warning: Could not enter waterdashboard folder. Skipping waterdashboard git pull.
-  ) else (
-    git pull
-    if errorlevel 1 (
-      echo Warning: waterdashboard git pull failed. Continuing with local files.
     )
     popd >nul
   )
@@ -120,7 +109,7 @@ if errorlevel 1 (
 
 echo Installing Python dependencies...
 "%VENV_PYTHON%" -m pip install ^
-  -r "%REPO_ROOT%waterdashboard\backend\requirements.txt" ^
+  -r "%REPO_ROOT%backend\requirements.txt" ^
   -r "%REPO_ROOT%gis_uploader_backend\requirements.txt" ^
   pandas pdfplumber selenium cloudscraper playwright
 if errorlevel 1 (
@@ -164,7 +153,7 @@ if errorlevel 1 (
 )
 
 echo Fetching latest FFD Other Gauges data from ffd.pmd.gov.pk...
-"%VENV_PYTHON%" "%REPO_ROOT%fetch_other_gauges.py"
+"%VENV_PYTHON%" "%REPO_ROOT%FFD_other_gauge_fetch\fetch_other_gauges.py"
 if errorlevel 1 (
   echo Warning: FFD Other Gauges fetch failed. Using cached latest_all_gauges.json if available.
 )
@@ -175,7 +164,7 @@ if defined HAS_GIT (
   if errorlevel 1 (
     echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
   ) else (
-    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite" "latest_all_gauges.json" "data/other_gauges.sqlite"
+    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite" "FFD_other_gauge_fetch/latest_all_gauges.json" "data/other_gauges.sqlite" "historical_indian_cwc_data_fetch/historical_indian_weekly_bulletins"
     if errorlevel 1 (
       echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
     ) else (
@@ -200,9 +189,9 @@ if defined HAS_GIT (
   echo Git not found. Daily Water Situation updates were not committed.
 )
 
-if not exist "%REPO_ROOT%waterdashboard\backend\app.py" (
-  echo Failed to find Hydro Dashboard backend at "%REPO_ROOT%waterdashboard\backend\app.py".
-  echo The dashboard API app.py belongs inside waterdashboard\backend, not the project root.
+if not exist "%REPO_ROOT%backend\app.py" (
+  echo Failed to find Hydro Dashboard backend at "%REPO_ROOT%backend\app.py".
+  echo The dashboard API app.py belongs inside backend, not the project root.
   pause
   exit /b 1
 )
@@ -235,13 +224,13 @@ echo Preparing Hydro Dashboard Backend runner...
   echo.
   echo if not exist "%%VENV_PYTHON%%" ^(
   echo   echo Python virtual environment was not found at "%%VENV_PYTHON%%".
-  echo   echo Run update_waterdashboard_and_run.bat first to create/install dependencies.
+  echo   echo Run the update script first to create/install dependencies.
   echo   pause
   echo   exit /b 1
   echo ^)
   echo.
   echo if exist "%%VENV_ACTIVATE%%" call "%%VENV_ACTIVATE%%"
-  echo cd /d "%%REPO_ROOT%%waterdashboard\backend"
+  echo cd /d "%%REPO_ROOT%%backend"
   echo "%%VENV_PYTHON%%" app.py
   echo pause
 ) > "%DASHBOARD_RUNNER%"
@@ -257,7 +246,7 @@ echo Preparing Hydro GIS Uploader API runner...
   echo.
   echo if not exist "%%VENV_PYTHON%%" ^(
   echo   echo Python virtual environment was not found at "%%VENV_PYTHON%%".
-  echo   echo Run update_waterdashboard_and_run.bat first to create/install dependencies.
+  echo   echo Run the update script first to create/install dependencies.
   echo   pause
   echo   exit /b 1
   echo ^)

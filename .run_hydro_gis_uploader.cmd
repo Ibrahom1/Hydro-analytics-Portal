@@ -7,7 +7,7 @@ set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 
 if not exist "%VENV_PYTHON%" (
   echo Python virtual environment was not found at "%VENV_PYTHON%".
-  echo Run update_waterdashboard_and_run.bat first to create/install dependencies.
+  echo Run the update script first to create/install dependencies.
   pause
   exit /b 1
 )

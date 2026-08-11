@@ -10455,7 +10455,7 @@ function addHydrometLayersToMap(map) {
 
           if (!json) {
             try {
-              const respFallback = await fetch('latest_all_gauges.json');
+              const respFallback = await fetch('FFD_other_gauge_fetch/latest_all_gauges.json');
               if (respFallback.ok) json = await respFallback.json();
             } catch (fallbackErr) {
               console.error('Failed to fetch latest_all_gauges.json fallback:', fallbackErr);

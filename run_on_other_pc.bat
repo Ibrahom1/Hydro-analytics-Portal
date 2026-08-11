@@ -32,7 +32,7 @@ call "%~dp0update_waterdashboard_and_run.bat" --nopause
 echo ---------------------------------------------------------
 echo Step 2: Starting HTTP server for Frontend UI on port !UI_PORT!...
 echo ---------------------------------------------------------
-start "Hydro Front-End HTTP Server" /d "%~dp0" cmd /c "python -m http.server !UI_PORT!"
+start "Hydro Front-End HTTP Server" /d "%~dp0" cmd /k ""%~dp0.venv\Scripts\python.exe" -m http.server !UI_PORT!"
 
 echo ---------------------------------------------------------
 echo Step 3: Starting Reverse Proxy (proxy.py) on port !PROXY_PORT!...
@@ -40,7 +40,7 @@ echo ---------------------------------------------------------
 :: Exporting variables so proxy.py inherits them
 set "PROXY_PORT=!PROXY_PORT!"
 set "UI_PORT=!UI_PORT!"
-start "Hydro Reverse Proxy" /d "%~dp0" cmd /k ".venv\Scripts\python.exe proxy.py"
+start "Hydro Reverse Proxy" /d "%~dp0" cmd /k ""%~dp0.venv\Scripts\python.exe" proxy.py"
 
 echo ---------------------------------------------------------
 echo Step 4: Starting Cloudflare Tunnel to expose Proxy Port !PROXY_PORT!...

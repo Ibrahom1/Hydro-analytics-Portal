@@ -16,11 +16,12 @@ from urllib.request import Request, urlopen
 import pandas as pd
 import pdfplumber
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parent
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
+FETCH_DIR: Path = Path(__file__).resolve().parent
 CWC_URL: str = "https://rsms.cwc.gov.in/frameWork/web/bulletin-report-page"
 TITLE_PATTERN: str = "REGION/STATE WISE WEEKLY REPORT"
 DOWNLOAD_TIMEOUT: int = 30
-WEEKLY_BULLETINS_PATH: Path = PROJECT_ROOT / "weekly_bulletins"
+WEEKLY_BULLETINS_PATH: Path = FETCH_DIR / "historical_indian_weekly_bulletins"
 
 REQUIRED_RESERVOIRS: Mapping[str, str] = {
     "GOBIND SAGAR": "bhakra",
@@ -617,12 +618,12 @@ def main() -> None:
     mode_group.add_argument(
         "--local-only",
         action="store_true",
-        help="Parse the latest local PDF in weekly_bulletins without contacting CWC. This is the default.",
+        help="Parse the latest local PDF in historical_indian_weekly_bulletins without contacting CWC. This is the default.",
     )
     mode_group.add_argument(
         "--download-latest",
         action="store_true",
-        help="Download the latest CWC PDF into weekly_bulletins and exit without writing snapshot JSON.",
+        help="Download the latest CWC PDF into historical_indian_weekly_bulletins and exit without writing snapshot JSON.",
     )
     args = parser.parse_args()
 

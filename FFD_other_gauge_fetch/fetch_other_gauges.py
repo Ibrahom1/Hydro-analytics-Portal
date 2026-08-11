@@ -22,8 +22,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent
-OUTPUT_JSON = REPO_ROOT / "latest_all_gauges.json"
+MODULE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
+OUTPUT_JSON = MODULE_DIR / "latest_all_gauges.json"
 DB_PATH = REPO_ROOT / "data" / "other_gauges.sqlite"
 
 FFD_API_URL = "https://ffd.pmd.gov.pk/river-state-3d/data?scope=all"
