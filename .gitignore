@@ -25,3 +25,7 @@ env/
 
 # Meteoblue API cache files
 data/meteoblue_cache/
+
+# Remote synced dataset files
+data/latest.json
+data/hydro_history.db
