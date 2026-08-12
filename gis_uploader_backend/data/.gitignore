@@ -1,2 +1,5 @@
-*
+# Ignore uploads directory but track layers.json and existing_styles.json
+uploads/*
 !.gitignore
+!layers.json
+!existing_styles.json

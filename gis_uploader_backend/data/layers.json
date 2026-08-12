@@ -1,0 +1,160 @@
+[
+  {
+    "id": "upper_kohistan_1780290986",
+    "display_name": "Upper Kohistan",
+    "sidebar_panel_id": "torrentialFloodingGbAjk",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "upper_kohistan_1780290986",
+    "qualified_layer_name": "HydroAnalytics2026:upper_kohistan_1780290986",
+    "created_at": "2026-06-01T05:16:26.868617+00:00",
+    "render_type": "fill",
+    "geojson_url": "http://localhost:8001/api/gis/layers/upper_kohistan_1780290986/geojson"
+  },
+  {
+    "id": "upper_kohistan_low_1780310047",
+    "display_name": "Upper Kohistan (Low)",
+    "sidebar_panel_id": "torrentialFloodingGbAjk",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "upper_kohistan_low_1780310047",
+    "qualified_layer_name": "HydroAnalytics2026:upper_kohistan_low_1780310047",
+    "created_at": "2026-06-01T10:34:07.914916+00:00",
+    "render_type": "fill",
+    "geojson_url": "http://localhost:8001/api/gis/layers/upper_kohistan_low_1780310047/geojson"
+  },
+  {
+    "id": "ghizer_gb_1780377549",
+    "display_name": "Ghizer GB",
+    "sidebar_panel_id": "torrentialFloodingGbAjk",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "ghizer_gb_1780377549",
+    "qualified_layer_name": "HydroAnalytics2026:ghizer_gb_1780377549",
+    "created_at": "2026-06-02T05:19:11.039722+00:00",
+    "render_type": "fill",
+    "geojson_url": "http://localhost:8001/api/gis/layers/ghizer_gb_1780377549/geojson"
+  },
+  {
+    "id": "chenab_13_july_2026_1785128244",
+    "display_name": "Chenab 13 July 2026",
+    "sidebar_panel_id": "flood2026Extent",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "chenab_13_july_2026_1785128244",
+    "qualified_layer_name": "HydroAnalytics2026:chenab_13_july_2026_1785128244",
+    "created_at": "2026-07-27T04:57:24.374917+00:00",
+    "render_type": "fill",
+    "geojson_url": "http://localhost:8001/api/gis/layers/chenab_13_july_2026_1785128244/geojson"
+  },
+  {
+    "id": "chenab_24_july_2026_1785128269",
+    "display_name": "Chenab 24 July 2026",
+    "sidebar_panel_id": "flood2026Extent",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "chenab_24_july_2026_1785128269",
+    "qualified_layer_name": "HydroAnalytics2026:chenab_24_july_2026_1785128269",
+    "created_at": "2026-07-27T04:57:49.696475+00:00",
+    "render_type": "fill",
+    "geojson_url": "http://localhost:8001/api/gis/layers/chenab_24_july_2026_1785128269/geojson"
+  },
+  {
+    "id": "gb_flood_inundation_1785304661",
+    "display_name": "GB flood inundation",
+    "sidebar_panel_id": "torrentialFloodingGbAjk",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "gb_flood_inundation_1785304661",
+    "qualified_layer_name": "HydroAnalytics2026:gb_flood_inundation_1785304661",
+    "created_at": "2026-07-29T05:57:44.944570+00:00",
+    "render_type": "fill",
+    "geojson_url": "http://localhost:8001/api/gis/layers/gb_flood_inundation_1785304661/geojson"
+  },
+  {
+    "id": "punjab_nullah_1785471978",
+    "display_name": "Punjab Nullah",
+    "sidebar_panel_id": "riversStructures",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "punjab_nullah_1785471978",
+    "qualified_layer_name": "HydroAnalytics2026:punjab_nullah_1785471978",
+    "created_at": "2026-07-31T04:26:19.840579+00:00",
+    "render_type": "line",
+    "geojson_url": "/api/gis/layers/punjab_nullah_1785471978/geojson",
+    "style": {
+      "paint": {
+        "line": {
+          "line-color": "#f1041b",
+          "line-opacity": 0.9,
+          "line-width": 2.5,
+          "line-dasharray": [
+            1.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "label": {
+      "enabled": true,
+      "field": "Name",
+      "color": "#2105f5",
+      "size": 14.0,
+      "haloColor": "#f5f0f0",
+      "haloWidth": 1.0
+    },
+    "updated_at": "2026-07-31T04:36:33.221625+00:00"
+  },
+  {
+    "id": "punjab_inundation_1785813913",
+    "display_name": "Punjab inundation",
+    "sidebar_panel_id": "flood2026Extent",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "punjab_inundation_1785813913",
+    "qualified_layer_name": "HydroAnalytics2026:punjab_inundation_1785813913",
+    "created_at": "2026-08-04T03:25:14.389709+00:00",
+    "render_type": "fill",
+    "geojson_url": "/api/gis/layers/punjab_inundation_1785813913/geojson",
+    "style": {
+      "paint": {
+        "fill": {
+          "fill-color": "#e70d0d",
+          "fill-opacity": 0.35
+        },
+        "outline": {
+          "line-color": "#c50202",
+          "line-width": 2.0,
+          "line-opacity": 0.95
+        }
+      }
+    },
+    "updated_at": "2026-08-04T03:25:56.051507+00:00"
+  },
+  {
+    "id": "flood_extent_2025_1785815470",
+    "display_name": "Flood extent 2025",
+    "sidebar_panel_id": "flood2025Extent",
+    "kind": "vector",
+    "workspace": "HydroAnalytics2026",
+    "layer_name": "flood_extent_2025_1785815470",
+    "qualified_layer_name": "HydroAnalytics2026:flood_extent_2025_1785815470",
+    "created_at": "2026-08-04T03:51:10.818056+00:00",
+    "render_type": "fill",
+    "geojson_url": "/api/gis/layers/flood_extent_2025_1785815470/geojson",
+    "style": {
+      "paint": {
+        "fill": {
+          "fill-color": "#e70d23",
+          "fill-opacity": 0.33
+        },
+        "outline": {
+          "line-color": "#c50202",
+          "line-width": 2.0,
+          "line-opacity": 0.95
+        }
+      }
+    },
+    "updated_at": "2026-08-04T03:52:32.271709+00:00"
+  }
+]
