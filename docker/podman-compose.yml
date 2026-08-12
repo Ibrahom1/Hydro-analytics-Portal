@@ -3,7 +3,6 @@ version: "3.8"
 # ──────────────────────────────────────────────────────────────────
 # Hydro Analytics 2026 — Podman Pod Deployment
 # Target: Ubuntu VM 172.18.7.35
-# Uses network_mode: "host" so all containers share localhost
 # ──────────────────────────────────────────────────────────────────
 
 services:
@@ -52,6 +51,7 @@ services:
     restart: unless-stopped
 
   # ── Container 3: GIS Uploader Backend (FastAPI) ─────────────────
+  #    Stores layers.json, existing_styles.json & uploads/ in gis_data/
   hydro-gis:
     image: localhost/hydro-python:latest
     build:
@@ -64,6 +64,7 @@ services:
     network_mode: "host"
     volumes:
       - /opt/hydroanalytics/data:/app/data
+      - /opt/hydroanalytics/gis_data:/app/gis_uploader_backend/data
     environment:
       - GIS_GEOSERVER_URL=http://172.18.1.92:8080/geoserver
       - GIS_GEOSERVER_WORKSPACE=HydroAnalytics2026
@@ -73,6 +74,7 @@ services:
     restart: unless-stopped
 
   # ── Container 4: Frontend Static Server (Nginx) ────────────────
+  #    Mounts live media/, style/, index.html & script/ from host
   hydro-frontend:
     image: localhost/hydro-frontend:latest
     build:
@@ -81,6 +83,10 @@ services:
     container_name: hydro-frontend
     network_mode: "host"
     volumes:
+      - /opt/hydroanalytics/app/index.html:/usr/share/nginx/html/index.html:ro
+      - /opt/hydroanalytics/app/media:/usr/share/nginx/html/media:ro
+      - /opt/hydroanalytics/app/style:/usr/share/nginx/html/style:ro
+      - /opt/hydroanalytics/app/script:/usr/share/nginx/html/script:ro
       - /opt/hydroanalytics/script/ft_and_percentage.js:/usr/share/nginx/html/script/ft_and_percentage.js:ro
     environment:
       - TZ=Asia/Karachi
