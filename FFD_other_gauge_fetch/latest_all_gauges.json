@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-08-12T04:03:16Z",
+  "fetched_at": "2026-08-12T05:28:59Z",
   "total_stations": 26,
   "stations": [
     {
@@ -288,8 +288,8 @@
       "inflow": 2527.0,
       "outflow_trend": "Falling",
       "inflow_trend": "Falling",
-      "latitude": 32.25965,
-      "longitude": 75.18139,
+      "latitude": 32.2962,
+      "longitude": 75.205067,
       "recording_time": "12-Aug 06 PKT",
       "height": "N/A",
       "max_peak": "7,720",
