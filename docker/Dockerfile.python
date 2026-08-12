@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm
+FROM docker.io/library/python:3.11-slim-bookworm
 
 # System dependencies for pdfplumber, playwright, sqlite3, git, cron
 RUN apt-get update && apt-get install -y --no-install-recommends \

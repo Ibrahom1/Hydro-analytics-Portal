@@ -13,6 +13,7 @@ services:
 
   # ── Container 1: Reverse Proxy Gateway (Flask) ──────────────────
   hydro-proxy:
+    image: localhost/hydro-python:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.python
@@ -43,6 +44,7 @@ services:
   # ── Container 2: Dashboard Backend (Flask) ──────────────────────
   #    Syncs hydro_history.db + latest.json from GitHub every 5 min
   hydro-dashboard:
+    image: localhost/hydro-python:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.python
@@ -61,6 +63,7 @@ services:
 
   # ── Container 3: GIS Uploader Backend (FastAPI) ─────────────────
   hydro-gis:
+    image: localhost/hydro-python:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.python
@@ -82,6 +85,7 @@ services:
 
   # ── Container 4: Frontend Static Server (Nginx) ────────────────
   hydro-frontend:
+    image: localhost/hydro-frontend:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.frontend
@@ -96,6 +100,7 @@ services:
 
   # ── Container 5: Cron Fetchers (FFD Gauges + Google Sheets) ────
   hydro-cron:
+    image: localhost/hydro-python:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.python
@@ -147,7 +152,6 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: hydro-cloudflared
     command: tunnel --no-autoupdate --url http://localhost:${HYDRO_PROXY_PORT:-8000}
-    network_mode: "service:hydro-proxy"
     environment:
       - TZ=Asia/Karachi
     restart: unless-stopped
