@@ -1,0 +1,52 @@
+FROM node:20-slim
+
+# Install Chromium + Python (bot.js calls Python scripts via execSync)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    git \
+    openssh-client \
+    python3 \
+    python3-pip \
+    python3-venv \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages that bot.js invokes via execSync
+RUN pip3 install --no-cache-dir --break-system-packages \
+    pdfplumber pandas
+
+# Puppeteer: use system Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+WORKDIR /app
+
+# Copy full project (bot needs parent project scripts: res_storages/, res_kp/, data/)
+COPY . /app/
+
+# Install WhatsApp bot Node.js dependencies
+WORKDIR /app/whatsapp_bot
+RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+
+# Timezone
+ENV TZ=Asia/Karachi
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR /app/whatsapp_bot
+
+CMD ["node", "bot.js"]

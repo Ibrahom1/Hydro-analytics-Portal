@@ -1,0 +1,35 @@
+FROM python:3.11-slim-bookworm
+
+# System dependencies for pdfplumber, playwright, sqlite3, git, cron
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    cron \
+    sqlite3 \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install all Python dependencies from both requirements files + extras
+COPY backend/requirements.txt /tmp/backend-requirements.txt
+COPY gis_uploader_backend/requirements.txt /tmp/gis-requirements.txt
+RUN pip install --no-cache-dir \
+    -r /tmp/backend-requirements.txt \
+    -r /tmp/gis-requirements.txt \
+    pandas pdfplumber cloudscraper uvicorn[standard]
+
+# Install Playwright + Chromium for FFD gauge scraper
+RUN pip install --no-cache-dir playwright && \
+    playwright install --with-deps chromium
+
+# Copy application code
+COPY . /app/
+
+# Timezone: Asia/Karachi
+ENV TZ=Asia/Karachi
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+EXPOSE 5000 8000 8001
+
+CMD ["python", "proxy.py"]

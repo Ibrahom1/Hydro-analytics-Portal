@@ -30,7 +30,7 @@ module.exports = {
   // The bot connects, listens for this many MINUTES, then gracefully
   // disconnects to avoid long-running sessions that could trigger bans.
   // Set to 0 to disable the auto-disconnect timer (not recommended).
-  listenWindowMinutes: 120,   // 2 hours (e.g. 09:30 → 11:30 Karachi)
+  listenWindowMinutes: 180,   // 3 hours (8:55 → 11:55 Karachi, runs twice daily via cron)
 
   // If true, the bot disconnects immediately after successfully
   // downloading the PDF (even if the listen window has not expired).

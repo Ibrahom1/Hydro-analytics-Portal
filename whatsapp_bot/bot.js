@@ -104,15 +104,22 @@ function log(msg) {
 // ── Python & SQLite ────────────────────────────────────────────────────
 
 function findPython() {
-  const venvPython = path.join(config.projectRoot, '.venv', 'Scripts', 'python.exe');
-  if (fs.existsSync(venvPython)) return `"${venvPython}"`;
+  // Linux/Docker: check bin/python first, then Windows Scripts/python.exe
+  const linuxVenv = path.join(config.projectRoot, '.venv', 'bin', 'python');
+  const winVenv = path.join(config.projectRoot, '.venv', 'Scripts', 'python.exe');
+  if (fs.existsSync(linuxVenv)) return `"${linuxVenv}"`;
+  if (fs.existsSync(winVenv)) return `"${winVenv}"`;
   try {
-    execSync('py -3 -c "import sys"', { stdio: 'ignore' });
-    return 'py -3';
+    execSync('python3 -c "import sys"', { stdio: 'ignore' });
+    return 'python3';
   } catch (_) { /* ignore */ }
   try {
     execSync('python -c "import sys"', { stdio: 'ignore' });
     return 'python';
+  } catch (_) { /* ignore */ }
+  try {
+    execSync('py -3 -c "import sys"', { stdio: 'ignore' });
+    return 'py -3';
   } catch (_) { /* ignore */ }
   return null;
 }
@@ -317,6 +324,7 @@ async function main() {
     },
     puppeteer: {
       headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
