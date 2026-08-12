@@ -3,10 +3,7 @@ version: "3.8"
 # ──────────────────────────────────────────────────────────────────
 # Hydro Analytics 2026 — Podman Pod Deployment
 # Target: Ubuntu VM 172.18.7.35
-#
-# Port bindings use ${HYDRO_*_PORT} env vars so deploy.sh can
-# auto-resolve conflicts (same as run_on_other_pc.bat FindFreePort).
-# Defaults match the standard ports. Override via .env.ports file.
+# Uses network_mode: "host" so all containers share localhost
 # ──────────────────────────────────────────────────────────────────
 
 services:
@@ -19,8 +16,7 @@ services:
       dockerfile: docker/Dockerfile.python
     container_name: hydro-proxy
     command: ["python", "proxy.py"]
-    ports:
-      - "${HYDRO_PROXY_PORT:-8000}:${HYDRO_PROXY_PORT:-8000}"
+    network_mode: "host"
     volumes:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/res_storages:/app/res_storages
@@ -36,13 +32,8 @@ services:
       - METEOBLUE_TOKEN=AsVUCDPHblGrJ76y
       - TZ=Asia/Karachi
     restart: unless-stopped
-    depends_on:
-      - hydro-dashboard
-      - hydro-gis
-      - hydro-frontend
 
   # ── Container 2: Dashboard Backend (Flask) ──────────────────────
-  #    Syncs hydro_history.db + latest.json from GitHub every 5 min
   hydro-dashboard:
     image: localhost/hydro-python:latest
     build:
@@ -50,8 +41,7 @@ services:
       dockerfile: docker/Dockerfile.python
     container_name: hydro-dashboard
     command: ["python", "backend/app.py"]
-    ports:
-      - "${HYDRO_DASHBOARD_PORT:-5000}:${HYDRO_DASHBOARD_PORT:-5000}"
+    network_mode: "host"
     volumes:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/res_storages:/app/res_storages
@@ -71,8 +61,7 @@ services:
     command: >-
       python -m uvicorn gis_uploader_backend.app:app
       --host 0.0.0.0 --port ${HYDRO_GIS_PORT:-8001}
-    ports:
-      - "${HYDRO_GIS_PORT:-8001}:${HYDRO_GIS_PORT:-8001}"
+    network_mode: "host"
     volumes:
       - /opt/hydroanalytics/data:/app/data
     environment:
@@ -90,8 +79,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.frontend
     container_name: hydro-frontend
-    ports:
-      - "${HYDRO_UI_PORT:-5504}:5504"
+    network_mode: "host"
     volumes:
       - /opt/hydroanalytics/script/ft_and_percentage.js:/usr/share/nginx/html/script/ft_and_percentage.js:ro
     environment:
@@ -105,36 +93,23 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.python
     container_name: hydro-cron
+    network_mode: "host"
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
         echo "Starting Hydro Analytics Cron Fetchers..."
-
-        # Create cron jobs
         cat > /etc/cron.d/hydro-cron << 'CRONEOF'
-        # FFD Other Gauges: every hour
         0 * * * * cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py >> /proc/1/fd/1 2>&1
-
-        # Daily Water Situation SQLite ingestion: every 2 hours
         0 */2 * * * cd /app && python res_storages/daily_water_situation_db.py >> /proc/1/fd/1 2>&1
-
-        # Google Sheets Indian Dams sync: every 5 minutes
         */5 * * * * cd /app && python res_storages/fetch_indian_dams_sheet.py >> /proc/1/fd/1 2>&1
-
-        # Storages.py (update ft_and_percentage.js): every 2 hours
         5 */2 * * * cd /app && python res_storages/storages.py >> /proc/1/fd/1 2>&1
         CRONEOF
-
         chmod 0644 /etc/cron.d/hydro-cron
         crontab /etc/cron.d/hydro-cron
-
-        # Run initial fetch on startup
         cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py || true
         cd /app && python res_storages/daily_water_situation_db.py || true
         cd /app && python res_storages/fetch_indian_dams_sheet.py || true
         cd /app && python res_storages/storages.py || true
-
-        # Keep container alive via cron foreground
         cron -f
     volumes:
       - /opt/hydroanalytics/data:/app/data
@@ -152,6 +127,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: hydro-cloudflared
     command: tunnel --no-autoupdate --url http://localhost:${HYDRO_PROXY_PORT:-8000}
+    network_mode: "host"
     environment:
       - TZ=Asia/Karachi
     restart: unless-stopped
