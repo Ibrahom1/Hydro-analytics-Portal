@@ -275,17 +275,9 @@ def run_auto_sync():
     except Exception as e:
         print(f"[AUTO-SYNC WARNING] Background sync error: {e}")
 
-def start_background_auto_sync():
-    """Daemon thread running auto-sync every 5 minutes (300s)"""
-    def loop():
-        time.sleep(3) # Wait 3 seconds on startup
-        while True:
-            run_auto_sync()
-            time.sleep(300)
-
-    t = threading.Thread(target=loop, daemon=True)
-    t.start()
-    print("Background Auto-Sync Thread started (Google Sheets synced every 5 min)")
+# NOTE: Background auto-sync thread removed — hydro-cron container handles
+# scheduled Google Sheets sync, storages.py, and DB ingestion to avoid
+# duplicate writes and SQLite lock conflicts. Use /api/sync-now for on-demand sync.
 
 @app.route('/api/sync-now', methods=['GET', 'POST'])
 def sync_now():
@@ -473,5 +465,4 @@ if __name__ == '__main__':
     print("2. Open the forwarded link in your browser!")
     print("=" * 60)
     
-    start_background_auto_sync()
     app.run(host='0.0.0.0', port=PROXY_PORT, threaded=True)

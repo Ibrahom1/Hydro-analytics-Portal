@@ -24,6 +24,7 @@ podman run --rm \
     -v /opt/hydroanalytics/git_config/.ssh:/root/.ssh:ro \
     -e TZ=Asia/Karachi \
     -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    -e GIT_SSH_COMMAND='ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no' \
     --shm-size=512m \
     localhost/hydro-whatsapp:latest \
     node bot.js \
