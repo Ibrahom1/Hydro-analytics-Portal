@@ -14433,12 +14433,15 @@ document.getElementById("di_ht").addEventListener("change", function () {
     map1.getCanvas().style.cursor = "";
   });
 
-  document.getElementById("unfoldedEvent").addEventListener("change", function () {
-    const isVisible = this.checked;
-    if (map1.getLayer("unfolded_event_points")) {
-      map1.setLayoutProperty("unfolded_event_points", "visibility", isVisible ? "visible" : "none");
-    }
-  });
+  const unfoldedElem = document.getElementById("unfoldedEvent");
+  if (unfoldedElem) {
+    unfoldedElem.addEventListener("change", function () {
+      const isVisible = this.checked;
+      if (map1.getLayer("unfolded_event_points")) {
+        map1.setLayoutProperty("unfolded_event_points", "visibility", isVisible ? "visible" : "none");
+      }
+    });
+  }
 
   map1.addSource("flood_events", {
     type: "geojson",
