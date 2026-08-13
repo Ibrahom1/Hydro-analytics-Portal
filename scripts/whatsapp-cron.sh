@@ -20,6 +20,7 @@ podman run --rm \
     -v /opt/hydroanalytics/res_kp:/app/res_kp \
     -v /opt/hydroanalytics/script:/app/script \
     -v /opt/hydroanalytics/wwebjs_auth:/app/whatsapp_bot/.wwebjs_auth \
+    -v /opt/hydroanalytics/app/.git:/app/.git \
     -v /opt/hydroanalytics/git_config/.gitconfig:/root/.gitconfig:ro \
     -v /opt/hydroanalytics/git_config/.ssh:/root/.ssh:ro \
     -e TZ=Asia/Karachi \

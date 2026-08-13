@@ -301,6 +301,9 @@ function pushChanges() {
     } catch (_) {
       const today = new Date().toISOString().split('T')[0];
       execSync(`git commit -m "Auto-ingest Daily Water Situation updates ${today}"`, { cwd, stdio: 'inherit' });
+      // Pull any new commits (e.g. code changes pushed from Windows PC) before pushing,
+      // using rebase to place our data commit on top — avoids non-fast-forward rejection
+      execSync('git pull --rebase', { cwd, stdio: 'inherit' });
       execSync('git push', { cwd, stdio: 'inherit' });
       log('  GIT: Changes committed and pushed.');
     }
