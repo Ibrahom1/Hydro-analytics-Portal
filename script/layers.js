@@ -1515,6 +1515,20 @@ function toggleHighlight(checkbox) {
     }
   }
 
+  if (checkbox.id === 'FE') {
+    const isVisible = checkbox.checked;
+    if (typeof map1 !== 'undefined' && map1 && map1.getLayer('flood_events')) {
+      map1.setLayoutProperty('flood_events', 'visibility', isVisible ? 'visible' : 'none');
+    }
+  }
+
+  if (checkbox.id === 'unfoldedEvent') {
+    const isVisible = checkbox.checked;
+    if (typeof map1 !== 'undefined' && map1 && map1.getLayer('unfolded_event_points')) {
+      map1.setLayoutProperty('unfolded_event_points', 'visibility', isVisible ? 'visible' : 'none');
+    }
+  }
+
   if (['ffd', 'kp_flood_cell', 'other_gauges'].includes(checkbox.id)) {
     if (typeof ffdLegend === 'function') {
       ffdLegend();
@@ -14327,6 +14341,105 @@ document.getElementById("di_ht").addEventListener("change", function () {
 
   ///Flood Events 15 Aug
 
+  const unfoldedEventPoints = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { name: 'Budni Nullah' },
+        geometry: { type: 'Point', coordinates: [71.57950227913663, 34.0411623990512] }
+      },
+      {
+        type: 'Feature',
+        properties: { name: 'Kalpani Nullah' },
+        geometry: { type: 'Point', coordinates: [72.05032655273911, 34.204248986428894] }
+      },
+      {
+        type: 'Feature',
+        properties: { name: 'Panjkora River' },
+        geometry: { type: 'Point', coordinates: [71.98903089027516, 35.21747329784386] }
+      }
+    ]
+  };
+
+  map1.addSource("unfolded_event_points", {
+    type: "geojson",
+    data: unfoldedEventPoints
+  });
+
+  if (!map1.getLayer("unfolded_event_points")) {
+    map1.addLayer({
+      id: "unfolded_event_points",
+      type: "circle",
+      source: "unfolded_event_points",
+      layout: {
+        visibility: "none"
+      },
+      paint: {
+        "circle-color": "#ff6b35",
+        "circle-radius": 7,
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 2,
+        "circle-opacity": 1
+      }
+    });
+  }
+
+  map1.on("click", "unfolded_event_points", function (e) {
+    if (!e.features || !e.features.length) return;
+    const feature = e.features[0];
+    const name = feature.properties && feature.properties.name ? feature.properties.name : "Unfolded Event";
+    const coords = feature.geometry && feature.geometry.coordinates ? feature.geometry.coordinates : [];
+    const popupHTML = `
+      <div class="ffd-popup-container">
+        <div class="popup-header" style="border-left: 4px solid #ff6b35;">
+          <div class="station-info">
+            <h3 class="station-name">${name}</h3>
+            <div class="status-badge" style="background-color: #ff6b35;">
+              <i class="fas fa-map-marker-alt"></i>
+              Event
+            </div>
+          </div>
+        </div>
+        <div class="popup-content">
+          <div class="unfolded-image-wrap">
+            <img src="media/Exposures+Levels/unfolded.png" alt="Unfolded event" class="unfolded-event-image" style="cursor:pointer;" onclick="showFullscreen('media/Exposures+Levels/unfolded.png'); return false;" />
+          </div>
+        </div>
+      </div>
+      <style>
+        .ffd-popup-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; width: 260px; background: #ffffff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; border: 2px solid #ff6b35; position: relative; }
+        .popup-header { background: #fff7f3; padding: 8px 12px; border-bottom: 2px solid #ffe4d6; }
+        .station-info { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .station-name { font-size: 16px; font-weight: 700; color: #1a1a1a; margin: 0; line-height: 1.2; flex: 1; }
+        .status-badge { color: white; padding: 4px 8px; border-radius: 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; display: flex; align-items: center; gap: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); white-space: nowrap; }
+        .popup-content { padding: 10px; background: #ffffff; }
+        .unfolded-image-wrap { width: 100%; margin-bottom: 10px; border-radius: 10px; overflow: hidden; background: #f8fafc; border: 1px solid #f1f5f9; }
+        .unfolded-event-image { display: block; width: 100%; height: auto; max-height: 180px; object-fit: cover; }
+        .mapboxgl-popup-content { padding: 0; border-radius: 12px; overflow: hidden; }
+      </style>
+    `;
+
+    new mapboxgl.Popup({ closeButton: false, closeOnClick: true, maxWidth: '260px', className: 'ffd-enhanced-popup' })
+      .setLngLat(feature.geometry.coordinates)
+      .setHTML(popupHTML)
+      .addTo(map1);
+  });
+
+  map1.on("mouseenter", "unfolded_event_points", function () {
+    map1.getCanvas().style.cursor = "pointer";
+  });
+  map1.on("mouseleave", "unfolded_event_points", function () {
+    map1.getCanvas().style.cursor = "";
+  });
+
+  document.getElementById("unfoldedEvent").addEventListener("change", function () {
+    const isVisible = this.checked;
+    if (map1.getLayer("unfolded_event_points")) {
+      map1.setLayoutProperty("unfolded_event_points", "visibility", isVisible ? "visible" : "none");
+    }
+  });
+
   map1.addSource("flood_events", {
     type: "geojson",
     data: flood_events // your GeoJSON variable
@@ -18330,15 +18443,67 @@ map1.addControl(new GeoglowsChartControl(), 'top-right');
 map1.addControl(new RainToggleControl(), "top-right");
 
 
+function ensureFullscreenImageOverlay() {
+  let overlay = document.getElementById('fullscreen-overlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'fullscreen-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:99999;padding:24px;';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close enlarged image');
+  closeBtn.innerHTML = '×';
+  closeBtn.style.cssText = 'position:absolute;top:20px;right:24px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:28px;cursor:pointer;line-height:1;';
+  closeBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeFullscreen();
+  });
+
+  const img = document.createElement('img');
+  img.id = 'fullscreen-image';
+  img.alt = 'Expanded view';
+  img.style.cssText = 'max-width:100%;max-height:90vh;border-radius:12px;box-shadow:0 24px 50px rgba(0,0,0,0.35);background:#fff;object-fit:contain;';
+
+  overlay.appendChild(closeBtn);
+  overlay.appendChild(img);
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      closeFullscreen();
+    }
+  });
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function closeFullscreen() {
+  const overlay = document.getElementById('fullscreen-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
 // Show fullscreen image
 function showFullscreen(imageSrc) {
-  const overlay = document.getElementById('fullscreen-overlay');
+  const overlay = ensureFullscreenImageOverlay();
   const img = document.getElementById('fullscreen-image');
 
+  if (!img) return;
   img.src = imageSrc;
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    const overlay = document.getElementById('fullscreen-overlay');
+    if (overlay && overlay.style.display === 'flex') {
+      closeFullscreen();
+    }
+  }
+});
 
 ///3d control
 function add3DControl(map) {
