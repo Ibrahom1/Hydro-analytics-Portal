@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-08-16T15:13:30Z",
+  "fetched_at": "2026-08-16T16:14:25Z",
   "total_stations": 26,
   "stations": [
     {
@@ -436,8 +436,8 @@
       "status": "NORMAL",
       "outflow": 88.0,
       "inflow": 88.0,
-      "outflow_trend": "Steady",
-      "inflow_trend": "Steady",
+      "outflow_trend": "Rising",
+      "inflow_trend": "Rising",
       "latitude": 35.2956,
       "longitude": 71.5596,
       "recording_time": "16-Aug 18 PKT",
@@ -559,10 +559,10 @@
       "area_name": "N/A",
       "kind": "gauge",
       "status": "NORMAL",
-      "outflow": null,
-      "inflow": null,
-      "outflow_trend": null,
-      "inflow_trend": null,
+      "outflow": 0.0,
+      "inflow": 0.0,
+      "outflow_trend": "Steady",
+      "inflow_trend": "Steady",
       "latitude": 35.5872,
       "longitude": 71.8076,
       "recording_time": "16-Aug 18 PKT",
