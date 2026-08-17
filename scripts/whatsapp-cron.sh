@@ -32,6 +32,18 @@ cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cd - >/dev/null
 
+# ── Backup: snapshot databases and PDFs before bot runs (7-day rolling) ──
+BACKUP_DIR="/opt/hydroanalytics/backups/$(date +%Y-%m-%d)"
+mkdir -p "$BACKUP_DIR"
+cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$BACKUP_DIR/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$BACKUP_DIR/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$BACKUP_DIR/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/res_kp/Flood\ Report.pdf "$BACKUP_DIR/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$BACKUP_DIR/" 2>/dev/null || true
+# Clean backups older than 7 days
+find /opt/hydroanalytics/backups -maxdepth 1 -type d -mtime +7 -exec rm -rf {} \;
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup saved to $BACKUP_DIR" >> "$LOG_DIR/cron.log"
+
 podman run --rm \
     --name "$CONTAINER_NAME" \
     --network host \
