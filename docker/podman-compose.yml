@@ -103,20 +103,50 @@ services:
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
-        echo "Starting Hydro Analytics Cron Fetchers..."
-        cat > /etc/cron.d/hydro-cron << 'CRONEOF'
-        0 * * * * cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py >> /proc/1/fd/1 2>&1
-        0 */2 * * * cd /app && python res_storages/daily_water_situation_db.py >> /proc/1/fd/1 2>&1
-        */5 * * * * cd /app && python res_storages/fetch_indian_dams_sheet.py >> /proc/1/fd/1 2>&1
-        5 */2 * * * cd /app && python res_storages/storages.py >> /proc/1/fd/1 2>&1
-        CRONEOF
-        chmod 0644 /etc/cron.d/hydro-cron
-        crontab /etc/cron.d/hydro-cron
-        cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py || true
-        cd /app && python res_storages/daily_water_situation_db.py || true
-        cd /app && python res_storages/fetch_indian_dams_sheet.py || true
-        cd /app && python res_storages/storages.py || true
-        cron -f
+        echo "=========================================="
+        echo "  Hydro Analytics Cron Fetchers Starting"
+        echo "  $(date '+%Y-%m-%d %H:%M:%S %Z')"
+        echo "=========================================="
+
+        # ── Initial run of all scripts on startup ──
+        echo "[STARTUP] Running initial fetch..."
+        cd /app && python res_storages/fetch_indian_dams_sheet.py 2>&1 && echo "[STARTUP] Google Sheets: OK" || echo "[STARTUP] Google Sheets: FAILED"
+        cd /app && python res_storages/storages.py 2>&1 && echo "[STARTUP] Storages: OK" || echo "[STARTUP] Storages: FAILED"
+        cd /app && python res_storages/daily_water_situation_db.py 2>&1 && echo "[STARTUP] Daily Water DB: OK" || echo "[STARTUP] Daily Water DB: FAILED"
+        cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py 2>&1 && echo "[STARTUP] FFD Gauges: OK" || echo "[STARTUP] FFD Gauges: FAILED"
+        echo "[STARTUP] Initial fetch complete."
+
+        # ── Background loop: Google Sheets every 5 minutes ──
+        (while true; do
+          sleep 300
+          echo "[$(date '+%H:%M:%S')] Running: fetch_indian_dams_sheet.py"
+          cd /app && python res_storages/fetch_indian_dams_sheet.py 2>&1 || echo "[ERROR] fetch_indian_dams_sheet.py failed"
+        done) &
+
+        # ── Background loop: FFD Gauges every 1 hour ──
+        (while true; do
+          sleep 3600
+          echo "[$(date '+%H:%M:%S')] Running: fetch_other_gauges.py"
+          cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py 2>&1 || echo "[ERROR] fetch_other_gauges.py failed"
+        done) &
+
+        # ── Background loop: Daily Water DB every 2 hours ──
+        (while true; do
+          sleep 7200
+          echo "[$(date '+%H:%M:%S')] Running: daily_water_situation_db.py"
+          cd /app && python res_storages/daily_water_situation_db.py 2>&1 || echo "[ERROR] daily_water_situation_db.py failed"
+        done) &
+
+        # ── Background loop: Storages recalc every 2 hours (+5 min offset) ──
+        (while true; do
+          sleep 7500
+          echo "[$(date '+%H:%M:%S')] Running: storages.py"
+          cd /app && python res_storages/storages.py 2>&1 || echo "[ERROR] storages.py failed"
+        done) &
+
+        echo "[SCHEDULER] All background loops started. Waiting forever..."
+        # Keep container alive
+        wait
     volumes:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/res_storages:/app/res_storages
