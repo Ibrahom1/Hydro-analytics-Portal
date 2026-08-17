@@ -317,10 +317,28 @@ function pushChanges() {
   return true;
 }
 
+function cleanStaleAuthLocks(authDir) {
+  try {
+    const sessionDir = path.join(authDir, 'session');
+    if (!fs.existsSync(sessionDir)) return;
+    const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
+    for (const file of lockFiles) {
+      const p = path.join(sessionDir, file);
+      try {
+        if (fs.existsSync(p) || fs.lstatSync(p).isSymbolicLink()) {
+          fs.unlinkSync(p);
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+}
+
 // ── Main Bot ───────────────────────────────────────────────────────────
 
 async function main() {
   const authOnly = process.argv.includes('--auth-only');
+
+  cleanStaleAuthLocks(config.authDir);
 
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: config.authDir }),
@@ -336,12 +354,17 @@ async function main() {
         '--disable-setuid-sandbox',
         '--disable-gpu',
         '--disable-dev-shm-usage',
+        '--disable-extensions',
+        '--no-first-run',
+        '--no-default-browser-check',
       ],
     },
   });
 
   let shutdownTimer = null;
   let targetChatId = null;
+  let readyFired = false;
+  let readyWatchdog = null;
 
   /**
    * Checks whether a message contains a new Daily Water Situation PDF
@@ -484,6 +507,19 @@ async function main() {
   // ── Authenticated ────────────────────────────────────────────────
   client.on('authenticated', () => {
     log('Session authenticated successfully. Session saved for future runs.');
+    if (readyWatchdog) clearTimeout(readyWatchdog);
+    readyWatchdog = setTimeout(async () => {
+      if (!readyFired) {
+        log('[WATCHDOG] Ready event took longer than 45s. Triggering page reload to refresh WhatsApp Web...');
+        try {
+          if (client.pupPage) {
+            await client.pupPage.reload({ waitUntil: 'domcontentloaded' });
+          }
+        } catch (e) {
+          console.warn('[WATCHDOG] Page reload error:', e.message);
+        }
+      }
+    }, 45000);
   });
 
   // ── Auth Failure ─────────────────────────────────────────────────
@@ -495,6 +531,8 @@ async function main() {
 
   // ── Ready ────────────────────────────────────────────────────────
   client.on('ready', async () => {
+    readyFired = true;
+    if (readyWatchdog) clearTimeout(readyWatchdog);
     log('WhatsApp bot is READY and listening for messages.');
 
     if (authOnly) {
