@@ -789,6 +789,10 @@ def ingest_pdf(pdf_path: Path, db_path: Path, archive_dir: Path) -> bool:
                 raise ValueError("Parsed payload has invalid sections.")
             insert_sections(connection, report_id, report_date, sections)
 
+    # Flush WAL to main .sqlite file so git add captures all new records
+    with connect_db(db_path) as conn:
+        conn.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+
     print(f"[INFO] Ingested report date {report_date} into {db_path}")
     print(f"[INFO] Archived PDF to {archive_path}")
     return True
