@@ -27,9 +27,14 @@ git merge --abort 2>/dev/null || true
 # 3. Push any unpushed commits from previous failed runs
 GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || true
 
-# 4. Sync runtime databases into git working tree so git add picks them up
+# 4. Sync runtime databases, PDFs, and historical archives into git working tree
 cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$APP_DIR/res_storages/" 2>/dev/null || true
+cp -rn /opt/hydroanalytics/res_storages/Historical\ Daily\ Storages/* "$APP_DIR/res_storages/Historical Daily Storages/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/res_kp/Flood\ Report.pdf "$APP_DIR/res_kp/" 2>/dev/null || true
+cp -rn /opt/hydroanalytics/res_kp/Historical\ KP\ Reports/* "$APP_DIR/res_kp/Historical KP Reports/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
 cd - >/dev/null
 
 # ── Backup: snapshot databases and PDFs before bot runs (7-day rolling) ──
@@ -64,5 +69,16 @@ podman run --rm \
     >> "$LOG_DIR/$CONTAINER_NAME.log" 2>&1
 
 EXIT_CODE=$?
+
+# Post-run: sync any newly generated runtime files back to git working tree
+cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$APP_DIR/res_storages/" 2>/dev/null || true
+cp -rn /opt/hydroanalytics/res_storages/Historical\ Daily\ Storages/* "$APP_DIR/res_storages/Historical Daily Storages/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/res_kp/Flood\ Report.pdf "$APP_DIR/res_kp/" 2>/dev/null || true
+cp -rn /opt/hydroanalytics/res_kp/Historical\ KP\ Reports/* "$APP_DIR/res_kp/Historical KP Reports/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
+
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bot exited (code $EXIT_CODE): $CONTAINER_NAME" \
     >> "$LOG_DIR/cron.log"
+
