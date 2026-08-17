@@ -365,10 +365,19 @@ async function main() {
       if (!msg.hasMedia) return { ingested: false };
       if (msg.type !== 'document') return { ingested: false };
 
-      // Check filename in msg.body (which represents the document filename on WA Web)
-      const bodyText = (msg.body || '').toLowerCase();
-      let isDailyWater = bodyText.includes(config.pdfNameFilter.toLowerCase());
-      let isKpReport = bodyText.includes(config.kpPdfNameFilter.toLowerCase());
+      // Check filename across all candidate fields (body, caption, _data.filename)
+      const rawCandidates = [
+        msg.body || '',
+        msg.caption || '',
+        (msg._data && msg._data.filename) || '',
+        (msg._data && msg._data.caption) || ''
+      ].join(' ').toLowerCase().replace(/[_\s-]+/g, ' ');
+
+      let isDailyWater = rawCandidates.includes('daily water situation') ||
+                         (rawCandidates.includes('daily water') && rawCandidates.includes('situation')) ||
+                         (rawCandidates.includes('water situation') && rawCandidates.includes('daily'));
+      let isKpReport = rawCandidates.includes('flood report') ||
+                       (rawCandidates.includes('flood') && rawCandidates.includes('report'));
       
       if (!isDailyWater && !isKpReport) {
         return { ingested: false };
