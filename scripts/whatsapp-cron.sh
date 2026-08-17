@@ -12,6 +12,26 @@ mkdir -p "$LOG_DIR"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting WhatsApp bot: $CONTAINER_NAME" \
     >> "$LOG_DIR/cron.log"
 
+# ── Pre-flight: ensure clean git tree before bot runs ──
+APP_DIR="/opt/hydroanalytics/app"
+GIT_SSH="ssh -i /opt/hydroanalytics/git_config/.ssh/id_rsa -o StrictHostKeyChecking=no"
+
+# 1. Remove LFS hooks that block container push (they get recreated by git pull)
+rm -f "$APP_DIR/.git/hooks/pre-push" "$APP_DIR/.git/hooks/post-commit"
+
+# 2. Abort any stuck rebase/merge state from previous failed runs
+cd "$APP_DIR"
+git rebase --abort 2>/dev/null || true
+git merge --abort 2>/dev/null || true
+
+# 3. Push any unpushed commits from previous failed runs
+GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || true
+
+# 4. Sync runtime databases into git working tree so git add picks them up
+cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cd - >/dev/null
+
 podman run --rm \
     --name "$CONTAINER_NAME" \
     --network host \

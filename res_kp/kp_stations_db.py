@@ -157,6 +157,7 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
                 print(f"Error inserting row {row}: {e}")
                 
     conn.commit()
+    conn.execute('PRAGMA wal_checkpoint(TRUNCATE)')
     conn.close()
 
     if inserted > 0:
