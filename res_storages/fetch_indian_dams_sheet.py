@@ -115,12 +115,8 @@ def update_indian_dams_from_google_sheet(js_path: Path, csv_url: str = SHEET_CSV
             print(f"  [UPDATED] {var_name} -> {rhs_val}")
 
     if updated_count > 0:
-        tmp_path = js_path.with_suffix(js_path.suffix + ".tmp")
-        tmp_path.write_text(content, encoding="utf-8")
-        try:
-            tmp_path.replace(js_path)
-        except Exception:
-            js_path.write_text(content, encoding="utf-8")
+        # Direct in-place write preserves the file inode on Linux host so container mounts stay permanently in sync
+        js_path.write_text(content, encoding="utf-8")
         print(f"[SUCCESS] Successfully updated {updated_count} Indian dam variables in {js_path.name}.")
         return True
     else:
