@@ -348,6 +348,24 @@ def other_gauges_api():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/script/ft_and_percentage.js', methods=['GET'])
+def ft_and_percentage_api():
+    """Serve ft_and_percentage.js directly from disk with strict no-cache headers (bypasses Nginx mount bugs)"""
+    try:
+        repo_root = Path(__file__).resolve().parent
+        js_path = repo_root / "script" / "ft_and_percentage.js"
+        if not js_path.exists():
+            return "File not found", 404
+        content = js_path.read_text(encoding="utf-8")
+        resp = Response(content, mimetype='application/javascript')
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        resp.headers['Pragma'] = 'no-cache'
+        resp.headers['Expires'] = '0'
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    except Exception as e:
+        return str(e), 500
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'])
 def proxy(path):
