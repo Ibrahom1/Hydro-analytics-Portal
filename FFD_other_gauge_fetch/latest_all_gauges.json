@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-08-17T12:25:14Z",
+  "fetched_at": "2026-08-17T13:33:52Z",
   "total_stations": 26,
   "stations": [
     {
@@ -134,13 +134,13 @@
       "area_name": "Swat River",
       "kind": "gauge",
       "status": "NORMAL",
-      "outflow": 5914.0,
-      "inflow": 5914.0,
+      "outflow": 5941.0,
+      "inflow": 5941.0,
       "outflow_trend": "Falling",
       "inflow_trend": "Falling",
       "latitude": 34.14348,
       "longitude": 71.70531,
-      "recording_time": "13-Aug-2026 05 PKT",
+      "recording_time": "17-Aug 20 PKT",
       "height": "N/A",
       "max_peak": "41,578",
       "cyp_status": "LOW",
@@ -150,7 +150,7 @@
       "forecast_quant": "",
       "high_threshold": 80000,
       "is_nullah": false,
-      "stale": true
+      "stale": false
     },
     {
       "name": "Khushab Bridge",
@@ -359,13 +359,13 @@
       "area_name": "N/A",
       "kind": "gauge",
       "status": "NORMAL",
-      "outflow": 30200.0,
-      "inflow": 30200.0,
-      "outflow_trend": "Falling",
-      "inflow_trend": "Falling",
+      "outflow": 30000.0,
+      "inflow": 30000.0,
+      "outflow_trend": "Rising",
+      "inflow_trend": "Rising",
       "latitude": 34.167337,
       "longitude": 71.369716,
-      "recording_time": "13-Aug-2026 05 PKT",
+      "recording_time": "17-Aug 20 PKT",
       "height": "N/A",
       "max_peak": "50,000",
       "cyp_status": "LOW",
@@ -375,7 +375,7 @@
       "forecast_quant": "",
       "high_threshold": 100000,
       "is_nullah": false,
-      "stale": true
+      "stale": false
     },
     {
       "name": "Attock Khairabad",
@@ -384,13 +384,13 @@
       "area_name": "N/A",
       "kind": "gauge",
       "status": "LOW",
-      "outflow": 270300.0,
-      "inflow": 270300.0,
+      "outflow": 279400.0,
+      "inflow": 279400.0,
       "outflow_trend": "Rising",
       "inflow_trend": "Rising",
       "latitude": 33.872355,
       "longitude": 72.236854,
-      "recording_time": "13-Aug-2026 05 PKT",
+      "recording_time": "17-Aug 20 PKT",
       "height": "N/A",
       "max_peak": "303,500",
       "cyp_status": "LOW",
@@ -400,7 +400,7 @@
       "forecast_quant": "",
       "high_threshold": 500000,
       "is_nullah": false,
-      "stale": true
+      "stale": false
     },
     {
       "name": "Jinnah Barrage",
@@ -409,23 +409,23 @@
       "area_name": "Indus River",
       "kind": "gauge",
       "status": "LOW",
-      "outflow": 369099.0,
-      "inflow": 377039.0,
-      "outflow_trend": "Rising",
+      "outflow": 359850.0,
+      "inflow": 367990.0,
+      "outflow_trend": "Falling",
       "inflow_trend": "Rising",
       "latitude": 32.91853,
       "longitude": 71.52192,
-      "recording_time": "13-Aug-2026 05 PKT",
+      "recording_time": "17-Aug 20 PKT",
       "height": "N/A",
-      "max_peak": "369,099",
+      "max_peak": "371,802",
       "cyp_status": "LOW",
-      "cyp_date": "13-Aug-2026",
+      "cyp_date": "17-Aug-2026",
       "forecast_status": "",
       "forecast_qual": "",
       "forecast_quant": "",
       "high_threshold": 500000,
       "is_nullah": false,
-      "stale": true
+      "stale": false
     },
     {
       "name": "Arandu Nullah",
