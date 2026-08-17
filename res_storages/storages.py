@@ -663,16 +663,8 @@ def update_js_file(
 		print("[DRY-RUN] ft_and_percentage.js update skipped.")
 		return
 
-	tmp_path = js_path.with_suffix(js_path.suffix + ".tmp")
-	tmp_path.write_text(content, encoding="utf-8")
-	try:
-		tmp_path.replace(js_path)
-	except PermissionError:
-		js_path.write_text(content, encoding="utf-8")
-		try:
-			tmp_path.unlink()
-		except OSError:
-			pass
+	# Direct write preserves the file inode on Linux host so container mounts stay permanently in sync
+	js_path.write_text(content, encoding="utf-8")
 
 
 def main() -> int:
