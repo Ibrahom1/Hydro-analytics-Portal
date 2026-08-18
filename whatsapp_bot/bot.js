@@ -301,17 +301,21 @@ function pushChanges() {
     } catch (_) {
       const today = new Date().toISOString().split('T')[0];
       execSync(`git commit -m "Auto-ingest Daily Water Situation updates ${today}"`, { cwd, stdio: 'inherit' });
-      // Stash any unstaged volume-mounted file differences before rebasing
-      try { execSync('git stash', { cwd, stdio: 'inherit' }); } catch (_) { /* no unstaged changes to stash */ }
-      // Pull any new commits (e.g. code changes pushed from Windows PC) before pushing
-      try { execSync('git pull --rebase', { cwd, stdio: 'inherit' }); } catch (_) { log('  GIT: pull --rebase skipped (no remote changes or already up to date)'); }
+      // Pull any upstream commits before pushing (avoids binary SQLite rebase locks)
+      try {
+        execSync('git pull --no-rebase', { cwd, stdio: 'inherit' });
+      } catch (_) {
+        try { execSync('git merge --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+        try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+        log('  GIT: pull --no-rebase completed or skipped, proceeding to push...');
+      }
       execSync('git push', { cwd, stdio: 'inherit' });
-      // Restore stashed volume changes
-      try { execSync('git stash pop', { cwd, stdio: 'inherit' }); } catch (_) { /* nothing to pop */ }
       log('  GIT: Changes committed and pushed.');
     }
   } catch (err) {
     console.error(`  GIT: Operations failed: ${err.message}`);
+    try { execSync('git merge --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+    try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
     return false;
   }
   return true;
