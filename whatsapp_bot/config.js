@@ -26,6 +26,10 @@ module.exports = {
   kpPdfNameFilter: 'flood report',
   kpPdfSaveName: 'Flood Report.pdf',
 
+  // ── GB/SWHP PDF Detection ──────────────────────────────────────────────
+  gbPdfNameFilter: 'swhp',
+  gbPdfSaveName: 'SWHP Report.pdf',
+
   // ── Listening Window ─────────────────────────────────────────────────
   // The bot connects, listens for this many MINUTES, then gracefully
   // disconnects to avoid long-running sessions that could trigger bans.

@@ -165,6 +165,20 @@ function isKpHashIngested(hash) {
   }
 }
 
+function isGbHashIngested(hash) {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const dbPath = path.join(config.projectRoot, 'data', 'gb_stations.sqlite');
+  if (!fs.existsSync(dbPath)) return false;
+  try {
+    const cmd = `${pythonCmd} -c "import sqlite3; conn=sqlite3.connect(r'${dbPath}'); cursor=conn.execute('SELECT 1 FROM gb_water_reports WHERE source_sha256=\\'${hash}\\''); print(bool(cursor.fetchone()))"`;
+    const output = execSync(cmd).toString().trim();
+    return output === 'True';
+  } catch (err) {
+    return false;
+  }
+}
+
 function isDailyWaterIngestedForDate(dateStr) {
   const pythonCmd = findPython();
   if (!pythonCmd) return false;
@@ -193,11 +207,26 @@ function isKpIngestedForDate(dd_mm_yyyy) {
   }
 }
 
+function isGbIngestedForDate(yyyy_mm_dd) {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const dbPath = path.join(config.projectRoot, 'data', 'gb_stations.sqlite');
+  if (!fs.existsSync(dbPath)) return false;
+  try {
+    const cmd = `${pythonCmd} -c "import sqlite3; conn=sqlite3.connect(r'${dbPath}'); cursor=conn.execute('SELECT 1 FROM gb_water_reports WHERE date_iso=\\'${yyyy_mm_dd}\\' LIMIT 1'); print(bool(cursor.fetchone()))"`;
+    const output = execSync(cmd).toString().trim();
+    return output === 'True';
+  } catch (err) {
+    return false;
+  }
+}
+
 function isTodayReportsInDb() {
   const { yyyy_mm_dd, dd_mm_yyyy } = getTodayDateFormats();
   const dwDone = isDailyWaterIngestedForDate(yyyy_mm_dd);
   const kpDone = isKpIngestedForDate(dd_mm_yyyy);
-  return { dwDone, kpDone, allDone: dwDone && kpDone, dateStr: yyyy_mm_dd };
+  const gbDone = isGbIngestedForDate(yyyy_mm_dd);
+  return { dwDone, kpDone, gbDone, allDone: dwDone && kpDone && gbDone, dateStr: yyyy_mm_dd };
 }
 
 // ── Pipeline Phases ────────────────────────────────────────────────────
@@ -236,6 +265,23 @@ function runKpIngestionOnly() {
     return true;
   } catch (err) {
     console.error(`  INGEST: kp_stations_db.py failed: ${err.message}`);
+    return false;
+  }
+}
+
+function runGbIngestionOnly() {
+  const pythonCmd = findPython();
+  if (!pythonCmd) return false;
+  const cwd = config.projectRoot;
+  try {
+    log('  INGEST: Running gb_stations_db.py...');
+    execSync(`${pythonCmd} "${path.join(cwd, 'res_gb', 'gb_stations_db.py')}"`, {
+      cwd, stdio: 'inherit', timeout: 120_000,
+    });
+    log('  INGEST: gb_stations_db.py completed.');
+    return true;
+  } catch (err) {
+    console.error(`  INGEST: gb_stations_db.py failed: ${err.message}`);
     return false;
   }
 }
@@ -292,7 +338,10 @@ function pushChanges() {
       'script/ft_and_percentage.js',
       'res_kp/Flood Report.pdf',
       'res_kp/Historical KP Reports',
-      'data/kp_stations_data.sqlite'
+      'data/kp_stations_data.sqlite',
+      'res_gb/SWHP Report.pdf',
+      'res_gb/Historical GB Reports',
+      'data/gb_stations.sqlite'
     ];
     execSync(`git add ${gitFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
     try {
@@ -409,8 +458,10 @@ async function main() {
                          (rawCandidates.includes('water situation') && rawCandidates.includes('daily'));
       let isKpReport = rawCandidates.includes('flood report') ||
                        (rawCandidates.includes('flood') && rawCandidates.includes('report'));
+      let isGbReport = rawCandidates.includes('swhp') ||
+                       (rawCandidates.includes('rivers') && rawCandidates.includes('tributaries') && rawCandidates.includes('flows'));
       
-      if (!isDailyWater && !isKpReport) {
+      if (!isDailyWater && !isKpReport && !isGbReport) {
         return { ingested: false };
       }
 
@@ -435,7 +486,7 @@ async function main() {
 
       const buffer = Buffer.from(media.data, 'base64');
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      const fileName = media.filename || (isDailyWater ? 'Daily Water Situation.pdf' : 'Flood Report.pdf');
+      const fileName = media.filename || (isDailyWater ? 'Daily Water Situation.pdf' : (isKpReport ? 'Flood Report.pdf' : 'SWHP Report.pdf'));
 
       if (isDailyWater && isDailyWaterHashIngested(hash)) {
         log(`  ℹ [${msgDate}] "${fileName}" → Already ingested in DB (Skipped)`);
@@ -443,6 +494,11 @@ async function main() {
       }
 
       if (isKpReport && isKpHashIngested(hash)) {
+        log(`  ℹ [${msgDate}] "${fileName}" → Already ingested in DB (Skipped)`);
+        return { ingested: false };
+      }
+
+      if (isGbReport && isGbHashIngested(hash)) {
         log(`  ℹ [${msgDate}] "${fileName}" → Already ingested in DB (Skipped)`);
         return { ingested: false };
       }
@@ -467,10 +523,18 @@ async function main() {
         if (config.autoRunPipeline) {
           runKpIngestionOnly();
         }
+      } else if (isGbReport) {
+        // Save to res_gb/SWHP Report.pdf
+        const savePath = path.join(config.projectRoot, 'res_gb', config.gbPdfSaveName);
+        fs.writeFileSync(savePath, buffer);
+  
+        if (config.autoRunPipeline) {
+          runGbIngestionOnly();
+        }
       }
 
       log(`────────────────────────────────────────────`);
-      return { ingested: true, isToday: isTodayMsg, type: isDailyWater ? 'daily_water' : 'kp' };
+      return { ingested: true, isToday: isTodayMsg, type: isDailyWater ? 'daily_water' : (isKpReport ? 'kp' : 'gb') };
     } catch (err) {
       if (config.verboseLogging) {
         console.error('Error processing message:', err);
@@ -632,10 +696,10 @@ async function main() {
         const todayCheck = isTodayReportsInDb();
         if (config.disconnectAfterDownload && todayCheck.allDone) {
           if (shutdownTimer) clearTimeout(shutdownTimer);
-          gracefulShutdown(client, `Both reports for today (${todayCheck.dateStr}) are fully ingested. Mission accomplished.`);
+          gracefulShutdown(client, `All 3 reports for today (${todayCheck.dateStr}) are fully ingested. Mission accomplished.`);
           return;
         } else {
-          log(`[STATUS] Today's reports (${todayCheck.dateStr}) status: Daily Water = ${todayCheck.dwDone ? '✓ Ingested' : '⏳ Pending'}, KP Report = ${todayCheck.kpDone ? '✓ Ingested' : '⏳ Pending'}.`);
+          log(`[STATUS] Today's reports (${todayCheck.dateStr}) status: Daily Water = ${todayCheck.dwDone ? '✓ Ingested' : '⏳ Pending'}, KP Report = ${todayCheck.kpDone ? '✓ Ingested' : '⏳ Pending'}, GB Report = ${todayCheck.gbDone ? '✓ Ingested' : '⏳ Pending'}.`);
           log(`Bot will STAY ONLINE and listen for incoming messages until listen window (${config.listenWindowMinutes}m) expires...`);
         }
       } else {
@@ -656,10 +720,10 @@ async function main() {
       const todayCheck = isTodayReportsInDb();
       if (config.disconnectAfterDownload && todayCheck.allDone) {
         if (shutdownTimer) clearTimeout(shutdownTimer);
-        gracefulShutdown(client, `Both reports for today (${todayCheck.dateStr}) are fully ingested. Mission accomplished.`);
+        gracefulShutdown(client, `All 3 reports for today (${todayCheck.dateStr}) are fully ingested. Mission accomplished.`);
       } else {
-        log(`[STATUS] Ingested ${res.type === 'daily_water' ? 'Daily Water' : 'KP Report'} PDF for ${todayCheck.dateStr}.`);
-        log(`[STATUS] Today's reports (${todayCheck.dateStr}) status: Daily Water = ${todayCheck.dwDone ? '✓ Ingested' : '⏳ Pending'}, KP Report = ${todayCheck.kpDone ? '✓ Ingested' : '⏳ Pending'}.`);
+        log(`[STATUS] Ingested ${res.type === 'daily_water' ? 'Daily Water' : (res.type === 'kp' ? 'KP Report' : 'GB SWHP Report')} PDF for ${todayCheck.dateStr}.`);
+        log(`[STATUS] Today's reports (${todayCheck.dateStr}) status: Daily Water = ${todayCheck.dwDone ? '✓ Ingested' : '⏳ Pending'}, KP Report = ${todayCheck.kpDone ? '✓ Ingested' : '⏳ Pending'}, GB Report = ${todayCheck.gbDone ? '✓ Ingested' : '⏳ Pending'}.`);
         log(`Bot will STAY ONLINE and listen for remaining reports until listen window (${config.listenWindowMinutes}m) expires...`);
       }
     }

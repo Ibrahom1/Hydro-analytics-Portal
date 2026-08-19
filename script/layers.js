@@ -5,11 +5,11 @@ const isProxied = (!isLocalNetwork && window.location.protocol !== 'file:') || w
 const proxyBase = window.location.origin;
 
 const geoserverUrl = isProxied ? `${proxyBase}/proxy_main` : 'http://172.18.7.35:8080';
-const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.165:8080"; 
+const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.185:8080"; 
 const mamHimael = "http://172.18.1.147:8080"; // Not proxied per request
 const ibrahim  = isProxied ? `${proxyBase}/proxy_ibrahim` : "http://172.18.1.115:8080";
-const mustafa = isProxied ? `${proxyBase}/proxy_mustafa` : "http://172.18.1.53:8080"; 
-const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.85:8080";
+const mustafa = isProxied ? `${proxyBase}/proxy_mustafa` : "http://172.18.1.45:8080"; 
+const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.87:8080";
 
 const geo_1_4 = isProxied ? `${proxyBase}/proxy_1_4` : 'http://172.18.1.4:8080';
 const geo_1_43 = isProxied ? `${proxyBase}/proxy_1_43` : 'http://172.18.1.43:8080';
@@ -1529,7 +1529,7 @@ function toggleHighlight(checkbox) {
     }
   }
 
-  if (['ffd', 'kp_flood_cell', 'other_gauges'].includes(checkbox.id)) {
+  if (['ffd', 'kp_flood_cell', 'gb_stations', 'other_gauges'].includes(checkbox.id)) {
     if (typeof ffdLegend === 'function') {
       ffdLegend();
     }
@@ -10435,6 +10435,351 @@ function addHydrometLayersToMap(map) {
     document.getElementById("kp_flood_cell")._kpFloodCellListenerAdded = true;
   }
 
+  // ── GB Stations (SWHP) Toggle ─────────────────────────────────────────
+  if (document.getElementById("gb_stations") && !document.getElementById("gb_stations")._gbStationsListenerAdded) {
+    document.getElementById("gb_stations").addEventListener("change", async function () {
+      const isVisible = this.checked;
+      
+      if (isVisible && !map1.getSource('gb_stations')) {
+        try {
+          // Fetch dynamic data from SQLite via proxy API
+          let gbDataMap = {};
+          let gbRecordDate = '';
+          let gbRecordTime = '';
+          try {
+            const apiRes = await fetch(`${proxyBase}/api/gb-stations`);
+            if (apiRes.ok) {
+              const resJson = await apiRes.json();
+              if (resJson.data && resJson.data.length > 0) {
+                gbRecordDate = resJson.data[0].recorded_date || '';
+                gbRecordTime = resJson.data[0].time || '';
+                resJson.data.forEach(row => {
+                  // Normalize station name for matching
+                  let normName = (row.station_name || '').toLowerCase()
+                    .replace(/\bat\b/g, '').replace(/\bnear\b/g, '').replace(/\briver\b/g, '')
+                    .replace(/[^a-z0-9]/g, '');
+                  gbDataMap[normName] = row;
+                });
+              }
+            }
+          } catch(e) {
+            console.error("Failed to fetch GB stations data", e);
+          }
+          window.gbDataMap = gbDataMap;
+
+          // Fetch GeoJSON points from GeoServer
+          const geoUrl = `${proxyBase}/proxy_ahad/geoserver/HydroAnalytics2026/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=HydroAnalytics2026:GB_stations&outputFormat=application/json`;
+          const geoRes = await fetch(geoUrl);
+          const geoJson = await geoRes.json();
+
+          // Helper: edit distance for fuzzy matching
+          const getEditDistance = (a, b) => {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+              for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                  matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                  matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+                }
+              }
+            }
+            return matrix[b.length][a.length];
+          };
+
+          // Find best matching API row for a GeoServer feature
+          const findBestGbMatch = (featureName) => {
+            if (!featureName || !window.gbDataMap) return null;
+            let normFeat = featureName.toLowerCase()
+              .replace(/\bat\b/g, '').replace(/\bnear\b/g, '').replace(/\briver\b/g, '')
+              .replace(/[^a-z0-9]/g, '');
+            
+            // Exact normalized match
+            if (window.gbDataMap[normFeat]) return window.gbDataMap[normFeat];
+            
+            // Edit distance match
+            let bestKey = null;
+            let bestDist = Infinity;
+            for (let key in window.gbDataMap) {
+              let dist = getEditDistance(normFeat, key);
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestKey = key;
+              }
+            }
+            if (bestDist <= 5) return window.gbDataMap[bestKey];
+            
+            // Substring containment
+            for (let key in window.gbDataMap) {
+              if (normFeat.includes(key) || key.includes(normFeat)) return window.gbDataMap[key];
+            }
+            return null;
+          };
+          window.findBestGbMatch = findBestGbMatch;
+
+          // Merge dynamic data into GeoJSON properties
+          if (geoJson.features) {
+            geoJson.features.forEach(f => {
+              const name = f.properties.Name || f.properties.name || '';
+              let matchedRow = findBestGbMatch(name);
+              if (matchedRow) {
+                f.properties.discharge_in_cusecs = matchedRow.discharge_in_cusecs;
+                f.properties.station_name_pdf = matchedRow.station_name;
+                f.properties.recorded_date = matchedRow.recorded_date || gbRecordDate;
+                f.properties.record_time = matchedRow.time || gbRecordTime;
+              } else {
+                f.properties.discharge_in_cusecs = 'N/A';
+                f.properties.station_name_pdf = name;
+                f.properties.recorded_date = gbRecordDate;
+                f.properties.record_time = gbRecordTime;
+              }
+            });
+          }
+
+          map1.addSource('gb_stations', {
+            type: 'geojson',
+            data: geoJson
+          });
+
+          // Circle layer — all NORMAL green (no flood status coloring)
+          map1.addLayer({
+            id: 'gb_stations_point',
+            type: 'circle',
+            source: 'gb_stations',
+            paint: {
+              'circle-color': '#288846',
+              'circle-radius': 7,
+              'circle-opacity': 1,
+              'circle-stroke-color': '#fff',
+              'circle-stroke-width': 2
+            }
+          });
+
+          // Label layer
+          map1.addLayer({
+            id: 'gb_stations_label',
+            type: 'symbol',
+            source: 'gb_stations',
+            layout: {
+              'visibility': 'visible',
+              'text-field': ['concat', ['coalesce', ['get', 'Name'], ['get', 'name']], '\n', ['to-string', ['coalesce', ['get', 'discharge_in_cusecs'], 'N/A']]],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+              'text-size': 12,
+              'text-offset': [0, 1.5],
+              'text-anchor': 'top'
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 1
+            }
+          });
+
+          // Click event for popups — styled 1:1 with KP/FFD
+          map1.on('click', 'gb_stations_point', (e) => {
+            const feature = e.features[0];
+            const stationName = feature.properties.Name || feature.properties.name || '';
+            const pdfStationName = feature.properties.station_name_pdf || stationName;
+            const discharge = feature.properties.discharge_in_cusecs || 'N/A';
+            const recordDate = feature.properties.recorded_date || '';
+            const recordTime = feature.properties.record_time || '';
+
+            // Extract river name from station name (e.g., "Indus at Kharmong" → look for river in name)
+            const riverPatterns = [
+              { pattern: /indus/i, river: 'Indus River' },
+              { pattern: /shyoke/i, river: 'Shyoke River' },
+              { pattern: /hunza/i, river: 'Hunza River' },
+              { pattern: /gilgit/i, river: 'Gilgit River' },
+              { pattern: /astore/i, river: 'Astore River' },
+              { pattern: /chitral/i, river: 'Chitral River' },
+              { pattern: /neelum/i, river: 'Neelum River' },
+              { pattern: /jhelum/i, river: 'Jhelum River' }
+            ];
+            let riverName = 'Unknown';
+            const combinedName = stationName + ' ' + pdfStationName;
+            for (const rp of riverPatterns) {
+              if (rp.pattern.test(combinedName)) {
+                riverName = rp.river;
+                break;
+              }
+            }
+
+            const formatDischarge = (value) => {
+              if (!value || value === 'N/A' || String(value).toUpperCase() === 'N.R' || String(value).trim() === '') {
+                const displayVal = (String(value).toUpperCase() === 'N.R') ? 'N.R (Not Received)' : 'N/A';
+                return `
+                  <div class="discharge-item">
+                    <span class="discharge-label">Discharge:</span>
+                    <span class="discharge-value no-data">${displayVal}</span>
+                  </div>`;
+              }
+              const numericValue = parseFloat(String(value).replace(/,/g, ''));
+              const formattedValue = !isNaN(numericValue) ? numericValue.toLocaleString() : value;
+              return `
+                <div class="discharge-item">
+                  <span class="discharge-label">Discharge:</span>
+                  <span class="discharge-value inflow-highlight">${formattedValue} cusecs</span>
+                </div>`;
+            };
+
+            const html = `
+              <div class="ffd-popup-container">
+                <div class="popup-header" style="border-left: 4px solid #288846;">
+                  <div class="station-info">
+                    <h3 class="station-name">${stationName}</h3>
+                    <div class="status-badge" style="background-color: #288846;">
+                      <i class="fas fa-water"></i>
+                      Normal
+                    </div>
+                  </div>
+                </div>
+                <div class="popup-content">
+                  <div class="popup-meta-section">
+                    <div class="popup-meta-grid">
+                      <div class="popup-meta-item">
+                        <span class="popup-meta-label">River:</span>
+                        <span class="popup-meta-value">${riverName}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="discharge-section">
+                    <div class="discharge-grid">
+                      ${formatDischarge(discharge)}
+                    </div>
+                  </div>
+                  ${(recordDate || recordTime) ? `
+                  <div class="timestamp-section">
+                    <div class="timestamp-item">
+                      <i class="fas fa-clock"></i>
+                      <span class="timestamp-value">Last Updated: ${recordDate} ${recordTime}</span>
+                    </div>
+                  </div>
+                  ` : ''}
+                </div>
+              </div>
+              <style>
+                .ffd-popup-container {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  width: 280px;
+                  background: #ffffff;
+                  border-radius: 12px;
+                  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+                  overflow: hidden;
+                  border: 2px solid #2196f3;
+                  position: relative;
+                }
+                .popup-header {
+                  background: #f8f9fa;
+                  padding: 8px 12px;
+                  border-bottom: 2px solid #e3f2fd;
+                }
+                .station-info {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  gap: 12px;
+                }
+                .station-name {
+                  font-size: 16px;
+                  font-weight: 700;
+                  color: #1a1a1a;
+                  margin: 0;
+                  line-height: 1.2;
+                  flex: 1;
+                }
+                .status-badge {
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 16px;
+                  font-size: 11px;
+                  font-weight: 600;
+                  text-transform: uppercase;
+                  letter-spacing: 0.3px;
+                  display: flex;
+                  align-items: center;
+                  gap: 3px;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                  white-space: nowrap;
+                }
+                .popup-content {
+                  padding: 8px 12px 12px;
+                }
+                .popup-meta-section, .discharge-section, .timestamp-section {
+                  margin-bottom: 8px;
+                }
+                .popup-meta-grid, .discharge-grid {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                }
+                .popup-meta-item, .discharge-item {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  padding: 4px 8px;
+                  background: #f8f9fa;
+                  border-radius: 6px;
+                  border: 1px solid #e3f2fd;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                }
+                .popup-meta-label, .discharge-label {
+                  font-size: 13px;
+                  font-weight: 500;
+                  color: #495057;
+                }
+                .popup-meta-value, .discharge-value {
+                  font-size: 14px;
+                  font-weight: 700;
+                  color: #212529;
+                }
+                .inflow-highlight { color: #1976d2; }
+                .no-data { color: #6c757d; font-style: italic; }
+                .timestamp-item {
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  justify-content: flex-end;
+                  font-size: 11px;
+                  color: #6c757d;
+                  margin-top: 4px;
+                }
+                .mapboxgl-popup-close-button { display: none !important; }
+                .mapboxgl-popup-content { padding: 0 !important; border-radius: 8px !important; }
+                .mapboxgl-popup-tip { border-top-color: #ffffff !important; }
+              </style>
+            `;
+            new mapboxgl.Popup({
+              closeButton: false,
+              closeOnClick: true,
+              maxWidth: '300px',
+              className: 'ffd-enhanced-popup'
+            })
+              .setLngLat(e.lngLat)
+              .setHTML(html)
+              .addTo(map1);
+          });
+          map1.on('mouseenter', 'gb_stations_point', () => { map1.getCanvas().style.cursor = 'pointer'; });
+          map1.on('mouseleave', 'gb_stations_point', () => { map1.getCanvas().style.cursor = ''; });
+
+        } catch (e) {
+          console.error("Failed to load GB stations layer:", e);
+        }
+      }
+
+      ['gb_stations_point', 'gb_stations_label'].forEach(layerId => {
+        if (map1.getLayer(layerId)) {
+          map1.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
+        }
+      });
+      if (typeof ffdLegend === 'function') ffdLegend();
+    });
+    document.getElementById("gb_stations")._gbStationsListenerAdded = true;
+  }
+
   // ── Other Gauges (FFD) Toggle ───────────────────────────────────────────
   const initOtherGaugesToggle = () => {
     const checkbox = document.getElementById("other_gauges");
@@ -18781,11 +19126,12 @@ function ffdLegend() {
   const legend = document.getElementById('ffdLegend');
   const cbFFD = document.getElementById('ffd');
   const cbKP = document.getElementById('kp_flood_cell');
+  const cbGB = document.getElementById('gb_stations');
   const cbOther = document.getElementById('other_gauges');
   const historyPanel = document.getElementById('ffd-history-panel');
 
   const isHistoryOpen = historyPanel && historyPanel.classList.contains('open');
-  const isAnyChecked = (cbFFD && cbFFD.checked) || (cbKP && cbKP.checked) || (cbOther && cbOther.checked);
+  const isAnyChecked = (cbFFD && cbFFD.checked) || (cbKP && cbKP.checked) || (cbGB && cbGB.checked) || (cbOther && cbOther.checked);
 
   if (legend) {
     if (isAnyChecked && !isHistoryOpen) {
@@ -18840,6 +19186,7 @@ function getMap1VisibilityStates() {
     { checkboxId: 'kp_Rivers', layers: ['KP_RIVERS'] },
     { checkboxId: 'ffd_rivers', layers: ['ffd_rivers_layer', 'ffd_rivers_outline'] },
     { checkboxId: 'kp_flood_cell', layers: ['kp_flood_cell_layer', 'kp_flood_cell_point', 'kp_flood_cell_outline'] },
+    { checkboxId: 'gb_stations', layers: ['gb_stations_point', 'gb_stations_label'] },
     { checkboxId: 'other_gauges', layers: ['other_gauges_forecast_square', 'other_gauges_point', 'other_gauges_label'] },
     { checkboxId: 'Reservoirs', layers: ['Dams_Water_Bodies'] },
     { checkboxId: 'india', layers: ['indian', 'gis-existing-indian-label'] },

@@ -152,10 +152,16 @@ if errorlevel 1 (
   echo Warning: Failed to ingest KP Flood Report PDF into SQLite.
 )
 
+echo Ingesting GB SWHP Report PDF into SQLite and historical archive...
+"%VENV_PYTHON%" "%REPO_ROOT%res_gb\gb_stations_db.py"
+if errorlevel 1 (
+  echo Warning: Failed to ingest GB SWHP Report PDF into SQLite.
+)
+
 echo Fetching latest FFD Other Gauges data from ffd.pmd.gov.pk...
 "%VENV_PYTHON%" "%REPO_ROOT%FFD_other_gauge_fetch\fetch_other_gauges.py"
 if errorlevel 1 (
-  echo Warning: FFD Other Gauges fetch failed. Using cached latest_all_gauges.json if available.
+  echo Warning: Failed to ingest FFD Other Gauges.
 )
 
 if defined HAS_GIT (
@@ -164,7 +170,7 @@ if defined HAS_GIT (
   if errorlevel 1 (
     echo Warning: Could not enter repository root. Skipping Daily Water Situation commit.
   ) else (
-    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite" "FFD_other_gauge_fetch/latest_all_gauges.json" "data/other_gauges.sqlite" "historical_indian_cwc_data_fetch/historical_indian_weekly_bulletins"
+    git add "res_storages/Daily Water Situation.pdf" "res_storages/Historical Daily Storages" "data/daily_water_situation.sqlite" "script/ft_and_percentage.js" "res_kp/Flood Report.pdf" "res_kp/Historical KP Reports" "data/kp_stations_data.sqlite" "res_gb/SWHP Report.pdf" "res_gb/Historical GB Reports" "data/gb_stations.sqlite" "FFD_other_gauge_fetch/latest_all_gauges.json" "data/other_gauges.sqlite" "historical_indian_cwc_data_fetch/historical_indian_weekly_bulletins"
     if errorlevel 1 (
       echo Warning: Failed to stage Daily Water Situation updates. Continuing without commit.
     ) else (

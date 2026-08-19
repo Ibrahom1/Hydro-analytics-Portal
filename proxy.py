@@ -44,10 +44,10 @@ else:
 # Map of proxy prefixes to target local/network IP bases
 ROUTES = {
     '/proxy_main/': 'http://172.18.7.35:8080/',
-    '/proxy_ayman/': 'http://172.18.1.165:8080/',
+    '/proxy_ayman/': 'http://172.18.1.185:8080/',
     '/proxy_ibrahim/': 'http://172.18.1.115:8080/',
-    '/proxy_mustafa/': 'http://172.18.1.53:8080/',
-    '/proxy_ahad/': 'http://172.18.1.85:8080/',
+    '/proxy_mustafa/': 'http://172.18.1.45:8080/',
+    '/proxy_ahad/': 'http://172.18.1.87:8080/',
     '/proxy_1_4/': 'http://172.18.1.4:8080/',
     '/proxy_1_43/': 'http://172.18.1.43:8080/',
     '/proxy_1_56/': 'http://172.18.1.56:8080/',
@@ -321,6 +321,45 @@ def kp_stations_api():
         
         # Fetch all records for that date and time
         c.execute("SELECT * FROM kp_water_reports WHERE date=? AND time=?", (latest_date, latest_time))
+        rows = c.fetchall()
+        conn.close()
+        
+        result = [dict(row) for row in rows]
+        return {"status": "success", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+
+@app.route('/api/gb-stations', methods=['GET'])
+def gb_stations_api():
+    """Endpoint to fetch the latest GB stations data (SWHP report)"""
+    try:
+        repo_root = Path(__file__).resolve().parent
+        db_path = repo_root / "data" / "gb_stations.sqlite"
+        if not db_path.exists():
+            return {"status": "error", "message": "Database not found"}, 404
+            
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # Get most recent date + time
+        c.execute("""
+            SELECT recorded_date, time 
+            FROM gb_water_reports 
+            ORDER BY date_iso DESC, time DESC, id DESC
+            LIMIT 1
+        """)
+        latest = c.fetchone()
+        
+        if not latest:
+            conn.close()
+            return {"status": "success", "data": []}
+            
+        latest_date, latest_time = latest['recorded_date'], latest['time']
+        
+        # Fetch all records for that date and time
+        c.execute("SELECT * FROM gb_water_reports WHERE recorded_date=? AND time=?", 
+                  (latest_date, latest_time))
         rows = c.fetchall()
         conn.close()
         

@@ -21,6 +21,7 @@ services:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/res_storages:/app/res_storages
       - /opt/hydroanalytics/res_kp:/app/res_kp
+      - /opt/hydroanalytics/res_gb:/app/res_gb
       - /opt/hydroanalytics/app/script:/app/script
       - /opt/hydroanalytics/env:/app/env
       - /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json:/app/FFD_other_gauge_fetch/latest_all_gauges.json
@@ -69,7 +70,7 @@ services:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/gis_data:/app/gis_uploader_backend/data
     environment:
-      - GIS_GEOSERVER_URL=http://172.18.1.85:8080/geoserver
+      - GIS_GEOSERVER_URL=http://172.18.1.87:8080/geoserver
       - GIS_GEOSERVER_WORKSPACE=HydroAnalytics2026
       - GIS_GEOSERVER_USER=admin
       - GIS_GEOSERVER_PASSWORD=geoserver
@@ -117,6 +118,7 @@ services:
         cd /app && python res_storages/storages.py 2>&1 && echo "[STARTUP] Storages: OK" || echo "[STARTUP] Storages: FAILED"
         cd /app && python res_storages/daily_water_situation_db.py 2>&1 && echo "[STARTUP] Daily Water DB: OK" || echo "[STARTUP] Daily Water DB: FAILED"
         cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py 2>&1 && echo "[STARTUP] FFD Gauges: OK" || echo "[STARTUP] FFD Gauges: FAILED"
+        cd /app && python res_gb/gb_stations_db.py 2>&1 && echo "[STARTUP] GB Stations DB: OK" || echo "[STARTUP] GB Stations DB: FAILED"
         echo "[STARTUP] Initial fetch complete."
 
         # ── Background loop: Google Sheets every 5 minutes ──
@@ -147,6 +149,13 @@ services:
           cd /app && python res_storages/storages.py 2>&1 || echo "[ERROR] storages.py failed"
         done) &
 
+        # ── Background loop: GB Stations DB every 2 hours (+10 min offset) ──
+        (while true; do
+          sleep 7800
+          echo "[$(date '+%H:%M:%S')] Running: gb_stations_db.py"
+          cd /app && python res_gb/gb_stations_db.py 2>&1 || echo "[ERROR] gb_stations_db.py failed"
+        done) &
+
         echo "[SCHEDULER] All background loops started. Waiting forever..."
         # Keep container alive
         wait
@@ -154,6 +163,7 @@ services:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/res_storages:/app/res_storages
       - /opt/hydroanalytics/res_kp:/app/res_kp
+      - /opt/hydroanalytics/res_gb:/app/res_gb
       - /opt/hydroanalytics/script:/app/script
       - /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json:/app/FFD_other_gauge_fetch/latest_all_gauges.json
       - /opt/hydroanalytics/env:/app/env

@@ -24,7 +24,7 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 REGISTRY_PATH = DATA_DIR / "layers.json"
 EXISTING_STYLES_PATH = DATA_DIR / "existing_styles.json"
 
-GEOSERVER_URL = os.getenv("GIS_GEOSERVER_URL", "http://172.18.1.85:8080/geoserver").rstrip("/")
+GEOSERVER_URL = os.getenv("GIS_GEOSERVER_URL", "http://172.18.1.87:8080/geoserver").rstrip("/")
 GEOSERVER_WORKSPACE = os.getenv("GIS_GEOSERVER_WORKSPACE", "HydroAnalytics2026")
 GEOSERVER_USER = os.getenv("GIS_GEOSERVER_USER", "admin")
 GEOSERVER_PASSWORD = os.getenv("GIS_GEOSERVER_PASSWORD", "geoserver")
