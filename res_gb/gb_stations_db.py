@@ -191,7 +191,7 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
     if records:
         c = conn.cursor()
         c.executemany('''
-            INSERT OR IGNORE INTO gb_water_reports 
+            INSERT OR REPLACE INTO gb_water_reports 
             (recorded_date, time, date_iso, river, station_name, discharge_in_cusecs, source_sha256)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', records)
