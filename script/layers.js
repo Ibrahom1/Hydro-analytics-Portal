@@ -9,7 +9,7 @@ const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.179:8
 const mamHimael = "http://172.18.1.147:8080"; // Not proxied per request
 const ibrahim  = isProxied ? `${proxyBase}/proxy_ibrahim` : "http://172.18.1.115:8080";
 const mustafa = isProxied ? `${proxyBase}/proxy_mustafa` : "http://172.18.1.39:8080"; 
-const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.92:8080";
+const ahad = isProxied ? `${proxyBase}/proxy_ahad` : "http://172.18.1.85:8080";
 
 const geo_1_4 = isProxied ? `${proxyBase}/proxy_1_4` : 'http://172.18.1.4:8080';
 const geo_1_43 = isProxied ? `${proxyBase}/proxy_1_43` : 'http://172.18.1.43:8080';
