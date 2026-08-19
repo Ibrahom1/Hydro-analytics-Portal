@@ -5,7 +5,7 @@ const isProxied = (!isLocalNetwork && window.location.protocol !== 'file:') || w
 const proxyBase = window.location.origin;
 
 const geoserverUrl = isProxied ? `${proxyBase}/proxy_main` : 'http://172.18.7.35:8080';
-const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.179:8080"; 
+const mamAyman = isProxied ? `${proxyBase}/proxy_ayman` : "http://172.18.1.165:8080"; 
 const mamHimael = "http://172.18.1.147:8080"; // Not proxied per request
 const ibrahim  = isProxied ? `${proxyBase}/proxy_ibrahim` : "http://172.18.1.115:8080";
 const mustafa = isProxied ? `${proxyBase}/proxy_mustafa` : "http://172.18.1.39:8080"; 
