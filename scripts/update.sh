@@ -25,13 +25,20 @@ if [ -f "$DEPLOY_DIR/scripts/find_free_ports.sh" ]; then
     bash "$DEPLOY_DIR/scripts/find_free_ports.sh"
 fi
 
-# 3. Rebuild images
+# 3. Rebuild images (optional)
 echo ""
-echo "[3/4] Rebuilding container images..."
+echo "[3/4] Checking container images..."
 cd "$DEPLOY_DIR/app"
-sudo podman build -f docker/Dockerfile.python -t hydro-python:latest .
-sudo podman build -f docker/Dockerfile.whatsapp -t hydro-whatsapp:latest .
-sudo podman build -f docker/Dockerfile.frontend -t hydro-frontend:latest .
+
+if [ "${1:-}" = "--build" ]; then
+    echo "  --build flag detected. Rebuilding container images..."
+    sudo podman build -f docker/Dockerfile.python -t localhost/hydro-python:latest .
+    sudo podman build -f docker/Dockerfile.whatsapp -t localhost/hydro-whatsapp:latest .
+    sudo podman build -f docker/Dockerfile.frontend -t localhost/hydro-frontend:latest .
+else
+    echo "  Live code is mounted directly from disk. Skipping image rebuild."
+    echo "  (To force a full image rebuild, run: bash scripts/update.sh --build)"
+fi
 
 # 4. Restart pod
 echo ""

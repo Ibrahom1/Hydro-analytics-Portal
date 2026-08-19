@@ -1,12 +1,25 @@
 FROM docker.io/library/python:3.11-slim-bookworm
 
-# System dependencies for pdfplumber, playwright, sqlite3, git, cron
+# System dependencies for pdfplumber, playwright/chromium, sqlite3, git, cron
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     cron \
     sqlite3 \
     libmagic1 \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -17,13 +30,8 @@ COPY gis_uploader_backend/requirements.txt /tmp/gis-requirements.txt
 RUN pip install --no-cache-dir \
     -r /tmp/backend-requirements.txt \
     -r /tmp/gis-requirements.txt \
-    pandas pdfplumber cloudscraper uvicorn[standard]
-
-# Install Playwright + Chromium for FFD gauge scraper
-RUN pip install --no-cache-dir playwright && \
-    apt-get update && \
-    playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/*
+    pandas pdfplumber cloudscraper uvicorn[standard] playwright && \
+    playwright install chromium
 
 # Copy application code
 COPY . /app/
