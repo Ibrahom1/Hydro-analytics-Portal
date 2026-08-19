@@ -8,6 +8,8 @@
 CONTAINER_NAME="hydro-whatsapp-run-$(date +%Y%m%d-%H%M)"
 LOG_DIR="/opt/hydroanalytics/logs/whatsapp"
 mkdir -p "$LOG_DIR"
+mkdir -p "/opt/hydroanalytics/res_gb/Historical GB Reports"
+mkdir -p "/opt/hydroanalytics/data"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting WhatsApp bot: $CONTAINER_NAME" \
     >> "$LOG_DIR/cron.log"
