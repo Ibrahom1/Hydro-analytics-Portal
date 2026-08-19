@@ -55,38 +55,6 @@ def clean_value(val):
         return 'N.R'
     return val.replace(',', '').strip()
 
-def reorder_database_by_date(conn):
-    c = conn.cursor()
-    c.execute("BEGIN TRANSACTION;")
-    c.execute("CREATE TABLE gb_water_reports_new AS SELECT * FROM gb_water_reports ORDER BY date_iso DESC, time DESC, station_name ASC;")
-    c.execute("DROP TABLE gb_water_reports;")
-    
-    c.execute('''
-        CREATE TABLE gb_water_reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            recorded_date TEXT,
-            time TEXT,
-            date_iso TEXT,
-            river TEXT,
-            station_name TEXT,
-            discharge_in_cusecs TEXT,
-            source_sha256 TEXT,
-            UNIQUE(recorded_date, time, station_name)
-        )
-    ''')
-    c.execute('''
-        INSERT INTO gb_water_reports (recorded_date, time, date_iso, river, station_name, discharge_in_cusecs, source_sha256)
-        SELECT recorded_date, time, date_iso, river, station_name, discharge_in_cusecs, source_sha256
-        FROM gb_water_reports_new
-    ''')
-    c.execute("DROP TABLE gb_water_reports_new;")
-    c.execute('''
-        CREATE VIEW IF NOT EXISTS v_gb_water_reports AS
-        SELECT * FROM gb_water_reports
-        ORDER BY date_iso DESC, time DESC, station_name ASC
-    ''')
-    c.execute("COMMIT;")
-
 STATION_FALLBACK_RIVERS = {
     'indus at kharmong': 'Indus River',
     'shyoke river at chowar': 'Shyoke River',
@@ -198,7 +166,6 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
         conn.commit()
         
         c.execute("PRAGMA wal_checkpoint(TRUNCATE);")
-        reorder_database_by_date(conn)
         
         os.makedirs(archive_dir, exist_ok=True)
         archive_name = f"{date_iso if date_iso else 'unknown'}.pdf"
