@@ -10442,6 +10442,87 @@ function addHydrometLayersToMap(map) {
       
       if (isVisible && !map1.getSource('gb_stations')) {
         try {
+          // Canonical definitions for all 10 GB stations matching the SWHP PDF
+          const GB_STATION_DEFS = [
+            {
+              id: 'kharmang',
+              pattern: /kharmang|kharmong/i,
+              pdfName: 'Indus at Kharmong',
+              river: 'Indus River'
+            },
+            {
+              id: 'chowar',
+              pattern: /chowar/i,
+              pdfName: 'Shyoke River at Chowar',
+              river: 'Indus River'
+            },
+            {
+              id: 'yogu',
+              pattern: /yogu/i,
+              pdfName: 'Shyoke River at Yogu',
+              river: 'Indus River'
+            },
+            {
+              id: 'danyor',
+              pattern: /danyor|hunza/i,
+              pdfName: 'Hunza River at Danyor',
+              river: 'Indus River'
+            },
+            {
+              id: 'alam_bridge',
+              pattern: /alam\s*bridge/i,
+              pdfName: 'Gilgit River at Alam Bridge',
+              river: 'Indus River'
+            },
+            {
+              id: 'doian',
+              pattern: /doian|doiyan|astore/i,
+              pdfName: 'Astore River at Doiyan',
+              river: 'Indus River'
+            },
+            {
+              id: 'gilgit_at_gilgit',
+              pattern: /gilgit/i,
+              pdfName: 'Gilgit River at Gilgit',
+              river: 'Indus River'
+            },
+            {
+              id: 'chitral',
+              pattern: /chitral/i,
+              pdfName: 'Chitral River at Chitral',
+              river: 'Chitral River'
+            },
+            {
+              id: 'neelum',
+              pattern: /neelum|karimabad/i,
+              pdfName: 'Neelum River at Karimabad',
+              river: 'Neelum River'
+            },
+            {
+              id: 'jhelum',
+              pattern: /jhelum|chakothi/i,
+              pdfName: 'Jhelum River at Chakothi',
+              river: 'Jhelum River'
+            }
+          ];
+
+          const resolveCanonicalStation = (rawName) => {
+            const name = String(rawName || '').trim();
+            if (/alam\s*bridge/i.test(name)) {
+              return GB_STATION_DEFS.find(d => d.id === 'alam_bridge');
+            }
+            for (const def of GB_STATION_DEFS) {
+              if (def.id !== 'alam_bridge' && def.pattern.test(name)) {
+                return def;
+              }
+            }
+            return {
+              id: 'unknown',
+              pdfName: name,
+              river: 'Indus River'
+            };
+          };
+
           // Fetch dynamic data from SQLite via proxy API
           let gbDataMap = {};
           let gbRecordDate = '';
@@ -10454,11 +10535,14 @@ function addHydrometLayersToMap(map) {
                 gbRecordDate = resJson.data[0].recorded_date || '';
                 gbRecordTime = resJson.data[0].time || '';
                 resJson.data.forEach(row => {
-                  // Normalize station name for matching
-                  let normName = (row.station_name || '').toLowerCase()
-                    .replace(/\bat\b/g, '').replace(/\bnear\b/g, '').replace(/\briver\b/g, '')
-                    .replace(/[^a-z0-9]/g, '');
-                  gbDataMap[normName] = row;
+                  const canon = resolveCanonicalStation(row.station_name);
+                  if (canon && canon.id) {
+                    gbDataMap[canon.id] = row;
+                  }
+                  const normName = (row.station_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  if (normName) {
+                    gbDataMap[normName] = row;
+                  }
                 });
               }
             }
@@ -10472,68 +10556,23 @@ function addHydrometLayersToMap(map) {
           const geoRes = await fetch(geoUrl);
           const geoJson = await geoRes.json();
 
-          // Helper: edit distance for fuzzy matching
-          const getEditDistance = (a, b) => {
-            if (a.length === 0) return b.length;
-            if (b.length === 0) return a.length;
-            const matrix = [];
-            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-            for (let i = 1; i <= b.length; i++) {
-              for (let j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) == a.charAt(j - 1)) {
-                  matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                  matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
-                }
-              }
-            }
-            return matrix[b.length][a.length];
-          };
-
-          // Find best matching API row for a GeoServer feature
-          const findBestGbMatch = (featureName) => {
-            if (!featureName || !window.gbDataMap) return null;
-            let normFeat = featureName.toLowerCase()
-              .replace(/\bat\b/g, '').replace(/\bnear\b/g, '').replace(/\briver\b/g, '')
-              .replace(/[^a-z0-9]/g, '');
-            
-            // Exact normalized match
-            if (window.gbDataMap[normFeat]) return window.gbDataMap[normFeat];
-            
-            // Edit distance match
-            let bestKey = null;
-            let bestDist = Infinity;
-            for (let key in window.gbDataMap) {
-              let dist = getEditDistance(normFeat, key);
-              if (dist < bestDist) {
-                bestDist = dist;
-                bestKey = key;
-              }
-            }
-            if (bestDist <= 5) return window.gbDataMap[bestKey];
-            
-            // Substring containment
-            for (let key in window.gbDataMap) {
-              if (normFeat.includes(key) || key.includes(normFeat)) return window.gbDataMap[key];
-            }
-            return null;
-          };
-          window.findBestGbMatch = findBestGbMatch;
-
           // Merge dynamic data into GeoJSON properties
           if (geoJson.features) {
             geoJson.features.forEach(f => {
-              const name = f.properties.Name || f.properties.name || '';
-              let matchedRow = findBestGbMatch(name);
+              const rawName = f.properties.Name || f.properties.name || '';
+              const canon = resolveCanonicalStation(rawName);
+
+              f.properties.station_name_display = canon.pdfName;
+              f.properties.river = canon.river;
+
+              const matchedRow = gbDataMap[canon.id] || gbDataMap[(canon.pdfName || '').toLowerCase().replace(/[^a-z0-9]/g, '')];
               if (matchedRow) {
-                f.properties.discharge_in_cusecs = matchedRow.discharge_in_cusecs;
-                f.properties.station_name_pdf = matchedRow.station_name;
+                f.properties.discharge_in_cusecs = matchedRow.discharge_in_cusecs || 'N/A';
+                if (matchedRow.river) f.properties.river = matchedRow.river;
                 f.properties.recorded_date = matchedRow.recorded_date || gbRecordDate;
                 f.properties.record_time = matchedRow.time || gbRecordTime;
               } else {
                 f.properties.discharge_in_cusecs = 'N/A';
-                f.properties.station_name_pdf = name;
                 f.properties.recorded_date = gbRecordDate;
                 f.properties.record_time = gbRecordTime;
               }
@@ -10545,7 +10584,7 @@ function addHydrometLayersToMap(map) {
             data: geoJson
           });
 
-          // Circle layer — all NORMAL green (no flood status coloring)
+          // Circle layer — all NORMAL green
           map1.addLayer({
             id: 'gb_stations_point',
             type: 'circle',
@@ -10559,14 +10598,14 @@ function addHydrometLayersToMap(map) {
             }
           });
 
-          // Label layer
+          // Label layer — displays PDF Station Name and Discharge
           map1.addLayer({
             id: 'gb_stations_label',
             type: 'symbol',
             source: 'gb_stations',
             layout: {
               'visibility': 'visible',
-              'text-field': ['concat', ['coalesce', ['get', 'Name'], ['get', 'name']], '\n', ['to-string', ['coalesce', ['get', 'discharge_in_cusecs'], 'N/A']]],
+              'text-field': ['concat', ['coalesce', ['get', 'station_name_display'], ['get', 'Name'], ['get', 'name']], '\n', ['to-string', ['coalesce', ['get', 'discharge_in_cusecs'], 'N/A']]],
               'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
               'text-size': 12,
               'text-offset': [0, 1.5],
@@ -10582,43 +10621,30 @@ function addHydrometLayersToMap(map) {
           // Click event for popups — styled 1:1 with KP/FFD
           map1.on('click', 'gb_stations_point', (e) => {
             const feature = e.features[0];
-            const stationName = feature.properties.Name || feature.properties.name || '';
-            const pdfStationName = feature.properties.station_name_pdf || stationName;
+            const stationName = feature.properties.station_name_display || feature.properties.Name || feature.properties.name || '';
+            const riverName = feature.properties.river || 'Indus River';
             const discharge = feature.properties.discharge_in_cusecs || 'N/A';
-            const recordDate = feature.properties.recorded_date || '';
-            const recordTime = feature.properties.record_time || '';
-
-            // Extract river name from station name (e.g., "Indus at Kharmong" → look for river in name)
-            const riverPatterns = [
-              { pattern: /indus/i, river: 'Indus River' },
-              { pattern: /shyoke/i, river: 'Shyoke River' },
-              { pattern: /hunza/i, river: 'Hunza River' },
-              { pattern: /gilgit/i, river: 'Gilgit River' },
-              { pattern: /astore/i, river: 'Astore River' },
-              { pattern: /chitral/i, river: 'Chitral River' },
-              { pattern: /neelum/i, river: 'Neelum River' },
-              { pattern: /jhelum/i, river: 'Jhelum River' }
-            ];
-            let riverName = 'Unknown';
-            const combinedName = stationName + ' ' + pdfStationName;
-            for (const rp of riverPatterns) {
-              if (rp.pattern.test(combinedName)) {
-                riverName = rp.river;
-                break;
-              }
-            }
+            const recordDate = feature.properties.recorded_date || gbRecordDate || '';
+            const recordTime = feature.properties.record_time || gbRecordTime || '';
 
             const formatDischarge = (value) => {
-              if (!value || value === 'N/A' || String(value).toUpperCase() === 'N.R' || String(value).trim() === '') {
-                const displayVal = (String(value).toUpperCase() === 'N.R') ? 'N.R (Not Received)' : 'N/A';
+              const strVal = String(value || '').trim();
+              if (!strVal || strVal === 'N/A' || strVal.toLowerCase() === 'n/a') {
                 return `
                   <div class="discharge-item">
                     <span class="discharge-label">Discharge:</span>
-                    <span class="discharge-value no-data">${displayVal}</span>
+                    <span class="discharge-value no-data">N/A</span>
                   </div>`;
               }
-              const numericValue = parseFloat(String(value).replace(/,/g, ''));
-              const formattedValue = !isNaN(numericValue) ? numericValue.toLocaleString() : value;
+              if (strVal.toUpperCase() === 'N.R' || strVal.toUpperCase() === 'NR') {
+                return `
+                  <div class="discharge-item">
+                    <span class="discharge-label">Discharge:</span>
+                    <span class="discharge-value no-data">N.R (Not Received)</span>
+                  </div>`;
+              }
+              const numericValue = parseFloat(strVal.replace(/,/g, ''));
+              const formattedValue = !isNaN(numericValue) ? numericValue.toLocaleString() : strVal;
               return `
                 <div class="discharge-item">
                   <span class="discharge-label">Discharge:</span>
@@ -10633,7 +10659,7 @@ function addHydrometLayersToMap(map) {
                     <h3 class="station-name">${stationName}</h3>
                     <div class="status-badge" style="background-color: #288846;">
                       <i class="fas fa-water"></i>
-                      Normal
+                      NORMAL
                     </div>
                   </div>
                 </div>

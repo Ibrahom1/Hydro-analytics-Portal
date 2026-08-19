@@ -18,6 +18,7 @@ def setup_db(db_path):
             recorded_date TEXT,
             time TEXT,
             date_iso TEXT,
+            river TEXT,
             station_name TEXT,
             discharge_in_cusecs TEXT,
             source_sha256 TEXT,
@@ -66,6 +67,7 @@ def reorder_database_by_date(conn):
             recorded_date TEXT,
             time TEXT,
             date_iso TEXT,
+            river TEXT,
             station_name TEXT,
             discharge_in_cusecs TEXT,
             source_sha256 TEXT,
@@ -73,12 +75,30 @@ def reorder_database_by_date(conn):
         )
     ''')
     c.execute('''
-        INSERT INTO gb_water_reports (recorded_date, time, date_iso, station_name, discharge_in_cusecs, source_sha256)
-        SELECT recorded_date, time, date_iso, station_name, discharge_in_cusecs, source_sha256
+        INSERT INTO gb_water_reports (recorded_date, time, date_iso, river, station_name, discharge_in_cusecs, source_sha256)
+        SELECT recorded_date, time, date_iso, river, station_name, discharge_in_cusecs, source_sha256
         FROM gb_water_reports_new
     ''')
     c.execute("DROP TABLE gb_water_reports_new;")
+    c.execute('''
+        CREATE VIEW IF NOT EXISTS v_gb_water_reports AS
+        SELECT * FROM gb_water_reports
+        ORDER BY date_iso DESC, time DESC, station_name ASC
+    ''')
     c.execute("COMMIT;")
+
+STATION_FALLBACK_RIVERS = {
+    'indus at kharmong': 'Indus River',
+    'shyoke river at chowar': 'Indus River',
+    'shyoke river at yogu': 'Indus River',
+    'hunza river at danyor': 'Indus River',
+    'gilgit river at gilgit': 'Indus River',
+    'gilgit river at alam bridge': 'Indus River',
+    'astore river at doiyan': 'Indus River',
+    'chitral river at chitral': 'Chitral River',
+    'neelum river at karimabad': 'Neelum River',
+    'jhelum river at chakothi': 'Jhelum River',
+}
 
 def ingest_pdf(pdf_path, db_path, archive_dir):
     if not os.path.exists(pdf_path):
@@ -100,6 +120,7 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
     
     print(f"Parsing {pdf_path}...")
     records = []
+    current_river = "Indus River"
     
     with pdfplumber.open(pdf_path) as pdf:
         first_page = pdf.pages[0]
@@ -125,14 +146,29 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
                 for row in table:
                     if not row or len(row) < 3:
                         continue
-                        
-                    sr_no = str(row[0]).strip().replace('\n', ' ') if row[0] is not None else ""
-                    station_name = str(row[1]).strip().replace('\n', ' ') if row[1] is not None else ""
-                    discharge_cusecs = str(row[2]).strip().replace('\n', ' ') if row[2] is not None else ""
                     
-                    if not sr_no.isdigit():
+                    cell0 = str(row[0]).strip().replace('\n', ' ') if row[0] is not None else ""
+                    cell1 = str(row[1]).strip().replace('\n', ' ') if row[1] is not None else ""
+                    
+                    # Detect River Header Rows (e.g. 'Indus River', 'Swat River', 'Chitral River', 'Neelum River', 'Jhelum River')
+                    if not cell0.isdigit():
+                        combined = (cell0 + " " + cell1).lower()
+                        if 'indus' in combined:
+                            current_river = 'Indus River'
+                        elif 'swat' in combined:
+                            current_river = 'Swat River'
+                        elif 'chitral' in combined:
+                            current_river = 'Chitral River'
+                        elif 'neelum' in combined:
+                            current_river = 'Neelum River'
+                        elif 'jhelum' in combined:
+                            current_river = 'Jhelum River'
                         continue
                         
+                    sr_no = cell0
+                    station_name = cell1
+                    discharge_cusecs = str(row[2]).strip().replace('\n', ' ') if row[2] is not None else ""
+                    
                     if not station_name:
                         continue
                         
@@ -140,11 +176,13 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
                         continue
                         
                     discharge_cleaned = clean_value(discharge_cusecs)
+                    assigned_river = current_river or STATION_FALLBACK_RIVERS.get(station_name.lower(), 'Indus River')
                     
                     records.append((
                         date_val,
                         time_val,
                         date_iso,
+                        assigned_river,
                         station_name,
                         discharge_cleaned,
                         file_hash
@@ -154,8 +192,8 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
         c = conn.cursor()
         c.executemany('''
             INSERT OR IGNORE INTO gb_water_reports 
-            (recorded_date, time, date_iso, station_name, discharge_in_cusecs, source_sha256)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (recorded_date, time, date_iso, river, station_name, discharge_in_cusecs, source_sha256)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', records)
         conn.commit()
         
