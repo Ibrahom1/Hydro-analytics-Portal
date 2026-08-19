@@ -328,6 +328,46 @@ function restoreNewestPdf() {
   }
 }
 
+function restoreNewestGbPdf() {
+  const archiveDir = path.join(config.projectRoot, 'res_gb', 'Historical GB Reports');
+  if (!fs.existsSync(archiveDir)) return false;
+  try {
+    const files = fs.readdirSync(archiveDir)
+      .filter(f => f.endsWith('.pdf'))
+      .sort();
+    if (files.length === 0) return false;
+    const newestFile = files[files.length - 1];
+    const srcPath = path.join(archiveDir, newestFile);
+    const dstPath = path.join(config.projectRoot, 'res_gb', config.gbPdfSaveName);
+    fs.copyFileSync(srcPath, dstPath);
+    log(`  Restored newest archived PDF "${newestFile}" → SWHP Report.pdf`);
+    return true;
+  } catch (err) {
+    console.error(`  Failed to restore newest GB PDF: ${err.message}`);
+    return false;
+  }
+}
+
+function restoreNewestKpPdf() {
+  const archiveDir = path.join(config.projectRoot, 'res_kp', 'Historical KP Reports');
+  if (!fs.existsSync(archiveDir)) return false;
+  try {
+    const files = fs.readdirSync(archiveDir)
+      .filter(f => f.endsWith('.pdf'))
+      .sort();
+    if (files.length === 0) return false;
+    const newestFile = files[files.length - 1];
+    const srcPath = path.join(archiveDir, newestFile);
+    const dstPath = path.join(config.projectRoot, 'res_kp', config.kpPdfSaveName);
+    fs.copyFileSync(srcPath, dstPath);
+    log(`  Restored newest archived PDF "${newestFile}" → Flood Report.pdf`);
+    return true;
+  } catch (err) {
+    console.error(`  Failed to restore newest KP PDF: ${err.message}`);
+    return false;
+  }
+}
+
 function pushChanges() {
   const cwd = config.projectRoot;
   try {
@@ -559,8 +599,10 @@ async function main() {
     log('════════════════════════════════════════════');
     log(`FINALIZE: ${count} new PDF(s) ingested. Running final steps...`);
 
-    // Restore newest PDF so storages.py generates correct values
+    // Restore newest PDFs to their respective root res folders
     restoreNewestPdf();
+    restoreNewestKpPdf();
+    restoreNewestGbPdf();
 
     // Phase 2: run storages.py once with the newest PDF
     runStoragesUpdate();
