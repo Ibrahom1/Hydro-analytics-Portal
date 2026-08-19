@@ -20,12 +20,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           python -m pip install cloudscraper requests playwright
-          python -m playwright install chromium --with-deps
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            python -m playwright install chromium --with-deps
+          else
+            python -m playwright install-deps chromium
+          fi
 
       - name: Fetch FFD Other Gauges
         run: python FFD_other_gauge_fetch/fetch_other_gauges.py
