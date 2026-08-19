@@ -89,12 +89,12 @@ def reorder_database_by_date(conn):
 
 STATION_FALLBACK_RIVERS = {
     'indus at kharmong': 'Indus River',
-    'shyoke river at chowar': 'Indus River',
-    'shyoke river at yogu': 'Indus River',
-    'hunza river at danyor': 'Indus River',
-    'gilgit river at gilgit': 'Indus River',
-    'gilgit river at alam bridge': 'Indus River',
-    'astore river at doiyan': 'Indus River',
+    'shyoke river at chowar': 'Shyoke River',
+    'shyoke river at yogu': 'Shyoke River',
+    'hunza river at danyor': 'Hunza River',
+    'gilgit river at gilgit': 'Gilgit River',
+    'gilgit river at alam bridge': 'Gilgit River',
+    'astore river at doiyan': 'Astore River',
     'chitral river at chitral': 'Chitral River',
     'neelum river at karimabad': 'Neelum River',
     'jhelum river at chakothi': 'Jhelum River',

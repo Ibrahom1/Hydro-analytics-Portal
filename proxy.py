@@ -334,9 +334,21 @@ def gb_stations_api():
     """Endpoint to fetch the latest GB stations data (SWHP report)"""
     try:
         repo_root = Path(__file__).resolve().parent
-        db_path = repo_root / "data" / "gb_stations.sqlite"
-        if not db_path.exists():
-            return {"status": "error", "message": "Database not found"}, 404
+        candidate_paths = [
+            repo_root / "data" / "gb_stations.sqlite",
+            Path("/opt/hydroanalytics/data/gb_stations.sqlite"),
+            Path("/opt/hydroanalytics/app/data/gb_stations.sqlite"),
+            Path("/app/data/gb_stations.sqlite")
+        ]
+        db_path = None
+        for cp in candidate_paths:
+            if cp.exists() and cp.stat().st_size > 0:
+                db_path = cp
+                break
+        if not db_path:
+            db_path = candidate_paths[0]
+            if not db_path.exists():
+                return {"status": "error", "message": "Database not found"}, 404
             
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row

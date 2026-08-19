@@ -10442,67 +10442,77 @@ function addHydrometLayersToMap(map) {
       
       if (isVisible && !map1.getSource('gb_stations')) {
         try {
-          // Canonical definitions for all 10 GB stations matching the SWHP PDF
+          // Canonical definitions for all 10 GB stations matching the SWHP PDF exactly
           const GB_STATION_DEFS = [
             {
               id: 'kharmang',
               pattern: /kharmang|kharmong/i,
-              pdfName: 'Indus at Kharmong',
-              river: 'Indus River'
+              displayName: 'Kharmong',
+              river: 'Indus River',
+              pdfName: 'Indus at Kharmong'
             },
             {
               id: 'chowar',
               pattern: /chowar/i,
-              pdfName: 'Shyoke River at Chowar',
-              river: 'Indus River'
+              displayName: 'Chowar',
+              river: 'Shyoke River',
+              pdfName: 'Shyoke River at Chowar'
             },
             {
               id: 'yogu',
               pattern: /yogu/i,
-              pdfName: 'Shyoke River at Yogu',
-              river: 'Indus River'
+              displayName: 'Yogu',
+              river: 'Shyoke River',
+              pdfName: 'Shyoke River at Yogu'
             },
             {
               id: 'danyor',
               pattern: /danyor|hunza/i,
-              pdfName: 'Hunza River at Danyor',
-              river: 'Indus River'
+              displayName: 'Danyor',
+              river: 'Hunza River',
+              pdfName: 'Hunza River at Danyor'
             },
             {
               id: 'alam_bridge',
               pattern: /alam\s*bridge/i,
-              pdfName: 'Gilgit River at Alam Bridge',
-              river: 'Indus River'
+              displayName: 'Alam Bridge',
+              river: 'Gilgit River',
+              pdfName: 'Gilgit River at Alam Bridge'
             },
             {
               id: 'doian',
               pattern: /doian|doiyan|astore/i,
-              pdfName: 'Astore River at Doiyan',
-              river: 'Indus River'
+              displayName: 'Doiyan',
+              river: 'Astore River',
+              pdfName: 'Astore River at Doiyan'
             },
             {
               id: 'gilgit_at_gilgit',
               pattern: /gilgit/i,
-              pdfName: 'Gilgit River at Gilgit',
-              river: 'Indus River'
+              displayName: 'Gilgit',
+              river: 'Gilgit River',
+              pdfName: 'Gilgit River at Gilgit'
             },
             {
               id: 'chitral',
               pattern: /chitral/i,
-              pdfName: 'Chitral River at Chitral',
-              river: 'Chitral River'
+              displayName: 'Chitral',
+              river: 'Chitral River',
+              pdfName: 'Chitral River at Chitral'
             },
             {
               id: 'neelum',
               pattern: /neelum|karimabad/i,
-              pdfName: 'Neelum River at Karimabad',
-              river: 'Neelum River'
+              displayName: 'Karimabad',
+              river: 'Neelum River',
+              pdfName: 'Neelum River at Karimabad'
             },
             {
               id: 'jhelum',
               pattern: /jhelum|chakothi/i,
-              pdfName: 'Jhelum River at Chakothi',
-              river: 'Jhelum River'
+              displayName: 'Chakothi',
+              river: 'Jhelum River',
+              pdfName: 'Jhelum River at Chakothi'
             }
           ];
 
@@ -10518,8 +10528,9 @@ function addHydrometLayersToMap(map) {
             }
             return {
               id: 'unknown',
-              pdfName: name,
-              river: 'Indus River'
+              displayName: name,
+              river: 'Indus River',
+              pdfName: name
             };
           };
 
@@ -10538,6 +10549,9 @@ function addHydrometLayersToMap(map) {
                   const canon = resolveCanonicalStation(row.station_name);
                   if (canon && canon.id) {
                     gbDataMap[canon.id] = row;
+                  }
+                  if (canon && canon.displayName) {
+                    gbDataMap[canon.displayName.toLowerCase()] = row;
                   }
                   const normName = (row.station_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                   if (normName) {
@@ -10562,10 +10576,13 @@ function addHydrometLayersToMap(map) {
               const rawName = f.properties.Name || f.properties.name || '';
               const canon = resolveCanonicalStation(rawName);
 
-              f.properties.station_name_display = canon.pdfName;
+              f.properties.station_name_display = canon.displayName;
               f.properties.river = canon.river;
 
-              const matchedRow = gbDataMap[canon.id] || gbDataMap[(canon.pdfName || '').toLowerCase().replace(/[^a-z0-9]/g, '')];
+              const matchedRow = gbDataMap[canon.id] || 
+                                 gbDataMap[canon.displayName.toLowerCase()] || 
+                                 gbDataMap[(canon.pdfName || '').toLowerCase().replace(/[^a-z0-9]/g, '')];
+
               if (matchedRow) {
                 f.properties.discharge_in_cusecs = matchedRow.discharge_in_cusecs || 'N/A';
                 if (matchedRow.river) f.properties.river = matchedRow.river;
@@ -10598,7 +10615,7 @@ function addHydrometLayersToMap(map) {
             }
           });
 
-          // Label layer — displays PDF Station Name and Discharge
+          // Label layer — displays Short Station Name on Line 1, Discharge on Line 2
           map1.addLayer({
             id: 'gb_stations_label',
             type: 'symbol',
