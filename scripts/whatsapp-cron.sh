@@ -19,12 +19,15 @@ GIT_SSH="ssh -i /opt/hydroanalytics/git_config/.ssh/id_rsa -o StrictHostKeyCheck
 # 1. Remove LFS hooks that block container push (they get recreated by git pull)
 rm -f "$APP_DIR/.git/hooks/pre-push" "$APP_DIR/.git/hooks/post-commit"
 
-# 2. Abort any stuck rebase/merge state from previous failed runs
+# 2. Abort any stuck rebase/merge state from previous failed runs and clean stale locks
+rm -f "$APP_DIR/.git/AUTO_MERGE" "$APP_DIR/.git/MERGE_HEAD" "$APP_DIR/.git/REBASE_HEAD" 2>/dev/null || true
 cd "$APP_DIR"
 git rebase --abort 2>/dev/null || true
 git merge --abort 2>/dev/null || true
+git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null || true
 
-# 3. Push any unpushed commits from previous failed runs
+# 3. Pull latest upstream commits and push any unpushed local commits
+GIT_SSH_COMMAND="$GIT_SSH" git pull --no-rebase 2>/dev/null || true
 GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || true
 
 # 4. Sync runtime databases, PDFs, and historical archives into git working tree

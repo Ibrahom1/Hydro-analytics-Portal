@@ -300,7 +300,11 @@ function pushChanges() {
       log('  GIT: No changes to commit.');
     } catch (_) {
       const today = new Date().toISOString().split('T')[0];
-      execSync(`git commit -m "Auto-ingest Daily Water Situation updates ${today}"`, { cwd, stdio: 'inherit' });
+      // Discard any unstaged gauge scraper modifications that could conflict with GitHub Actions commits
+      try {
+        execSync('git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite', { cwd, stdio: 'ignore' });
+      } catch (_) {}
+
       // Pull any upstream commits before pushing (avoids binary SQLite rebase locks)
       try {
         execSync('git pull --no-rebase', { cwd, stdio: 'inherit' });
