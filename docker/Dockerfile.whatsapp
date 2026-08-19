@@ -1,11 +1,14 @@
 FROM docker.io/library/node:20-slim
 
-# Switch Debian mirror to HTTPS to prevent HTTP 403 Forbidden from CDN
-RUN (sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true) && \
+# Fix SSL verification during bootstrap in minimal slim image and use HTTPS mirrors
+RUN echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99insecure-https.conf && \
+    echo 'Acquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99insecure-https.conf && \
+    (sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true) && \
     (sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list 2>/dev/null || true)
 
 # Install Chromium + Python (bot.js calls Python scripts via execSync)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     chromium \
     fonts-liberation \
     libasound2 \
@@ -28,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-venv \
     sqlite3 \
+    && rm -f /etc/apt/apt.conf.d/99insecure-https.conf \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages that bot.js invokes via execSync
