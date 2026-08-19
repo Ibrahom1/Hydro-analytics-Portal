@@ -46,7 +46,7 @@ ROUTES = {
     '/proxy_main/': 'http://172.18.7.35:8080/',
     '/proxy_ayman/': 'http://172.18.1.165:8080/',
     '/proxy_ibrahim/': 'http://172.18.1.115:8080/',
-    '/proxy_mustafa/': 'http://172.18.1.39:8080/',
+    '/proxy_mustafa/': 'http://172.18.1.53:8080/',
     '/proxy_ahad/': 'http://172.18.1.85:8080/',
     '/proxy_1_4/': 'http://172.18.1.4:8080/',
     '/proxy_1_43/': 'http://172.18.1.43:8080/',
