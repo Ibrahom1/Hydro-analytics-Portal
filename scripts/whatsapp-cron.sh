@@ -43,6 +43,13 @@ cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null |
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
+
+# 5. Sync python scripts from git working tree into host runtime mounted folders
+cp -f "$APP_DIR/res_gb/gb_stations_db.py" /opt/hydroanalytics/res_gb/ 2>/dev/null || true
+cp -f "$APP_DIR/res_kp/kp_stations_db.py" /opt/hydroanalytics/res_kp/ 2>/dev/null || true
+cp -f "$APP_DIR/res_storages/daily_water_situation_db.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
+cp -f "$APP_DIR/res_storages/storages.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
+
 cd - >/dev/null
 
 # ── Backup: snapshot databases and PDFs before bot runs (7-day rolling) ──
