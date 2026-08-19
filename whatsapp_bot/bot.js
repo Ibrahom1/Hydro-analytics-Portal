@@ -354,6 +354,9 @@ function pushChanges() {
         execSync('git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite', { cwd, stdio: 'ignore' });
       } catch (_) {}
 
+      // Commit staged files
+      execSync(`git commit -m "Auto-ingest Daily Water Situation, KP and GB reports ${today}"`, { cwd, stdio: 'inherit' });
+
       // Pull any upstream commits before pushing (avoids binary SQLite rebase locks)
       try {
         execSync('git pull --no-rebase', { cwd, stdio: 'inherit' });
