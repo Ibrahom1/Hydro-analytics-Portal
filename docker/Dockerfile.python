@@ -21,7 +21,9 @@ RUN pip install --no-cache-dir \
 
 # Install Playwright + Chromium for FFD gauge scraper
 RUN pip install --no-cache-dir playwright && \
-    playwright install --with-deps chromium
+    apt-get update && \
+    playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY . /app/
