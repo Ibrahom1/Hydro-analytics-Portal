@@ -307,12 +307,20 @@
   function getEffectiveRain(props) {
     if (!props) return null;
     const isAvailable = (val) => val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
-    if (isAvailable(props.rain_24h)) {
+    const r24 = isAvailable(props.rain_24h) ? parseFloat(props.rain_24h) : null;
+    const r3 = isAvailable(props.rain_3h) ? parseFloat(props.rain_3h) : null;
+
+    // Default to 24h if it has a non-zero value
+    if (r24 !== null && r24 > 0) {
       return props.rain_24h;
     }
-    if (isAvailable(props.rain_3h)) {
+    // If 24h is 0 or null and 3h has a non-zero value, show 3h value
+    if (r3 !== null && r3 > 0) {
       return props.rain_3h;
     }
+    // Fallback if both are 0 or empty
+    if (r24 !== null) return props.rain_24h;
+    if (r3 !== null) return props.rain_3h;
     return null;
   }
 
@@ -337,10 +345,12 @@
       const effectiveRain = getEffectiveRain(props);
       const iconKey = getWeatherIcon(props);
       const rainDisplay = formatRain(effectiveRain);
+      const is3hUsed = (parseFloat(props.rain_24h) || 0) <= 0 && (parseFloat(props.rain_3h) || 0) > 0;
+      const labelPeriod = is3hUsed ? '3h' : '24h';
 
       const el = document.createElement('div');
       el.className = 'pmd-nwfc-map-marker pmd-rain-marker';
-      el.title = `${stationName}`;
+      el.title = `${stationName}: ${rainDisplay} (${labelPeriod})`;
       el.innerHTML = `
         <div class="pmd-marker-icon">${getSVGIcon(iconKey)}</div>
         <div class="pmd-marker-badge" style="${getRainBadgeStyle(effectiveRain)}">${rainDisplay}</div>
@@ -389,10 +399,16 @@
     const humidity = props.humidity;
     const windSpeed = props.wind_speed;
 
-    const rain3hStr = (rain3h !== null && rain3h !== undefined) ? parseFloat(rain3h).toFixed(1) + ' mm' : '-- mm';
-    const rain24hStr = (rain24h !== null && rain24h !== undefined) ? parseFloat(rain24h).toFixed(1) + ' mm' : '-- mm';
-    const rain3hColor = (rain3h !== null && parseFloat(rain3h) > 0) ? '#38bdf8' : '#94a3b8';
-    const rain24hColor = (rain24h !== null && parseFloat(rain24h) > 0) ? '#38bdf8' : '#94a3b8';
+    const r3Val = (rain3h !== null && rain3h !== undefined && !isNaN(parseFloat(rain3h))) ? parseFloat(rain3h) : null;
+    const r24Val = (rain24h !== null && rain24h !== undefined && !isNaN(parseFloat(rain24h))) ? parseFloat(rain24h) : null;
+
+    const is24hActive = r24Val !== null && r24Val > 0;
+    const is3hActive = !is24hActive && r3Val !== null && r3Val > 0;
+
+    const rain3hStr = r3Val !== null ? r3Val.toFixed(1) + ' mm' + (is3hActive ? ' (Active)' : '') : '-- mm';
+    const rain24hStr = r24Val !== null ? r24Val.toFixed(1) + ' mm' + (is24hActive ? ' (Active)' : '') : '-- mm';
+    const rain3hColor = (r3Val !== null && r3Val > 0) ? '#38bdf8' : '#94a3b8';
+    const rain24hColor = (r24Val !== null && r24Val > 0) ? '#38bdf8' : '#94a3b8';
     const tempStr = (temp !== null && temp !== undefined) ? temp + '°C' : '--';
     const maxTempStr = (maxTemp !== null && maxTemp !== undefined) ? maxTemp + '°C' : '--';
     const humidStr = (humidity !== null && humidity !== undefined) ? humidity + '%' : '--';
@@ -409,12 +425,12 @@
 
         <div style="background:rgba(14,116,144,0.15); border:1px solid rgba(34,211,238,0.2); border-radius:8px; padding:8px 10px; margin-bottom:8px;">
           <div style="font-size:10px; font-weight:700; color:#67e8f9; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Rainfall</div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <span style="font-size:11px; color:#cbd5e1;">Rain (3h)</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; ${is3hActive ? 'background:rgba(56,189,248,0.15); border-radius:4px; padding:2px 4px;' : ''}">
+            <span style="font-size:11px; color:${is3hActive ? '#e0f2fe; font-weight:600;' : '#cbd5e1;'}">Rain (3h)</span>
             <span style="font-size:12px; font-weight:700; color:${rain3hColor};">${rain3hStr}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:11px; color:#cbd5e1;">Rain (24h)</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; ${is24hActive ? 'background:rgba(56,189,248,0.15); border-radius:4px; padding:2px 4px;' : ''}">
+            <span style="font-size:11px; color:${is24hActive ? '#e0f2fe; font-weight:600;' : '#cbd5e1;'}">Rain (24h)</span>
             <span style="font-size:12px; font-weight:700; color:${rain24hColor};">${rain24hStr}</span>
           </div>
         </div>
