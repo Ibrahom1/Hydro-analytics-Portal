@@ -1,7 +1,7 @@
 #!/bin/bash
 # ──────────────────────────────────────────────────────────────────
 # FFD Other Gauges Fetch — VM Cron Runner
-# Triggered by host crontab every hour (replaces GitHub Actions workflow)
+# Triggered by host crontab every 3 hours (replaces GitHub Actions workflow)
 # Uses the hydro-python container which has cloudscraper + playwright
 # ──────────────────────────────────────────────────────────────────
 
