@@ -383,7 +383,10 @@ function pushChanges() {
       'res_gb/Historical GB Reports',
       'data/gb_stations.sqlite'
     ];
-    execSync(`git add ${gitFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
+    const existingGitFiles = gitFiles.filter(f => fs.existsSync(path.join(cwd, f)));
+    if (existingGitFiles.length > 0) {
+      execSync(`git add ${existingGitFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
+    }
     try {
       execSync('git diff --cached --quiet', { cwd, stdio: 'ignore' });
       log('  GIT: No changes to commit.');
