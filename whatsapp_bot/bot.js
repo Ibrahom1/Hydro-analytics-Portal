@@ -425,13 +425,17 @@ function cleanStaleAuthLocks(authDir) {
     const sessionDir = path.join(authDir, 'session');
     if (!fs.existsSync(sessionDir)) return;
     const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
-    for (const file of lockFiles) {
-      const p = path.join(sessionDir, file);
-      try {
-        if (fs.existsSync(p) || fs.lstatSync(p).isSymbolicLink()) {
-          fs.unlinkSync(p);
-        }
-      } catch (_) {}
+    const dirsToCheck = [sessionDir, path.join(sessionDir, 'Default')];
+    for (const d of dirsToCheck) {
+      if (!fs.existsSync(d)) continue;
+      for (const file of lockFiles) {
+        const p = path.join(d, file);
+        try {
+          if (fs.existsSync(p) || fs.lstatSync(p).isSymbolicLink()) {
+            fs.unlinkSync(p);
+          }
+        } catch (_) {}
+      }
     }
   } catch (_) {}
 }
@@ -451,6 +455,7 @@ async function main() {
     },
     puppeteer: {
       headless: true,
+      protocolTimeout: 300_000,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         '--no-sandbox',
