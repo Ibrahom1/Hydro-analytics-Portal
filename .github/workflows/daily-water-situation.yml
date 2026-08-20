@@ -1,9 +1,11 @@
 name: Daily Water Situation SQLite Ingestion
 
 on:
-  schedule:
-    - cron: "0 */2 * * *"
-  workflow_dispatch:
+  # DISABLED: WhatsApp bot on VM handles this ingestion and push.
+  # Keeping both active causes binary merge conflicts on .sqlite files.
+  # schedule:
+  #   - cron: "0 */2 * * *"
+  workflow_dispatch:  # Keep manual trigger for emergencies
 
 permissions:
   contents: write

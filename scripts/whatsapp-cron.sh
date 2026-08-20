@@ -21,18 +21,37 @@ GIT_SSH="ssh -i /opt/hydroanalytics/git_config/.ssh/id_rsa -o StrictHostKeyCheck
 # 1. Remove LFS hooks that block container push (they get recreated by git pull)
 rm -f "$APP_DIR/.git/hooks/pre-push" "$APP_DIR/.git/hooks/post-commit"
 
-# 2. Abort any stuck rebase/merge state from previous failed runs and clean stale locks
-rm -f "$APP_DIR/.git/AUTO_MERGE" "$APP_DIR/.git/MERGE_HEAD" "$APP_DIR/.git/REBASE_HEAD" 2>/dev/null || true
+# 2. Abort any stuck rebase/merge state and clean stale locks
+rm -f "$APP_DIR/.git/AUTO_MERGE" "$APP_DIR/.git/MERGE_HEAD" "$APP_DIR/.git/REBASE_HEAD" \
+      "$APP_DIR/.git/CHERRY_PICK_HEAD" "$APP_DIR/.git/index.lock" 2>/dev/null || true
 cd "$APP_DIR"
 git rebase --abort 2>/dev/null || true
 git merge --abort 2>/dev/null || true
+
+# 3. Discard GitHub Actions-managed files to prevent binary conflicts
 git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null || true
 
-# 3. Pull latest upstream commits and push any unpushed local commits
-GIT_SSH_COMMAND="$GIT_SSH" git pull --no-rebase 2>/dev/null || true
-GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || true
+# 4. Check for stranded unpushed commits and resolve them
+UNPUSHED=$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l)
+if [ "$UNPUSHED" -gt 0 ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found $UNPUSHED unpushed commit(s). Resolving..." >> "$LOG_DIR/cron.log"
+    GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
+        git rebase --abort 2>/dev/null || true
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Rebase failed. Resetting to origin/main..." >> "$LOG_DIR/cron.log"
+        GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
+        git reset --hard origin/main 2>/dev/null || true
+    }
+    GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || true
+fi
 
-# 4. Sync runtime databases, PDFs, and historical archives into git working tree
+# 5. Pull latest from upstream (rebase to avoid merge commits)
+GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
+    git rebase --abort 2>/dev/null || true
+    GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
+    git reset --hard origin/main 2>/dev/null || true
+}
+
+# 6. Sync runtime databases, PDFs, and historical archives into git working tree
 cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$APP_DIR/res_storages/" 2>/dev/null || true
@@ -44,7 +63,7 @@ cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
 
-# 5. Sync python scripts from git working tree into host runtime mounted folders
+# 7. Sync python scripts from git working tree into host runtime mounted folders
 cp -f "$APP_DIR/res_gb/gb_stations_db.py" /opt/hydroanalytics/res_gb/ 2>/dev/null || true
 cp -f "$APP_DIR/res_kp/kp_stations_db.py" /opt/hydroanalytics/res_kp/ 2>/dev/null || true
 cp -f "$APP_DIR/res_storages/daily_water_situation_db.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
@@ -102,4 +121,3 @@ cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bot exited (code $EXIT_CODE): $CONTAINER_NAME" \
     >> "$LOG_DIR/cron.log"
-

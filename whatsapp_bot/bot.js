@@ -370,7 +370,51 @@ function restoreNewestKpPdf() {
 
 function pushChanges() {
   const cwd = config.projectRoot;
+  const MAX_RETRIES = 3;
+
   try {
+    // ── Step 1: Discard upstream-only files that GitHub Actions modifies ──
+    // These files are managed externally and should NOT be committed by the bot
+    try {
+      execSync('git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite', { cwd, stdio: 'ignore' });
+    } catch (_) {}
+
+    // ── Step 2: Stash any uncommitted changes temporarily ──
+    let hasStash = false;
+    try {
+      const stashOut = execSync('git stash --include-untracked', { cwd }).toString();
+      hasStash = !stashOut.includes('No local changes');
+    } catch (_) {}
+
+    // ── Step 3: Pull latest from remote FIRST (before committing) ──
+    try {
+      execSync('git pull --rebase --autostash', { cwd, stdio: 'inherit', timeout: 60_000 });
+    } catch (_) {
+      // If rebase fails, abort and try harder
+      try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+      try {
+        execSync('git pull --no-rebase', { cwd, stdio: 'inherit', timeout: 60_000 });
+      } catch (_) {
+        try { execSync('git merge --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+        // Last resort: reset to origin/main (runtime data is safe in mounted volumes)
+        log('  GIT: Pull failed. Resetting to origin/main...');
+        try { execSync('git fetch origin', { cwd, stdio: 'ignore', timeout: 60_000 }); } catch (_) {}
+        try { execSync('git reset --hard origin/main', { cwd, stdio: 'inherit' }); } catch (_) {}
+      }
+    }
+
+    // ── Step 4: Pop stash to restore our ingested files ──
+    if (hasStash) {
+      try {
+        execSync('git stash pop', { cwd, stdio: 'ignore' });
+      } catch (_) {
+        // If stash pop conflicts, keep our (ingested) versions
+        try { execSync('git checkout --theirs .', { cwd, stdio: 'ignore' }); } catch (_) {}
+        try { execSync('git stash drop', { cwd, stdio: 'ignore' }); } catch (_) {}
+      }
+    }
+
+    // ── Step 5: Stage only files that exist ──
     const gitFiles = [
       'res_storages/Daily Water Situation.pdf',
       'res_storages/Historical Daily Storages',
@@ -387,34 +431,44 @@ function pushChanges() {
     if (existingGitFiles.length > 0) {
       execSync(`git add ${existingGitFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
     }
+
+    // ── Step 6: Commit only if there are staged changes ──
     try {
       execSync('git diff --cached --quiet', { cwd, stdio: 'ignore' });
       log('  GIT: No changes to commit.');
+      return true;
     } catch (_) {
-      const today = new Date().toISOString().split('T')[0];
-      // Discard any unstaged gauge scraper modifications that could conflict with GitHub Actions commits
-      try {
-        execSync('git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite', { cwd, stdio: 'ignore' });
-      } catch (_) {}
+      // There are staged changes — proceed to commit
+    }
 
-      // Commit staged files
-      execSync(`git commit -m "Auto-ingest Daily Water Situation, KP and GB reports ${today}"`, { cwd, stdio: 'inherit' });
+    const today = new Date().toISOString().split('T')[0];
+    execSync(`git commit -m "Auto-ingest Daily Water Situation, KP and GB reports ${today}"`, { cwd, stdio: 'inherit' });
 
-      // Pull any upstream commits before pushing (avoids binary SQLite rebase locks)
+    // ── Step 7: Push with retry ──
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        execSync('git pull --no-rebase', { cwd, stdio: 'inherit' });
-      } catch (_) {
-        try { execSync('git merge --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
-        try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
-        log('  GIT: pull --no-rebase completed or skipped, proceeding to push...');
+        execSync('git push', { cwd, stdio: 'inherit', timeout: 60_000 });
+        log('  GIT: Changes committed and pushed.');
+        return true;
+      } catch (pushErr) {
+        if (attempt < MAX_RETRIES) {
+          log(`  GIT: Push attempt ${attempt}/${MAX_RETRIES} failed. Pulling and retrying...`);
+          try {
+            execSync('git pull --rebase', { cwd, stdio: 'inherit', timeout: 60_000 });
+          } catch (_) {
+            try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+          }
+        } else {
+          throw pushErr;
+        }
       }
-      execSync('git push', { cwd, stdio: 'inherit' });
-      log('  GIT: Changes committed and pushed.');
     }
   } catch (err) {
     console.error(`  GIT: Operations failed: ${err.message}`);
+    // Clean up any stuck state
     try { execSync('git merge --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
     try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+    try { execSync('git stash drop', { cwd, stdio: 'ignore' }); } catch (_) {}
     return false;
   }
   return true;
