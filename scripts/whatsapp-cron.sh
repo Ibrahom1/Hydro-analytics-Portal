@@ -28,10 +28,7 @@ cd "$APP_DIR"
 git rebase --abort 2>/dev/null || true
 git merge --abort 2>/dev/null || true
 
-# 3. Discard GitHub Actions-managed files to prevent binary conflicts
-git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null || true
-
-# 4. Check for stranded unpushed commits and resolve them
+# 3. Check for stranded unpushed commits and resolve them
 UNPUSHED=$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l)
 if [ "$UNPUSHED" -gt 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found $UNPUSHED unpushed commit(s). Resolving..." >> "$LOG_DIR/cron.log"
@@ -44,26 +41,28 @@ if [ "$UNPUSHED" -gt 0 ]; then
     GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || true
 fi
 
-# 5. Pull latest from upstream (rebase to avoid merge commits)
+# 4. Pull latest from upstream (rebase to avoid merge commits)
 GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
     git rebase --abort 2>/dev/null || true
     GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
     git reset --hard origin/main 2>/dev/null || true
 }
 
-# 6. Sync runtime databases, PDFs, and historical archives into git working tree
+# 5. Sync runtime databases, PDFs, and historical archives into git working tree
 cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/app/FFD_other_gauge_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$APP_DIR/res_storages/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_storages/Historical\ Daily\ Storages/* "$APP_DIR/res_storages/Historical Daily Storages/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_kp/Flood\ Report.pdf "$APP_DIR/res_kp/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_kp/Historical\ KP\ Reports/* "$APP_DIR/res_kp/Historical KP Reports/" 2>/dev/null || true
-cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
 
-# 7. Sync python scripts from git working tree into host runtime mounted folders
+# 6. Sync python scripts from git working tree into host runtime mounted folders
 cp -f "$APP_DIR/res_gb/gb_stations_db.py" /opt/hydroanalytics/res_gb/ 2>/dev/null || true
 cp -f "$APP_DIR/res_kp/kp_stations_db.py" /opt/hydroanalytics/res_kp/ 2>/dev/null || true
 cp -f "$APP_DIR/res_storages/daily_water_situation_db.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
@@ -115,6 +114,8 @@ cp -rn /opt/hydroanalytics/res_kp/Historical\ KP\ Reports/* "$APP_DIR/res_kp/His
 cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/app/FFD_other_gauge_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true

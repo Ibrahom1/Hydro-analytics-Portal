@@ -373,20 +373,14 @@ function pushChanges() {
   const MAX_RETRIES = 3;
 
   try {
-    // ── Step 1: Discard upstream-only files that GitHub Actions modifies ──
-    // These files are managed externally and should NOT be committed by the bot
-    try {
-      execSync('git checkout -- FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite', { cwd, stdio: 'ignore' });
-    } catch (_) {}
-
-    // ── Step 2: Stash any uncommitted changes temporarily ──
+    // ── Step 1: Stash any uncommitted changes temporarily ──
     let hasStash = false;
     try {
       const stashOut = execSync('git stash --include-untracked', { cwd }).toString();
       hasStash = !stashOut.includes('No local changes');
     } catch (_) {}
 
-    // ── Step 3: Pull latest from remote FIRST (before committing) ──
+    // ── Step 2: Pull latest from remote FIRST (before committing) ──
     try {
       execSync('git pull --rebase --autostash', { cwd, stdio: 'inherit', timeout: 60_000 });
     } catch (_) {
@@ -403,7 +397,7 @@ function pushChanges() {
       }
     }
 
-    // ── Step 4: Pop stash to restore our ingested files ──
+    // ── Step 3: Pop stash to restore our ingested files ──
     if (hasStash) {
       try {
         execSync('git stash pop', { cwd, stdio: 'ignore' });
@@ -414,7 +408,7 @@ function pushChanges() {
       }
     }
 
-    // ── Step 5: Stage only files that exist ──
+    // ── Step 4: Stage only files that exist ──
     const gitFiles = [
       'res_storages/Daily Water Situation.pdf',
       'res_storages/Historical Daily Storages',
@@ -425,7 +419,9 @@ function pushChanges() {
       'data/kp_stations_data.sqlite',
       'res_gb/SWHP Report.pdf',
       'res_gb/Historical GB Reports',
-      'data/gb_stations.sqlite'
+      'data/gb_stations.sqlite',
+      'data/other_gauges.sqlite',
+      'FFD_other_gauge_fetch/latest_all_gauges.json'
     ];
     const existingGitFiles = gitFiles.filter(f => fs.existsSync(path.join(cwd, f)));
     if (existingGitFiles.length > 0) {
