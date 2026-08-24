@@ -409,6 +409,8 @@ function pushChanges() {
     }
 
     // ── Step 4: Stage only files that exist ──
+    // IMPORTANT: Historical directories use --ignore-removal to prevent
+    // deleting old archived PDFs that aren't in the container's runtime volume
     const gitFiles = [
       'res_storages/Daily Water Situation.pdf',
       'res_storages/Historical Daily Storages',
@@ -424,8 +426,15 @@ function pushChanges() {
       'FFD_other_gauge_fetch/latest_all_gauges.json'
     ];
     const existingGitFiles = gitFiles.filter(f => fs.existsSync(path.join(cwd, f)));
-    if (existingGitFiles.length > 0) {
-      execSync(`git add ${existingGitFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
+    const historyDirs = existingGitFiles.filter(f => f.includes('Historical'));
+    const regularFiles = existingGitFiles.filter(f => !f.includes('Historical'));
+
+    if (regularFiles.length > 0) {
+      execSync(`git add ${regularFiles.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
+    }
+    if (historyDirs.length > 0) {
+      // --ignore-removal: stage new/modified files only, NEVER stage deletions
+      execSync(`git add --ignore-removal ${historyDirs.map(f => `"${f}"`).join(' ')}`, { cwd, stdio: 'inherit' });
     }
 
     // ── Step 6: Commit only if there are staged changes ──

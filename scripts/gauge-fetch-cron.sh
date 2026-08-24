@@ -53,6 +53,7 @@ GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
     git reset --hard origin/main 2>/dev/null || true
     # Re-copy after reset
     cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
+    cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
 }
 
 # Stage and commit

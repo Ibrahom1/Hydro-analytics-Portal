@@ -68,6 +68,13 @@ cp -f "$APP_DIR/res_kp/kp_stations_db.py" /opt/hydroanalytics/res_kp/ 2>/dev/nul
 cp -f "$APP_DIR/res_storages/daily_water_situation_db.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
 cp -f "$APP_DIR/res_storages/storages.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
 
+# 7. Reverse sync: copy historical PDFs FROM git tree INTO runtime volumes
+#    This ensures the bot container sees ALL archived PDFs (not just the latest)
+#    and prevents git from staging deletions of old files
+cp -rn "$APP_DIR/res_gb/Historical GB Reports/"* "/opt/hydroanalytics/res_gb/Historical GB Reports/" 2>/dev/null || true
+cp -rn "$APP_DIR/res_kp/Historical KP Reports/"* "/opt/hydroanalytics/res_kp/Historical KP Reports/" 2>/dev/null || true
+cp -rn "$APP_DIR/res_storages/Historical Daily Storages/"* "/opt/hydroanalytics/res_storages/Historical Daily Storages/" 2>/dev/null || true
+
 cd - >/dev/null
 
 # ── Backup: snapshot databases and PDFs before bot runs (7-day rolling) ──
