@@ -802,6 +802,14 @@ def main() -> int:
 	last_year_percentages = compute_percentages(last_year_levels, storage_max_last_year)
 	avg5_year_percentages = compute_percentages(avg5_year_levels, storage_max_5year)
 
+	# Cap Tarbela fill percentages at 100.00% if they exceed 100%
+	if "Tarbela" in percentages and percentages["Tarbela"] > 100:
+		percentages["Tarbela"] = 100.00
+	if "Tarbela" in last_year_percentages and last_year_percentages["Tarbela"] > 100:
+		last_year_percentages["Tarbela"] = 100.00
+	if "Tarbela" in avg5_year_percentages and avg5_year_percentages["Tarbela"] > 100:
+		avg5_year_percentages["Tarbela"] = 100.00
+
 	print("[INFO] Extracted reservoir levels (ft):")
 	for dam in DAM_KEYS:
 		print(f"  {dam}: {levels[dam]}")

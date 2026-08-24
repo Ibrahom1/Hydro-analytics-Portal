@@ -19825,13 +19825,17 @@ function renderDamInsights(damName, percentage, details = {}) {
       return defaultMax;
     };
 
+    const isTarbela = norm.includes('tarbela');
+
     if (details.todayStorage !== undefined && details.todayStorage !== null) {
       const currentMaxStorage = getHistoricalMax('current', toNumericOrNull(details.maxStorage) || 1.0);
-      const currentFillPct = (toNumericOrNull(details.todayStorage) / currentMaxStorage) * 100;
+      let currentFillPct = (toNumericOrNull(details.todayStorage) / currentMaxStorage) * 100;
+      if (isTarbela && currentFillPct > 100) currentFillPct = 100;
       
       if (details.lastYearStorage !== null && details.lastYearStorage !== undefined) {
         const lastYearMax = getHistoricalMax('lastYear', currentMaxStorage);
-        const lastYearFillPct = (toNumericOrNull(details.lastYearStorage) / lastYearMax) * 100;
+        let lastYearFillPct = (toNumericOrNull(details.lastYearStorage) / lastYearMax) * 100;
+        if (isTarbela && lastYearFillPct > 100) lastYearFillPct = 100;
         const delta = currentFillPct - lastYearFillPct;
         addMetricCard('Last Year', lastYearFillPct, delta);
       } else {
@@ -19840,21 +19844,29 @@ function renderDamInsights(damName, percentage, details = {}) {
       
       if (details.avg5YearStorage !== null && details.avg5YearStorage !== undefined) {
         const avg5Max = getHistoricalMax('avg5', currentMaxStorage);
-        const avg5YearFillPct = (toNumericOrNull(details.avg5YearStorage) / avg5Max) * 100;
+        let avg5YearFillPct = (toNumericOrNull(details.avg5YearStorage) / avg5Max) * 100;
+        if (isTarbela && avg5YearFillPct > 100) avg5YearFillPct = 100;
         const delta = currentFillPct - avg5YearFillPct;
         addMetricCard('5-Year Avg', avg5YearFillPct, delta);
       }
       
       if (details.avg10YearStorage !== null && details.avg10YearStorage !== undefined) {
         const avg10Max = getHistoricalMax('avg10', currentMaxStorage);
-        const avg10YearFillPct = (toNumericOrNull(details.avg10YearStorage) / avg10Max) * 100;
+        let avg10YearFillPct = (toNumericOrNull(details.avg10YearStorage) / avg10Max) * 100;
+        if (isTarbela && avg10YearFillPct > 100) avg10YearFillPct = 100;
         const delta = currentFillPct - avg10YearFillPct;
         addMetricCard('10-Year Avg', avg10YearFillPct, delta);
       }
     } else {
-      const lastYearLevelFill = (toNumericOrNull(details.lastYearLevel) && details.fullCapacity) ? (toNumericOrNull(details.lastYearLevel) / details.fullCapacity) * 100 : null;
-      const avg5YearFill = (toNumericOrNull(details.avg5YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg5YearLevel) / details.fullCapacity) * 100 : null;
-      const avg10YearFill = (toNumericOrNull(details.avg10YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg10YearLevel) / details.fullCapacity) * 100 : null;
+      let lastYearLevelFill = (toNumericOrNull(details.lastYearLevel) && details.fullCapacity) ? (toNumericOrNull(details.lastYearLevel) / details.fullCapacity) * 100 : null;
+      let avg5YearFill = (toNumericOrNull(details.avg5YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg5YearLevel) / details.fullCapacity) * 100 : null;
+      let avg10YearFill = (toNumericOrNull(details.avg10YearLevel) && details.fullCapacity) ? (toNumericOrNull(details.avg10YearLevel) / details.fullCapacity) * 100 : null;
+
+      if (isTarbela) {
+        if (lastYearLevelFill !== null && lastYearLevelFill > 100) lastYearLevelFill = 100;
+        if (avg5YearFill !== null && avg5YearFill > 100) avg5YearFill = 100;
+        if (avg10YearFill !== null && avg10YearFill > 100) avg10YearFill = 100;
+      }
 
       const deltaLastYear = (currentFill !== null && lastYearLevelFill !== null) ? currentFill - lastYearLevelFill : null;
       const deltaAvg5 = (currentFill !== null && avg5YearFill !== null) ? currentFill - avg5YearFill : null;
