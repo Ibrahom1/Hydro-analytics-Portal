@@ -19825,7 +19825,7 @@ function renderDamInsights(damName, percentage, details = {}) {
       return defaultMax;
     };
 
-    const isTarbela = norm.includes('tarbela');
+    const isTarbela = String(damName || '').toLowerCase().includes('tarbela');
 
     if (details.todayStorage !== undefined && details.todayStorage !== null) {
       const currentMaxStorage = getHistoricalMax('current', toNumericOrNull(details.maxStorage) || 1.0);
