@@ -9432,7 +9432,7 @@ function addHydrometLayersToMap(map) {
         }
 
         // Show/hide S storage toggle based on whether this is a reservoir dam
-        const normName = (name || '').toLowerCase();
+        const normName = String(name || props?.Name || props?.name || props?.station_name || props?.station || '').toLowerCase();
         const isReservoirDam = normName.includes('tarbela') || normName.includes('mangla') || normName.includes('chashma');
         const isKotri = normName.includes('kotri');
 
