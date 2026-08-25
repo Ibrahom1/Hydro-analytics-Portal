@@ -373,6 +373,13 @@ function pushChanges() {
   const MAX_RETRIES = 3;
 
   try {
+    // ── Step 0: Remove LFS hooks (git-lfs not installed in container) ──
+    const hooksDir = path.join(cwd, '.git', 'hooks');
+    for (const hook of ['pre-push', 'post-commit']) {
+      const hookPath = path.join(hooksDir, hook);
+      try { if (fs.existsSync(hookPath)) fs.unlinkSync(hookPath); } catch (_) {}
+    }
+
     // ── Step 1: Stash any uncommitted changes temporarily ──
     let hasStash = false;
     try {
@@ -459,7 +466,7 @@ function pushChanges() {
         if (attempt < MAX_RETRIES) {
           log(`  GIT: Push attempt ${attempt}/${MAX_RETRIES} failed. Pulling and retrying...`);
           try {
-            execSync('git pull --rebase', { cwd, stdio: 'inherit', timeout: 60_000 });
+            execSync('git pull --rebase --autostash', { cwd, stdio: 'inherit', timeout: 60_000 });
           } catch (_) {
             try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
           }

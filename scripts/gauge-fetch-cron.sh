@@ -41,6 +41,15 @@ cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null 
 # ── Git commit and push the gauge data ──
 cd "$APP_DIR"
 
+# ── Acquire lock to prevent concurrent git operations ──
+LOCK_FILE="/opt/hydroanalytics/.git_push.lock"
+for i in $(seq 1 24); do
+    if ! [ -f "$LOCK_FILE" ]; then break; fi
+    sleep 5
+done
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
 # Clean any stale git state
 rm -f .git/index.lock 2>/dev/null || true
 git rebase --abort 2>/dev/null || true

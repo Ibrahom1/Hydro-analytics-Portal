@@ -18,6 +18,15 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting WhatsApp bot: $CONTAINER_NAME" \
 APP_DIR="/opt/hydroanalytics/app"
 GIT_SSH="ssh -i /opt/hydroanalytics/git_config/.ssh/id_rsa -o StrictHostKeyChecking=no"
 
+# ── Acquire lock to prevent concurrent git operations ──
+LOCK_FILE="/opt/hydroanalytics/.git_push.lock"
+for i in $(seq 1 24); do
+    if ! [ -f "$LOCK_FILE" ]; then break; fi
+    sleep 5
+done
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
 # 1. Remove LFS hooks that block container push (they get recreated by git pull)
 rm -f "$APP_DIR/.git/hooks/pre-push" "$APP_DIR/.git/hooks/post-commit"
 
@@ -60,6 +69,11 @@ cp -f /opt/hydroanalytics/res_kp/Flood\ Report.pdf "$APP_DIR/res_kp/" 2>/dev/nul
 cp -rn /opt/hydroanalytics/res_kp/Historical\ KP\ Reports/* "$APP_DIR/res_kp/Historical KP Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
+# Sync ENTIRE script directory from git tree → runtime volume
+# This ensures the container's /app/script/ matches git HEAD
+# (prevents unstaged changes that block git pull --rebase inside the container)
+rsync -a --update "$APP_DIR/script/" /opt/hydroanalytics/script/
+# Also copy runtime ft_and_percentage.js back (it may be newer from storages.py)
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
 
 # 6. Sync python scripts from git working tree into host runtime mounted folders
