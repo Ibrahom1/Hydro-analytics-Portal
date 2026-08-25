@@ -8475,7 +8475,7 @@ function addHydrometLayersToMap(map) {
         const values = mafData.values || [];
         const maxVal = Math.max(...values, 0);
 
-        // Custom plugin to draw MAF values on top of bars
+        // Custom plugin to draw MAF values on top of bars with strict collision prevention
         const mafBarLabelPlugin = {
           id: 'mafBarLabels',
           afterDatasetsDraw(chart) {
@@ -8492,6 +8492,8 @@ function addHydrometLayersToMap(map) {
               return;
             }
 
+            let lastDrawnRightX = -Infinity;
+
             meta.data.forEach((bar, index) => {
               const val = chart.data.datasets[0].data[index];
               if (val === null || val === undefined || isNaN(val)) return;
@@ -8504,10 +8506,23 @@ function addHydrometLayersToMap(map) {
               else if (val >= 0.01) formatted = Number(val).toFixed(3);
               else formatted = Number(val).toFixed(4);
 
-              if (val === 0 && labels.length > 15) return;
+              // Don't draw text if value is 0 or near-0 and there are many bars (> 10)
+              if (val <= 0.0001 && labels.length > 10) return;
+
+              // Collision Detection: measure text width to prevent overlapping/jumbling
+              const textWidth = ctx.measureText(formatted).width;
+              const leftEdge = bar.x - textWidth / 2;
+              const rightEdge = bar.x + textWidth / 2;
+
+              // Only draw if there is at least 8px space from the previous label, or if it's the peak bar
+              const isPeak = val === maxVal && val > 0;
+              if (!isPeak && leftEdge < lastDrawnRightX + 8) {
+                return; // Skip overlapping label
+              }
 
               const yPos = Math.min(bar.y - 4, chart.chartArea.bottom - 12);
               ctx.fillText(formatted, bar.x, yPos);
+              lastDrawnRightX = rightEdge;
             });
 
             ctx.restore();
@@ -8545,9 +8560,9 @@ function addHydrometLayersToMap(map) {
                 borderWidth: { top: 2, left: 1, right: 1, bottom: 0 },
                 borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
                 borderSkipped: 'bottom',
-                barPercentage: labels.length > 20 ? 0.85 : (labels.length > 10 ? 0.75 : 0.55),
+                barPercentage: labels.length > 20 ? 0.9 : (labels.length > 10 ? 0.75 : 0.55),
                 categoryPercentage: 0.85,
-                minBarLength: 6 // Keeps small / near-zero values scaled and visibly rendered
+                minBarLength: 12 // Keeps small / near-zero values visibly scaled and readable
               }
             ]
           },
@@ -8622,11 +8637,16 @@ function addHydrometLayersToMap(map) {
               },
               y: {
                 beginAtZero: true,
-                suggestedMax: maxVal > 0 ? maxVal * 1.18 : 1,
+                suggestedMax: maxVal > 0 ? maxVal * 1.18 : 0.05,
                 ticks: {
                   color: '#cbd5f5',
                   font: { size: isFullscreen ? 11 : 9 },
-                  callback: (v) => `${Number(v).toFixed(2)} MAF`
+                  callback: (v) => {
+                    const num = Number(v);
+                    if (maxVal < 0.1) return `${num.toFixed(3)} MAF`;
+                    if (maxVal < 1) return `${num.toFixed(2)} MAF`;
+                    return `${num.toFixed(1)} MAF`;
+                  }
                 },
                 grid: { color: 'rgba(148, 163, 184, 0.1)' },
                 title: {
