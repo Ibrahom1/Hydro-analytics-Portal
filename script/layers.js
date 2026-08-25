@@ -8973,7 +8973,24 @@ function addHydrometLayersToMap(map) {
         const endInput = document.getElementById('ffd-history-end');
         const compareButtons = panel.querySelectorAll('[data-ffd-compare]');
         const storageToggleBtn = document.getElementById('ffd-storage-toggle');
-        const mafToggleBtn = document.getElementById('ffd-maf-toggle');
+        let mafToggleBtn = document.getElementById('ffd-maf-toggle');
+        if (!mafToggleBtn && panel) {
+          const headerActions = panel.querySelector('.ffd-history-header-actions');
+          const dateToggle = document.getElementById('ffd-history-date-toggle');
+          if (headerActions) {
+            mafToggleBtn = document.createElement('button');
+            mafToggleBtn.id = 'ffd-maf-toggle';
+            mafToggleBtn.className = 'ffd-maf-toggle';
+            mafToggleBtn.title = 'River MAF (Million Acre-Feet) View';
+            mafToggleBtn.style.display = 'none';
+            mafToggleBtn.textContent = 'R';
+            if (dateToggle) {
+              headerActions.insertBefore(mafToggleBtn, dateToggle);
+            } else {
+              headerActions.appendChild(mafToggleBtn);
+            }
+          }
+        }
 
         // ---- Tab switching logic ----
         const switchToDischargeTab = async () => {
@@ -9438,12 +9455,28 @@ function addHydrometLayersToMap(map) {
 
         const storageToggleBtn = document.getElementById('ffd-storage-toggle');
         if (storageToggleBtn) {
-          storageToggleBtn.style.display = isReservoirDam ? '' : 'none';
+          storageToggleBtn.style.display = isReservoirDam ? 'inline-flex' : 'none';
         }
 
-        const mafToggleBtn = document.getElementById('ffd-maf-toggle');
+        let mafToggleBtn = document.getElementById('ffd-maf-toggle');
+        if (!mafToggleBtn && panel) {
+          const headerActions = panel.querySelector('.ffd-history-header-actions');
+          const dateToggle = document.getElementById('ffd-history-date-toggle');
+          if (headerActions) {
+            mafToggleBtn = document.createElement('button');
+            mafToggleBtn.id = 'ffd-maf-toggle';
+            mafToggleBtn.className = 'ffd-maf-toggle';
+            mafToggleBtn.title = 'River MAF (Million Acre-Feet) View';
+            mafToggleBtn.textContent = 'R';
+            if (dateToggle) {
+              headerActions.insertBefore(mafToggleBtn, dateToggle);
+            } else {
+              headerActions.appendChild(mafToggleBtn);
+            }
+          }
+        }
         if (mafToggleBtn) {
-          mafToggleBtn.style.display = isKotri ? '' : 'none';
+          mafToggleBtn.style.display = isKotri ? 'inline-flex' : 'none';
         }
 
         // Always reset to discharge tab when opening a new station
