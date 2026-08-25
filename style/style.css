@@ -1228,6 +1228,87 @@ body {
   transition: background 0.4s, border-color 0.4s;
 }
 
+/* ==================== FFD MAF (River Volume) Toggle Button ==================== */
+.ffd-maf-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e2e8f0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  transition: background 0.22s, border-color 0.22s, color 0.22s, box-shadow 0.22s, transform 0.15s;
+}
+
+.ffd-maf-toggle:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #38bdf8;
+  transform: scale(1.08);
+}
+
+.ffd-maf-toggle.active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.4), rgba(56, 189, 248, 0.35));
+  border-color: rgba(56, 189, 248, 0.8);
+  color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4), inset 0 0 8px rgba(56, 189, 248, 0.1);
+  animation: mafTogglePulse 2.5s ease-in-out infinite;
+}
+
+@keyframes mafTogglePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.4), inset 0 0 8px rgba(56, 189, 248, 0.08); }
+  50%       { box-shadow: 0 0 22px rgba(56, 189, 248, 0.7), inset 0 0 14px rgba(56, 189, 248, 0.16); }
+}
+
+/* ==================== MAF Mode: Chart container ==================== */
+.ffd-history-chart.maf-mode {
+  background: linear-gradient(180deg, rgba(6, 24, 44, 0.75) 0%, rgba(10, 35, 60, 0.8) 100%);
+  border-color: rgba(56, 189, 248, 0.25);
+  transition: background 0.4s, border-color 0.4s;
+}
+
+/* ==================== MAF Summary Cards ==================== */
+.ffd-history-card.maf-total {
+  box-shadow: inset 3px 0 0 #38bdf8;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(14, 165, 233, 0.08));
+  border-color: rgba(56, 189, 248, 0.25);
+  animation: cardFadeIn 0.4s ease-out both;
+}
+
+.ffd-history-card.maf-peak {
+  box-shadow: inset 3px 0 0 #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08));
+  border-color: rgba(245, 158, 11, 0.25);
+  animation: cardFadeIn 0.4s ease-out both 0.06s;
+}
+
+.ffd-history-card.maf-mean {
+  box-shadow: inset 3px 0 0 #34d399;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(16, 185, 129, 0.08));
+  border-color: rgba(52, 211, 153, 0.25);
+  animation: cardFadeIn 0.4s ease-out both 0.12s;
+}
+
+.ffd-history-card.maf-period {
+  box-shadow: inset 3px 0 0 #a78bfa;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.12), rgba(139, 92, 246, 0.08));
+  border-color: rgba(167, 139, 250, 0.25);
+  animation: cardFadeIn 0.4s ease-out both 0.18s;
+}
+
+.ffd-history-card.maf-records {
+  box-shadow: inset 3px 0 0 #94a3b8;
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(100, 116, 139, 0.06));
+  border-color: rgba(148, 163, 184, 0.2);
+  animation: cardFadeIn 0.4s ease-out both 0.24s;
+}
+
 /* ==================== Storage Summary Cards ==================== */
 .ffd-history-card.storage-today {
   box-shadow: inset 3px 0 0 #06b6d4;
@@ -1346,7 +1427,8 @@ body {
 
 /* ==================== Responsive: Tablet (<= 1100px) ==================== */
 @media (max-width: 1100px) {
-  .ffd-storage-toggle {
+  .ffd-storage-toggle,
+  .ffd-maf-toggle {
     width: 26px;
     height: 26px;
     font-size: 12px;
@@ -1360,7 +1442,12 @@ body {
   .ffd-history-card.storage-week1,
   .ffd-history-card.storage-week2,
   .ffd-history-card.storage-week3,
-  .ffd-history-card.storage-week4 {
+  .ffd-history-card.storage-week4,
+  .ffd-history-card.maf-total,
+  .ffd-history-card.maf-peak,
+  .ffd-history-card.maf-mean,
+  .ffd-history-card.maf-period,
+  .ffd-history-card.maf-records {
     min-height: 56px;
     padding: 7px 6px;
   }
@@ -1369,14 +1456,20 @@ body {
   .ffd-history-card.storage-week1 strong,
   .ffd-history-card.storage-week2 strong,
   .ffd-history-card.storage-week3 strong,
-  .ffd-history-card.storage-week4 strong {
+  .ffd-history-card.storage-week4 strong,
+  .ffd-history-card.maf-total strong,
+  .ffd-history-card.maf-peak strong,
+  .ffd-history-card.maf-mean strong,
+  .ffd-history-card.maf-period strong,
+  .ffd-history-card.maf-records strong {
     font-size: 16px !important;
   }
 }
 
 /* ==================== Responsive: Mobile (<= 768px) ==================== */
 @media (max-width: 768px) {
-  .ffd-storage-toggle {
+  .ffd-storage-toggle,
+  .ffd-maf-toggle {
     width: 24px;
     height: 24px;
     font-size: 11px;
@@ -1386,7 +1479,8 @@ body {
 
 /* ==================== Responsive: Mobile (<= 480px) ==================== */
 @media (max-width: 480px) {
-  .ffd-storage-toggle {
+  .ffd-storage-toggle,
+  .ffd-maf-toggle {
     width: 22px;
     height: 22px;
     font-size: 10px;

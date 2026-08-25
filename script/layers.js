@@ -6952,11 +6952,17 @@ function addHydrometLayersToMap(map) {
       let ffdHistoryCompareMode = 'none';
 
       // Storage tab state
-      let ffdHistoryActiveTab = 'discharge'; // 'discharge' | 'storage'
+      let ffdHistoryActiveTab = 'discharge'; // 'discharge' | 'storage' | 'maf'
       let ffdStorageChart = null;
       let ffdStorageFullscreenChart = null;
       let ffdStorageLastData = null;
       let ffdStorageDays = 7;
+
+      // MAF tab state (River volume for Kotri)
+      let ffdMAFChart = null;
+      let ffdMAFFullscreenChart = null;
+      let ffdMAFLastData = null;
+      let ffdMAFSelection = 'monsoon-2026';
 
       const formatStorageCardDate = (dateStr) => {
         if (!dateStr) return '';
@@ -8179,6 +8185,514 @@ function addHydrometLayersToMap(map) {
 
       // ================== END STORAGE HISTORY FUNCTIONS ==================
 
+      // ================== MAF (RIVER VOLUME) FUNCTIONS ==================
+
+      const MAF_CUBIC_FEET_DIVISOR = 43560000000; // 1 MAF = 43,560,000,000 cu ft
+      const CUSECS_PER_DAY_TO_MAF = 86400 / 43560000000; // ≈ 1.983471e-6 MAF per cusec-day
+
+      const getMAFRangeForOption = (optionValue) => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+
+        if (optionValue && optionValue.startsWith('monsoon-')) {
+          const year = parseInt(optionValue.split('-')[1], 10);
+          const start = new Date(year, 5, 1); // 1st June (0-indexed month 5)
+          let end = new Date(year, 8, 30, 23, 59, 59); // 30th September
+          if (year === currentYear && now < end) {
+            end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+          }
+          return { start, end, groupBy: 'month', label: `Monsoon ${year}`, isMonsoon: true, monsoonYear: year };
+        }
+
+        if (optionValue === '7') {
+          const start = new Date(now.getTime() - 7 * 86400000);
+          return { start, end: now, groupBy: 'day', label: 'Last 7 days' };
+        }
+        if (optionValue === '14') {
+          const start = new Date(now.getTime() - 14 * 86400000);
+          return { start, end: now, groupBy: 'day', label: 'Last 14 days' };
+        }
+        if (optionValue === '30') {
+          const start = new Date(now.getTime() - 30 * 86400000);
+          return { start, end: now, groupBy: 'day', label: 'Last 30 days' };
+        }
+        if (optionValue === 'month') {
+          const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+          return { start, end, groupBy: 'day', label: 'Last month' };
+        }
+        if (optionValue === 'year') {
+          const start = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+          const end = now;
+          return { start, end, groupBy: 'month', label: 'Last year' };
+        }
+
+        return { start: new Date(2026, 5, 1), end: now, groupBy: 'month', label: 'Monsoon 2026', isMonsoon: true, monsoonYear: 2026 };
+      };
+
+      const populateMAFDropdownOptions = () => {
+        const selectEl = document.getElementById('ffd-history-status');
+        if (!selectEl) return;
+
+        const options = [
+          { value: 'monsoon-2026', text: 'Showing: Monsoon 2026' },
+          { value: '7', text: 'Showing: Last 7 days' },
+          { value: '14', text: 'Showing: Last 14 days' },
+          { value: '30', text: 'Showing: Last 30 days' },
+          { value: 'month', text: 'Showing: Last month' },
+          { value: 'year', text: 'Showing: Last year' },
+        ];
+
+        for (let y = 2025; y >= 2014; y--) {
+          options.push({ value: `monsoon-${y}`, text: `Showing: Monsoon ${y}` });
+        }
+
+        selectEl.innerHTML = options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('') +
+          '<option value="custom" id="ffd-history-status-custom" style="display: none;"></option>';
+
+        selectEl.value = ffdMAFSelection || 'monsoon-2026';
+      };
+
+      const restoreStandardDropdownOptions = () => {
+        const selectEl = document.getElementById('ffd-history-status');
+        if (!selectEl) return;
+
+        selectEl.innerHTML = `
+          <option value="7">Showing: Last 7 days</option>
+          <option value="14">Showing: Last 14 days</option>
+          <option value="30">Showing: Last 30 days</option>
+          <option value="custom" id="ffd-history-status-custom" style="display: none;"></option>
+        `;
+        selectEl.value = String(ffdHistoryConfig.defaultDays || '7');
+      };
+
+      const computeMAFData = (outflowPoints, rangeInfo) => {
+        if (!Array.isArray(outflowPoints) || outflowPoints.length === 0) {
+          return { labels: [], values: [], totalMaf: 0, peakMaf: 0, peakLabel: '', meanDailyMaf: 0, count: 0, daysWithData: 0, barMeta: [], rangeInfo };
+        }
+
+        const groupBy = rangeInfo.groupBy || 'month';
+        const isMonsoon = rangeInfo.isMonsoon || false;
+        const monsoonYear = rangeInfo.monsoonYear || 2026;
+
+        // Group points by day (YYYY-MM-DD key)
+        const dailyBuckets = new Map();
+
+        outflowPoints.forEach(pt => {
+          if (!pt.date || isNaN(pt.date.getTime()) || pt.y === null || pt.y === undefined || isNaN(pt.y)) return;
+          const y = pt.date.getFullYear();
+          const m = String(pt.date.getMonth() + 1).padStart(2, '0');
+          const d = String(pt.date.getDate()).padStart(2, '0');
+          const key = `${y}-${m}-${d}`;
+
+          if (!dailyBuckets.has(key)) {
+            dailyBuckets.set(key, { date: pt.date, readings: [] });
+          }
+          dailyBuckets.get(key).readings.push(pt.y);
+        });
+
+        // Compute daily MAF for each day with readings
+        const dailyMafs = new Map();
+        dailyBuckets.forEach((bucket, dateKey) => {
+          const avgQ = bucket.readings.reduce((sum, v) => sum + v, 0) / bucket.readings.length;
+          const maf = avgQ * CUSECS_PER_DAY_TO_MAF;
+          dailyMafs.set(dateKey, { avgQ, maf, date: bucket.date, count: bucket.readings.length });
+        });
+
+        const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        let labels = [];
+        let values = [];
+        let barMeta = [];
+
+        if (groupBy === 'month' && isMonsoon) {
+          // Exactly 4 bars: June, July, August, September
+          const monsoonMonths = [5, 6, 7, 8]; // 0-indexed: Jun, Jul, Aug, Sep
+          const monthTitles = ['June', 'July', 'August', 'September'];
+
+          monsoonMonths.forEach((mIdx, i) => {
+            let monthMafTotal = 0;
+            let monthReadingsCount = 0;
+            let totalQSum = 0;
+            let daysWithData = 0;
+
+            dailyMafs.forEach((val, dateKey) => {
+              const [yr, mo] = dateKey.split('-').map(n => parseInt(n, 10));
+              if (yr === monsoonYear && mo === mIdx + 1) {
+                monthMafTotal += val.maf;
+                totalQSum += val.avgQ;
+                daysWithData++;
+                monthReadingsCount += val.count;
+              }
+            });
+
+            labels.push(monthTitles[i]);
+            values.push(monthMafTotal);
+            barMeta.push({
+              avgQ: daysWithData > 0 ? totalQSum / daysWithData : 0,
+              daysCount: daysWithData,
+              recordsCount: monthReadingsCount,
+              label: `${monthTitles[i]} ${monsoonYear}`
+            });
+          });
+        } else if (groupBy === 'month') {
+          // Monthly aggregation across the range
+          const monthsMap = new Map();
+
+          dailyMafs.forEach((val, dateKey) => {
+            const [yr, mo] = dateKey.split('-').map(n => parseInt(n, 10));
+            const mKey = `${yr}-${String(mo).padStart(2, '0')}`;
+            if (!monthsMap.has(mKey)) {
+              monthsMap.set(mKey, { yr, mo, mafTotal: 0, totalQ: 0, daysCount: 0, records: 0 });
+            }
+            const mObj = monthsMap.get(mKey);
+            mObj.mafTotal += val.maf;
+            mObj.totalQ += val.avgQ;
+            mObj.daysCount += 1;
+            mObj.records += val.count;
+          });
+
+          const sortedMonths = Array.from(monthsMap.keys()).sort();
+          sortedMonths.forEach(mKey => {
+            const mObj = monthsMap.get(mKey);
+            const labelStr = `${shortMonthNames[mObj.mo - 1]} ${mObj.yr}`;
+            labels.push(labelStr);
+            values.push(mObj.mafTotal);
+            barMeta.push({
+              avgQ: mObj.daysCount > 0 ? mObj.totalQ / mObj.daysCount : 0,
+              daysCount: mObj.daysCount,
+              recordsCount: mObj.records,
+              label: labelStr
+            });
+          });
+        } else {
+          // Daily aggregation
+          const sortedDays = Array.from(dailyMafs.keys()).sort();
+          sortedDays.forEach(dateKey => {
+            const dObj = dailyMafs.get(dateKey);
+            const dt = dObj.date;
+            const labelStr = `${dt.getDate()} ${shortMonthNames[dt.getMonth()]}`;
+            labels.push(labelStr);
+            values.push(dObj.maf);
+            barMeta.push({
+              avgQ: dObj.avgQ,
+              daysCount: 1,
+              recordsCount: dObj.count,
+              label: `${dt.getDate()} ${shortMonthNames[dt.getMonth()]} ${dt.getFullYear()}`
+            });
+          });
+        }
+
+        const totalMaf = values.reduce((sum, v) => sum + v, 0);
+        let peakMaf = 0;
+        let peakLabel = '';
+        values.forEach((v, i) => {
+          if (v > peakMaf) {
+            peakMaf = v;
+            peakLabel = barMeta[i]?.label || labels[i] || '';
+          }
+        });
+
+        const totalDays = dailyMafs.size || 1;
+        const meanDailyMaf = totalMaf / totalDays;
+
+        return {
+          labels,
+          values,
+          totalMaf,
+          peakMaf,
+          peakLabel,
+          meanDailyMaf,
+          count: outflowPoints.length,
+          daysWithData: totalDays,
+          barMeta,
+          rangeInfo
+        };
+      };
+
+      const renderMAFSummary = (data) => {
+        const summaryEl = document.getElementById('ffd-history-summary');
+        if (!summaryEl || !data) return;
+
+        const fmtMaf = (v) => {
+          if (v == null || isNaN(v)) return '0.00 MAF';
+          if (v >= 10) return `${Number(v).toFixed(1)} MAF`;
+          if (v >= 1) return `${Number(v).toFixed(2)} MAF`;
+          if (v >= 0.01) return `${Number(v).toFixed(3)} MAF`;
+          return `${Number(v).toFixed(4)} MAF`;
+        };
+
+        const cards = [
+          {
+            tone: 'maf-total',
+            label: 'Total Volume',
+            value: fmtMaf(data.totalMaf),
+            meta: data.rangeInfo?.label || ''
+          },
+          {
+            tone: 'maf-peak',
+            label: 'Peak Volume',
+            value: fmtMaf(data.peakMaf),
+            meta: data.peakLabel ? `${data.peakLabel}` : ''
+          },
+          {
+            tone: 'maf-mean',
+            label: 'Daily Mean',
+            value: fmtMaf(data.meanDailyMaf),
+            meta: `Over ${data.daysWithData || 0} active days`
+          },
+          {
+            tone: 'maf-records',
+            label: 'Telemetry Records',
+            value: `${(data.count || 0).toLocaleString()}`,
+            meta: 'Outflow discharge data'
+          }
+        ];
+
+        summaryEl.innerHTML = cards.map(card => `
+          <div class="ffd-history-card ${card.tone}">
+            <span>${escapeFFDHistoryHTML(card.label)}</span>
+            <strong>${card.valueHtml || escapeFFDHistoryHTML(card.value || '')}</strong>
+            ${card.meta ? `<small>${escapeFFDHistoryHTML(card.meta)}</small>` : ''}
+          </div>
+        `).join('');
+
+        const colCount = window.innerWidth <= 768 ? 2 : (window.innerWidth <= 1100 ? 2 : cards.length);
+        summaryEl.style.gridTemplateColumns = `repeat(${colCount}, minmax(0, 1fr))`;
+      };
+
+      const renderMAFBarChart = (canvasId, mafData, isFullscreen = false) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !window.Chart || !mafData) return;
+
+        if (isFullscreen) {
+          if (ffdMAFFullscreenChart) { ffdMAFFullscreenChart.destroy(); ffdMAFFullscreenChart = null; }
+        } else {
+          if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
+        }
+
+        const labels = mafData.labels || [];
+        const values = mafData.values || [];
+        const maxVal = Math.max(...values, 0);
+
+        // Custom plugin to draw MAF values on top of bars
+        const mafBarLabelPlugin = {
+          id: 'mafBarLabels',
+          afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = `bold ${isFullscreen ? 11 : 9}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = '#f8fafc';
+
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || !chart.isDatasetVisible(0)) {
+              ctx.restore();
+              return;
+            }
+
+            meta.data.forEach((bar, index) => {
+              const val = chart.data.datasets[0].data[index];
+              if (val === null || val === undefined || isNaN(val)) return;
+              if (!bar || bar.x === null || bar.y === null || isNaN(bar.x) || isNaN(bar.y)) return;
+
+              let formatted;
+              if (val === 0) formatted = '0.00';
+              else if (val >= 10) formatted = Number(val).toFixed(1);
+              else if (val >= 1) formatted = Number(val).toFixed(2);
+              else if (val >= 0.01) formatted = Number(val).toFixed(3);
+              else formatted = Number(val).toFixed(4);
+
+              if (val === 0 && labels.length > 15) return;
+
+              const yPos = Math.min(bar.y - 4, chart.chartArea.bottom - 12);
+              ctx.fillText(formatted, bar.x, yPos);
+            });
+
+            ctx.restore();
+          }
+        };
+
+        const chartInstance = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Volume (MAF)',
+                data: values,
+                backgroundColor: (context) => {
+                  const chart = context.chart;
+                  const { ctx, chartArea } = chart;
+                  if (!chartArea) return 'rgba(56, 189, 248, 0.85)';
+                  const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                  gradient.addColorStop(0, 'rgba(14, 165, 233, 0.35)');
+                  gradient.addColorStop(0.5, 'rgba(56, 189, 248, 0.85)');
+                  gradient.addColorStop(1, 'rgba(125, 211, 252, 1)');
+                  return gradient;
+                },
+                hoverBackgroundColor: (context) => {
+                  const chart = context.chart;
+                  const { ctx, chartArea } = chart;
+                  if (!chartArea) return 'rgba(125, 211, 252, 1)';
+                  const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                  gradient.addColorStop(0, 'rgba(56, 189, 248, 0.6)');
+                  gradient.addColorStop(1, 'rgba(186, 230, 253, 1)');
+                  return gradient;
+                },
+                borderColor: '#38bdf8',
+                borderWidth: { top: 2, left: 1, right: 1, bottom: 0 },
+                borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+                borderSkipped: 'bottom',
+                barPercentage: labels.length > 20 ? 0.85 : (labels.length > 10 ? 0.75 : 0.55),
+                categoryPercentage: 0.85,
+                minBarLength: 6 // Keeps small / near-zero values scaled and visibly rendered
+              }
+            ]
+          },
+          plugins: [mafBarLabelPlugin],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 900,
+              easing: 'easeOutQuart'
+            },
+            interaction: {
+              intersect: false,
+              mode: 'index'
+            },
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: '#e2e8f0',
+                  boxWidth: 14,
+                  usePointStyle: true,
+                  font: { size: isFullscreen ? 12 : 11 }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  title: (items) => {
+                    if (!items || !items.length) return '';
+                    const idx = items[0].dataIndex;
+                    return mafData.barMeta?.[idx]?.label || items[0].label || '';
+                  },
+                  label: (context) => {
+                    const val = Number(context.parsed.y);
+                    let formatted = val >= 1 ? val.toFixed(3) : val.toFixed(4);
+                    return `Volume: ${formatted} MAF`;
+                  },
+                  afterLabel: (context) => {
+                    const idx = context.dataIndex;
+                    const meta = mafData.barMeta?.[idx];
+                    if (!meta) return '';
+                    const parts = [];
+                    if (meta.avgQ) parts.push(`Avg Discharge: ${Math.round(meta.avgQ).toLocaleString()} cusecs`);
+                    if (meta.daysCount && meta.daysCount > 1) parts.push(`Active Days: ${meta.daysCount}`);
+                    if (meta.recordsCount) parts.push(`Telemetry Readings: ${meta.recordsCount}`);
+                    return parts.join('\n');
+                  }
+                },
+                backgroundColor: 'rgba(6, 24, 44, 0.95)',
+                borderColor: 'rgba(56, 189, 248, 0.5)',
+                borderWidth: 1,
+                titleColor: '#38bdf8',
+                bodyColor: '#f8fafc',
+                padding: 10,
+                boxPadding: 4,
+              },
+              zoom: isFullscreen ? {
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                pan: { enabled: true, mode: 'x' }
+              } : false
+            },
+            scales: {
+              x: {
+                ticks: {
+                  color: '#cbd5f5',
+                  font: { size: isFullscreen ? 11 : (labels.length > 15 ? 8 : 10), weight: '600' },
+                  maxRotation: labels.length > 15 ? 45 : 0,
+                  minRotation: 0,
+                  autoSkip: false
+                },
+                grid: { display: false }
+              },
+              y: {
+                beginAtZero: true,
+                suggestedMax: maxVal > 0 ? maxVal * 1.18 : 1,
+                ticks: {
+                  color: '#cbd5f5',
+                  font: { size: isFullscreen ? 11 : 9 },
+                  callback: (v) => `${Number(v).toFixed(2)} MAF`
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                title: {
+                  display: isFullscreen,
+                  text: 'Volume (Million Acre-Feet)',
+                  color: '#94a3b8',
+                  font: { size: 12 }
+                }
+              }
+            }
+          }
+        });
+
+        if (isFullscreen) ffdMAFFullscreenChart = chartInstance;
+        else ffdMAFChart = chartInstance;
+      };
+
+      const loadMAFData = async (isCustomDateRange = false) => {
+        if (!ffdHistoryName) return;
+        const summaryEl = document.getElementById('ffd-history-summary');
+        const chartEl = document.querySelector('.ffd-history-chart');
+        if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Computing MAF volume…</div>';
+
+        try {
+          let rangeInfo;
+          const startInput = document.getElementById('ffd-history-start');
+          const endInput = document.getElementById('ffd-history-end');
+
+          if (isCustomDateRange && startInput && endInput && startInput.value && endInput.value) {
+            const start = new Date(startInput.value);
+            const end = new Date(endInput.value);
+            end.setHours(23, 59, 59, 999);
+            const diffDays = Math.ceil((end - start) / 86400000);
+            const groupBy = diffDays > 60 ? 'month' : 'day';
+            rangeInfo = {
+              start,
+              end,
+              groupBy,
+              label: `${formatFFDHistoryDateInput(start)} to ${formatFFDHistoryDateInput(end)}`
+            };
+            setFFDHistoryStatus(`Showing: ${rangeInfo.label}`);
+          } else {
+            rangeInfo = getMAFRangeForOption(ffdMAFSelection);
+          }
+
+          const series = await fetchFFDHistorySeries({
+            name: ffdHistoryName,
+            range: { start: rangeInfo.start, end: rangeInfo.end }
+          });
+
+          const outflowPoints = series.outflow || [];
+          const mafData = computeMAFData(outflowPoints, rangeInfo);
+          ffdMAFLastData = mafData;
+
+          if (chartEl) chartEl.classList.add('maf-mode');
+
+          renderMAFSummary(mafData);
+          renderMAFBarChart('ffd-history-canvas', mafData);
+        } catch (err) {
+          console.warn('MAF computation failed:', err);
+          if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">MAF data unavailable.</div>';
+        }
+      };
+
+      // ================== END MAF FUNCTIONS ==================
+
       const renderFFDHistoryChart = (canvasId, bundle, isFullscreen = false) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas || !window.Chart) {
@@ -8459,38 +8973,97 @@ function addHydrometLayersToMap(map) {
         const endInput = document.getElementById('ffd-history-end');
         const compareButtons = panel.querySelectorAll('[data-ffd-compare]');
         const storageToggleBtn = document.getElementById('ffd-storage-toggle');
+        const mafToggleBtn = document.getElementById('ffd-maf-toggle');
 
-        // ---- Storage toggle logic ----
+        // ---- Tab switching logic ----
         const switchToDischargeTab = async () => {
           ffdHistoryActiveTab = 'discharge';
-          panel.classList.remove('storage-mode');
+          panel.classList.remove('storage-mode', 'maf-mode');
           if (storageToggleBtn) storageToggleBtn.classList.remove('active');
+          if (mafToggleBtn) mafToggleBtn.classList.remove('active');
+
+          const compareContainer = panel.querySelector('.ffd-history-compare');
+          if (compareContainer) compareContainer.style.display = '';
+
           const chartEl = panel.querySelector('.ffd-history-chart');
-          if (chartEl) chartEl.classList.remove('storage-mode');
-          // destroy storage chart
+          if (chartEl) chartEl.classList.remove('storage-mode', 'maf-mode');
+
+          // destroy other charts
           if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
+          if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
+
+          restoreStandardDropdownOptions();
           await loadFFDHistoryData();
         };
 
         const switchToStorageTab = async () => {
           ffdHistoryActiveTab = 'storage';
+          panel.classList.remove('maf-mode');
           panel.classList.add('storage-mode');
+          if (mafToggleBtn) mafToggleBtn.classList.remove('active');
           if (storageToggleBtn) storageToggleBtn.classList.add('active');
-          // destroy discharge chart
+
+          const compareContainer = panel.querySelector('.ffd-history-compare');
+          if (compareContainer) compareContainer.style.display = 'none';
+
+          const chartEl = panel.querySelector('.ffd-history-chart');
+          if (chartEl) {
+            chartEl.classList.remove('maf-mode');
+            chartEl.classList.add('storage-mode');
+          }
+
+          // destroy other charts
           if (ffdHistoryChart) { ffdHistoryChart.destroy(); ffdHistoryChart = null; }
+          if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
+
+          restoreStandardDropdownOptions();
           ffdStorageDays = 7;
-          // set dropdown to 7 if the status select exists
           const statusSelectEl = document.getElementById('ffd-history-status');
           if (statusSelectEl) statusSelectEl.value = '7';
           await loadFFDStorageData();
         };
 
+        const switchToMAFTab = async () => {
+          ffdHistoryActiveTab = 'maf';
+          panel.classList.remove('storage-mode');
+          panel.classList.add('maf-mode');
+          if (storageToggleBtn) storageToggleBtn.classList.remove('active');
+          if (mafToggleBtn) mafToggleBtn.classList.add('active');
+
+          const compareContainer = panel.querySelector('.ffd-history-compare');
+          if (compareContainer) compareContainer.style.display = 'none';
+
+          const chartEl = panel.querySelector('.ffd-history-chart');
+          if (chartEl) {
+            chartEl.classList.remove('storage-mode');
+            chartEl.classList.add('maf-mode');
+          }
+
+          // destroy other charts
+          if (ffdHistoryChart) { ffdHistoryChart.destroy(); ffdHistoryChart = null; }
+          if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
+
+          ffdMAFSelection = 'monsoon-2026';
+          populateMAFDropdownOptions();
+          await loadMAFData();
+        };
+
         if (storageToggleBtn) {
           storageToggleBtn.addEventListener('click', async () => {
-            if (ffdHistoryActiveTab === 'discharge') {
-              await switchToStorageTab();
-            } else {
+            if (ffdHistoryActiveTab === 'storage') {
               await switchToDischargeTab();
+            } else {
+              await switchToStorageTab();
+            }
+          });
+        }
+
+        if (mafToggleBtn) {
+          mafToggleBtn.addEventListener('click', async () => {
+            if (ffdHistoryActiveTab === 'maf') {
+              await switchToDischargeTab();
+            } else {
+              await switchToMAFTab();
             }
           });
         }
@@ -8503,6 +9076,16 @@ function addHydrometLayersToMap(map) {
           if (ffdHistoryChart) {
             requestAnimationFrame(() => {
               ffdHistoryChart.resize();
+            });
+          }
+          if (ffdStorageChart) {
+            requestAnimationFrame(() => {
+              ffdStorageChart.resize();
+            });
+          }
+          if (ffdMAFChart) {
+            requestAnimationFrame(() => {
+              ffdMAFChart.resize();
             });
           }
         };
@@ -8554,12 +9137,22 @@ function addHydrometLayersToMap(map) {
           bindStopEvents(statusSelectEl);
           statusSelectEl.addEventListener('change', async (e) => {
             if (e.target.value === 'custom') return;
-            const days = parseInt(e.target.value, 10);
-            if (!isNaN(days)) {
-              if (ffdHistoryActiveTab === 'storage') {
+            if (ffdHistoryActiveTab === 'maf') {
+              ffdMAFSelection = e.target.value;
+              if (startInput) startInput.value = '';
+              if (endInput) endInput.value = '';
+              const customOpt = document.getElementById('ffd-history-status-custom');
+              if (customOpt) customOpt.style.display = 'none';
+              await loadMAFData();
+            } else if (ffdHistoryActiveTab === 'storage') {
+              const days = parseInt(e.target.value, 10);
+              if (!isNaN(days)) {
                 ffdStorageDays = days;
                 await loadFFDStorageData();
-              } else {
+              }
+            } else {
+              const days = parseInt(e.target.value, 10);
+              if (!isNaN(days)) {
                 ffdHistoryConfig.defaultDays = days;
                 if (startInput) startInput.value = '';
                 if (endInput) endInput.value = '';
@@ -8597,6 +9190,14 @@ function addHydrometLayersToMap(map) {
             ffdHistoryFullscreenChart.destroy();
             ffdHistoryFullscreenChart = null;
           }
+          if (ffdStorageFullscreenChart) {
+            ffdStorageFullscreenChart.destroy();
+            ffdStorageFullscreenChart = null;
+          }
+          if (ffdMAFFullscreenChart) {
+            ffdMAFFullscreenChart.destroy();
+            ffdMAFFullscreenChart = null;
+          }
         };
 
         if (closeBtn) {
@@ -8620,7 +9221,17 @@ function addHydrometLayersToMap(map) {
           fullscreenBtn.addEventListener('click', () => {
             const fullscreenTitle = document.querySelector('.ffd-history-fullscreen-title');
 
-            if (ffdHistoryActiveTab === 'storage') {
+            if (ffdHistoryActiveTab === 'maf') {
+              if (!ffdMAFLastData) {
+                setFFDHistoryStatus('Load MAF data before fullscreen');
+                return;
+              }
+              if (fullscreenTitle) {
+                fullscreenTitle.textContent = `${ffdHistoryName || 'Kotri'} - MAF Volume Fullscreen`;
+              }
+              fullscreenPanel.classList.add('open');
+              renderMAFBarChart('ffd-history-canvas-full', ffdMAFLastData, true);
+            } else if (ffdHistoryActiveTab === 'storage') {
               if (!ffdStorageLastData) {
                 return;
               }
@@ -8649,6 +9260,7 @@ function addHydrometLayersToMap(map) {
             fullscreenPanel.classList.remove('open');
             if (ffdHistoryFullscreenChart) { ffdHistoryFullscreenChart.destroy(); ffdHistoryFullscreenChart = null; }
             if (ffdStorageFullscreenChart) { ffdStorageFullscreenChart.destroy(); ffdStorageFullscreenChart = null; }
+            if (ffdMAFFullscreenChart) { ffdMAFFullscreenChart.destroy(); ffdMAFFullscreenChart = null; }
           });
         }
 
@@ -8671,7 +9283,11 @@ function addHydrometLayersToMap(map) {
               endInput.value = today;
               syncBounds();
             }
-            await loadFFDHistoryData();
+            if (ffdHistoryActiveTab === 'maf') {
+              await loadMAFData(true);
+            } else {
+              await loadFFDHistoryData();
+            }
           });
         }
 
@@ -8679,7 +9295,14 @@ function addHydrometLayersToMap(map) {
           resetBtn.addEventListener('click', async () => {
             if (startInput) startInput.value = '';
             if (endInput) endInput.value = '';
-            await loadFFDHistoryData();
+            if (ffdHistoryActiveTab === 'maf') {
+              ffdMAFSelection = 'monsoon-2026';
+              const selectEl = document.getElementById('ffd-history-status');
+              if (selectEl) selectEl.value = 'monsoon-2026';
+              await loadMAFData();
+            } else {
+              await loadFFDHistoryData();
+            }
           });
         }
 
@@ -8811,19 +9434,31 @@ function addHydrometLayersToMap(map) {
         // Show/hide S storage toggle based on whether this is a reservoir dam
         const normName = (name || '').toLowerCase();
         const isReservoirDam = normName.includes('tarbela') || normName.includes('mangla') || normName.includes('chashma');
+        const isKotri = normName.includes('kotri');
+
         const storageToggleBtn = document.getElementById('ffd-storage-toggle');
         if (storageToggleBtn) {
           storageToggleBtn.style.display = isReservoirDam ? '' : 'none';
         }
 
+        const mafToggleBtn = document.getElementById('ffd-maf-toggle');
+        if (mafToggleBtn) {
+          mafToggleBtn.style.display = isKotri ? '' : 'none';
+        }
+
         // Always reset to discharge tab when opening a new station
-        if (ffdHistoryActiveTab === 'storage') {
+        if (ffdHistoryActiveTab === 'storage' || ffdHistoryActiveTab === 'maf') {
           ffdHistoryActiveTab = 'discharge';
-          panel.classList.remove('storage-mode');
+          panel.classList.remove('storage-mode', 'maf-mode');
           if (storageToggleBtn) storageToggleBtn.classList.remove('active');
+          if (mafToggleBtn) mafToggleBtn.classList.remove('active');
+          const compareContainer = panel.querySelector('.ffd-history-compare');
+          if (compareContainer) compareContainer.style.display = '';
           const chartEl = panel.querySelector('.ffd-history-chart');
-          if (chartEl) chartEl.classList.remove('storage-mode');
+          if (chartEl) chartEl.classList.remove('storage-mode', 'maf-mode');
           if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
+          if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
+          restoreStandardDropdownOptions();
         }
 
         if (!keepManualPosition) {
