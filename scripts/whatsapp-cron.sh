@@ -28,7 +28,16 @@ echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 # 1. Remove LFS hooks that block container push (they get recreated by git pull)
-rm -f "$APP_DIR/.git/hooks/pre-push" "$APP_DIR/.git/hooks/post-commit"
+rm -f "$APP_DIR/.git/hooks/pre-push" "$APP_DIR/.git/hooks/post-commit" \
+      "$APP_DIR/.git/hooks/post-checkout" "$APP_DIR/.git/hooks/post-merge"
+
+# 1b. Neutralize LFS filters (git-lfs not installed in containers)
+#     Prevents phantom "unstaged changes" on media files that block rebase
+cd "$APP_DIR"
+git config --local filter.lfs.clean cat
+git config --local filter.lfs.smudge cat
+git config --local filter.lfs.process ""
+git config --local filter.lfs.required false
 
 # 2. Abort any stuck rebase/merge state and clean stale locks
 rm -f "$APP_DIR/.git/AUTO_MERGE" "$APP_DIR/.git/MERGE_HEAD" "$APP_DIR/.git/REBASE_HEAD" \
@@ -41,7 +50,7 @@ git merge --abort 2>/dev/null || true
 UNPUSHED=$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l)
 if [ "$UNPUSHED" -gt 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found $UNPUSHED unpushed commit(s). Resolving..." >> "$LOG_DIR/cron.log"
-    GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
+    GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
         git rebase --abort 2>/dev/null || true
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Rebase failed. Resetting to origin/main..." >> "$LOG_DIR/cron.log"
         GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
@@ -51,7 +60,7 @@ if [ "$UNPUSHED" -gt 0 ]; then
 fi
 
 # 4. Pull latest from upstream (rebase to avoid merge commits)
-GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
+GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
     git rebase --abort 2>/dev/null || true
     GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
     git reset --hard origin/main 2>/dev/null || true
@@ -140,6 +149,30 @@ cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_g
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
+
+# ── Safety net: if bot left stranded commits, push them from host ──
+cd "$APP_DIR"
+rm -f .git/hooks/pre-push .git/hooks/post-commit .git/hooks/post-checkout .git/hooks/post-merge
+git config --local filter.lfs.clean cat
+git config --local filter.lfs.smudge cat
+git config --local filter.lfs.process ""
+git config --local filter.lfs.required false
+
+UNPUSHED=$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l)
+if [ "$UNPUSHED" -gt 0 ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Safety net: $UNPUSHED stranded commit(s) found. Pushing..." >> "$LOG_DIR/cron.log"
+    GIT_SSH_COMMAND="$GIT_SSH" git push 2>>"$LOG_DIR/cron.log" || {
+        rm -f .git/hooks/pre-push .git/hooks/post-commit
+        GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
+            git rebase --abort 2>/dev/null || true
+            GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
+            git reset --hard origin/main 2>/dev/null || true
+        }
+        rm -f .git/hooks/pre-push .git/hooks/post-commit
+        GIT_SSH_COMMAND="$GIT_SSH" git push 2>>"$LOG_DIR/cron.log" || true
+    }
+fi
+cd - >/dev/null
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bot exited (code $EXIT_CODE): $CONTAINER_NAME" \
     >> "$LOG_DIR/cron.log"

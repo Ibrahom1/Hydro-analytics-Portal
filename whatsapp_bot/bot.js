@@ -372,13 +372,30 @@ function pushChanges() {
   const cwd = config.projectRoot;
   const MAX_RETRIES = 3;
 
-  try {
-    // ── Step 0: Remove LFS hooks (git-lfs not installed in container) ──
+  // Helper: remove LFS hooks that block push (they regenerate after git pull)
+  const removeLfsHooks = () => {
     const hooksDir = path.join(cwd, '.git', 'hooks');
-    for (const hook of ['pre-push', 'post-commit']) {
+    for (const hook of ['pre-push', 'post-commit', 'post-checkout', 'post-merge']) {
       const hookPath = path.join(hooksDir, hook);
       try { if (fs.existsSync(hookPath)) fs.unlinkSync(hookPath); } catch (_) {}
     }
+  };
+
+  // Helper: neutralize LFS filters (git-lfs not installed in container)
+  // This prevents phantom "unstaged changes" on media files that block rebase
+  const neutralizeLfs = () => {
+    try {
+      execSync('git config --local filter.lfs.clean cat', { cwd, stdio: 'ignore' });
+      execSync('git config --local filter.lfs.smudge cat', { cwd, stdio: 'ignore' });
+      execSync('git config --local filter.lfs.process ""', { cwd, stdio: 'ignore' });
+      execSync('git config --local filter.lfs.required false', { cwd, stdio: 'ignore' });
+    } catch (_) {}
+  };
+
+  try {
+    // ── Step 0: Neutralize LFS and remove hooks ──
+    removeLfsHooks();
+    neutralizeLfs();
 
     // ── Step 1: Stash any uncommitted changes temporarily ──
     let hasStash = false;
@@ -388,11 +405,14 @@ function pushChanges() {
     } catch (_) {}
 
     // ── Step 2: Pull latest from remote FIRST (before committing) ──
+    removeLfsHooks();
     try {
       execSync('git pull --rebase --autostash', { cwd, stdio: 'inherit', timeout: 60_000 });
     } catch (_) {
       // If rebase fails, abort and try harder
       try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
+      removeLfsHooks();
+      neutralizeLfs();
       try {
         execSync('git pull --no-rebase', { cwd, stdio: 'inherit', timeout: 60_000 });
       } catch (_) {
@@ -403,6 +423,9 @@ function pushChanges() {
         try { execSync('git reset --hard origin/main', { cwd, stdio: 'inherit' }); } catch (_) {}
       }
     }
+    // Re-neutralize after pull (pull can reset config / regenerate hooks)
+    removeLfsHooks();
+    neutralizeLfs();
 
     // ── Step 3: Pop stash to restore our ingested files ──
     if (hasStash) {
@@ -459,17 +482,23 @@ function pushChanges() {
     // ── Step 7: Push with retry ──
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
+        removeLfsHooks();
         execSync('git push', { cwd, stdio: 'inherit', timeout: 60_000 });
         log('  GIT: Changes committed and pushed.');
         return true;
       } catch (pushErr) {
         if (attempt < MAX_RETRIES) {
           log(`  GIT: Push attempt ${attempt}/${MAX_RETRIES} failed. Pulling and retrying...`);
+          removeLfsHooks();
+          neutralizeLfs();
           try {
             execSync('git pull --rebase --autostash', { cwd, stdio: 'inherit', timeout: 60_000 });
           } catch (_) {
             try { execSync('git rebase --abort', { cwd, stdio: 'ignore' }); } catch (_) {}
           }
+          // Re-neutralize after pull (pull regenerates hooks and can reset config)
+          removeLfsHooks();
+          neutralizeLfs();
         } else {
           throw pushErr;
         }

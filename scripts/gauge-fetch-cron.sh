@@ -52,11 +52,18 @@ trap 'rm -f "$LOCK_FILE"' EXIT
 
 # Clean any stale git state
 rm -f .git/index.lock 2>/dev/null || true
+rm -f .git/hooks/pre-push .git/hooks/post-commit .git/hooks/post-checkout .git/hooks/post-merge 2>/dev/null || true
 git rebase --abort 2>/dev/null || true
 git merge --abort 2>/dev/null || true
 
+# Neutralize LFS filters (git-lfs not installed in containers)
+git config --local filter.lfs.clean cat
+git config --local filter.lfs.smudge cat
+git config --local filter.lfs.process ""
+git config --local filter.lfs.required false
+
 # Pull latest first
-GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
+GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
     git rebase --abort 2>/dev/null || true
     GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
     git reset --hard origin/main 2>/dev/null || true
@@ -64,6 +71,8 @@ GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase 2>/dev/null || {
     cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
     cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
 }
+# Re-neutralize after pull (pull regenerates hooks)
+rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true
 
 # Stage and commit
 git add FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null
