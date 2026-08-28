@@ -17,10 +17,12 @@ Output:
 
 import json
 import os
+import re
 import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+import requests
 
 MODULE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -136,22 +138,81 @@ def filter_stations(raw_data):
     return filtered
 
 
-# ── Tier 1: cloudscraper ─────────────────────────────────────────────────
+# ── Tier 1: Direct Session + In-Page RS_TOKEN Extraction ─────────────────
+def fetch_with_session_token():
+    """
+    Fetch FFD page HTML, extract the embedded RS_TOKEN from JavaScript,
+    and query the token-gated API endpoint directly using session cookies.
+    """
+    print("Tier 1: Trying direct session + embedded RS_TOKEN...")
+    session = requests.Session()
+    page_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    page_resp = session.get(FFD_PAGE_URL, headers=page_headers, timeout=25)
+    page_resp.raise_for_status()
+
+    match = re.search(r'RS_TOKEN\s*=\s*["\']([^"\']+)["\']', page_resp.text)
+    if not match:
+        raise Exception("RS_TOKEN variable not found in FFD page HTML")
+
+    token = match.group(1).strip()
+    print(f"  Extracted RS_TOKEN: {token[:25]}...")
+
+    api_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-FW-Token": token,
+        "Referer": FFD_PAGE_URL,
+    }
+    api_resp = session.get(FFD_API_URL, headers=api_headers, timeout=25)
+    api_resp.raise_for_status()
+    data = api_resp.json()
+
+    if data and isinstance(data, dict) and "stations" in data:
+        print(f"  Successfully fetched live data ({len(data['stations'])} total stations) via session token!")
+        return data
+
+    raise Exception("API returned unexpected response structure")
+
+
+# ── Tier 2: Cloudscraper + RS_TOKEN Extraction ───────────────────────────
 def fetch_with_cloudscraper():
-    """Attempt to fetch using cloudscraper (handles JS challenges automatically)."""
-    print("Tier 1: Trying cloudscraper...")
+    """Attempt to fetch using cloudscraper in case Cloudflare JS challenge is present."""
+    print("Tier 2: Trying cloudscraper + RS_TOKEN...")
     import cloudscraper
     scraper = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "desktop": True}
     )
-    resp = scraper.get(FFD_API_URL, timeout=45, headers={"User-Agent": USER_AGENT})
-    resp.raise_for_status()
-    data = resp.json()
-    print(f"  cloudscraper succeeded. Response has {len(data.get('stations', []))} stations.")
-    return data
+    page_resp = scraper.get(FFD_PAGE_URL, timeout=35, headers={"User-Agent": USER_AGENT})
+    page_resp.raise_for_status()
+
+    match = re.search(r'RS_TOKEN\s*=\s*["\']([^"\']+)["\']', page_resp.text)
+    if not match:
+        raise Exception("RS_TOKEN not found via cloudscraper HTML")
+
+    token = match.group(1).strip()
+    api_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-FW-Token": token,
+        "Referer": FFD_PAGE_URL,
+    }
+    api_resp = scraper.get(FFD_API_URL, headers=api_headers, timeout=35)
+    api_resp.raise_for_status()
+    data = api_resp.json()
+    if data and isinstance(data, dict) and "stations" in data:
+        print(f"  cloudscraper succeeded. Response has {len(data.get('stations', []))} stations.")
+        return data
+
+    raise Exception("Cloudscraper failed to parse API response")
 
 
-# ── Tier 2: Playwright Stealth Interception with X-FW-TOKEN ──────────────
+# ── Tier 3: Playwright Stealth Interception with X-FW-TOKEN ──────────────
 def fetch_with_playwright():
     """Open FFD in Playwright, extract dynamic X-FW-TOKEN, and fetch scope=all data."""
     print("Tier 2: Trying Playwright browser with dynamic X-FW-TOKEN...")
@@ -361,13 +422,20 @@ def main():
     fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     raw_data = None
 
-    # Try Tier 1 first
+    # Tier 1: Direct Session + In-page RS_TOKEN extraction (fastest, no headless browser needed)
     try:
-        raw_data = fetch_with_cloudscraper()
+        raw_data = fetch_with_session_token()
     except Exception as e:
-        print(f"  cloudscraper failed: {e}")
+        print(f"  Session token fetch failed: {e}")
 
-    # Tier 2: Playwright fallback
+    # Tier 2: Cloudscraper + RS_TOKEN extraction
+    if raw_data is None:
+        try:
+            raw_data = fetch_with_cloudscraper()
+        except Exception as e:
+            print(f"  cloudscraper failed: {e}")
+
+    # Tier 3: Playwright fallback
     if raw_data is None:
         try:
             raw_data = fetch_with_playwright()
