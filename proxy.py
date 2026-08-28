@@ -44,10 +44,10 @@ else:
 # Map of proxy prefixes to target local/network IP bases
 ROUTES = {
     '/proxy_main/': 'http://172.18.7.35:8080/',
-    '/proxy_ayman/': 'http://172.18.1.185:8080/',
-    '/proxy_ibrahim/': 'http://172.18.1.115:8080/',
+    '/proxy_ayman/': 'http://172.18.1.167:8080/',
+    '/proxy_ibrahim/': 'http://172.18.1.121:8080/',
     '/proxy_mustafa/': 'http://172.18.1.45:8080/',
-    '/proxy_ahad/': 'http://172.18.1.87:8080/',
+    '/proxy_ahad/': 'http://172.18.1.68:8080/',
     '/proxy_1_4/': 'http://172.18.1.4:8080/',
     '/proxy_1_43/': 'http://172.18.1.43:8080/',
     '/proxy_1_56/': 'http://172.18.1.56:8080/',
