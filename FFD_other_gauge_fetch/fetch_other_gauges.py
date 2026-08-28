@@ -473,6 +473,15 @@ def main():
         json.dump(output, f, indent=2, ensure_ascii=False)
     print(f"Wrote {OUTPUT_JSON.name} ({len(filtered)} stations)")
 
+    # Also update legacy/runtime volume path if it exists
+    runtime_ffd = Path("/opt/hydroanalytics/ffd_fetch/latest_all_gauges.json")
+    if runtime_ffd.parent.exists():
+        try:
+            with open(runtime_ffd, "w", encoding="utf-8") as f:
+                json.dump(output, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
     # Save to SQLite
     conn = init_db()
     save_to_db(conn, filtered, fetched_at)

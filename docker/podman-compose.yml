@@ -24,7 +24,7 @@ services:
       - /opt/hydroanalytics/res_gb:/app/res_gb
       - /opt/hydroanalytics/app/script:/app/script
       - /opt/hydroanalytics/env:/app/env
-      - /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json:/app/FFD_other_gauge_fetch/latest_all_gauges.json
+      - /opt/hydroanalytics/app/FFD_other_gauge_fetch:/app/FFD_other_gauge_fetch
     environment:
       - PROXY_PORT=${HYDRO_PROXY_PORT:-8000}
       - UI_PORT=${HYDRO_UI_PORT:-5504}
