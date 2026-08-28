@@ -104,6 +104,7 @@ services:
       dockerfile: docker/Dockerfile.python
     container_name: hydro-cron
     network_mode: "host"
+    shm_size: "512m"
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
