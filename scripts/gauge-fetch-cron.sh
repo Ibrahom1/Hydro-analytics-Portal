@@ -34,8 +34,11 @@ if [ $FETCH_EXIT -ne 0 ]; then
     exit $FETCH_EXIT
 fi
 
-# ── Sync fetched files into git working tree ──
-cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
+# ── Sync fetched files ──
+# hydro-cron writes latest_all_gauges.json directly to app/FFD_other_gauge_fetch (git tree)
+# Copy FROM git tree TO runtime volume (so hydro-proxy always has the latest)
+cp -f "$APP_DIR/FFD_other_gauge_fetch/latest_all_gauges.json" /opt/hydroanalytics/ffd_fetch/ 2>/dev/null || true
+# Copy runtime data into git tree for commit
 cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
 
 # ── Git commit and push the gauge data ──
@@ -69,7 +72,6 @@ GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
     git reset --hard origin/main 2>/dev/null || true
     # Re-copy after reset
     cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
-    cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
 }
 # Re-neutralize after pull (pull regenerates hooks)
 rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true

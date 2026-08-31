@@ -145,7 +145,7 @@ cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
-cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
+# latest_all_gauges.json is already in the git tree via hydro-cron volume mount
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
