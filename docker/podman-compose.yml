@@ -70,7 +70,7 @@ services:
       - /opt/hydroanalytics/data:/app/data
       - /opt/hydroanalytics/gis_data:/app/gis_uploader_backend/data
     environment:
-      - GIS_GEOSERVER_URL=http://172.18.1.87:8080/geoserver
+      - GIS_GEOSERVER_URL=http://172.18.1.68:8080/geoserver
       - GIS_GEOSERVER_WORKSPACE=HydroAnalytics2026
       - GIS_GEOSERVER_USER=admin
       - GIS_GEOSERVER_PASSWORD=geoserver
