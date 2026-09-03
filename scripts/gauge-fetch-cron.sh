@@ -65,16 +65,21 @@ git config --local filter.lfs.smudge cat
 git config --local filter.lfs.process ""
 git config --local filter.lfs.required false
 
+# ── CRITICAL: Discard fake LFS-caused "modifications" to media files ──
+# Without this, git pull/push fails because 60+ media files appear modified
+git checkout -- media/ 2>/dev/null || true
+
 # Pull latest first
 GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
     git rebase --abort 2>/dev/null || true
-    GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
+    GIT_SSH_COMMAND="$GIT_SSH" git fetch origin main 2>/dev/null || true
     git reset --hard origin/main 2>/dev/null || true
     # Re-copy after reset
     cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
 }
 # Re-neutralize after pull (pull regenerates hooks)
 rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true
+git checkout -- media/ 2>/dev/null || true
 
 # Stage and commit
 git add FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null
@@ -83,10 +88,25 @@ if git diff --cached --quiet 2>/dev/null; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] No gauge changes to commit" >> "$LOG_DIR/cron.log"
 else
     git commit -m "Hourly update: FFD other gauges data" 2>/dev/null
-    GIT_SSH_COMMAND="$GIT_SSH" git push 2>/dev/null || {
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gauge push failed, will retry next hour" >> "$LOG_DIR/cron.log"
+    GIT_SSH_COMMAND="$GIT_SSH" git push origin main 2>>"$LOG_DIR/cron.log" || {
+        # Retry once after fresh pull
+        rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true
+        git checkout -- media/ 2>/dev/null || true
+        GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
+            git rebase --abort 2>/dev/null || true
+            GIT_SSH_COMMAND="$GIT_SSH" git fetch origin main 2>/dev/null || true
+            git reset --hard origin/main 2>/dev/null || true
+            cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
+            git add FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null
+            git commit -m "Hourly update: FFD other gauges data" 2>/dev/null
+        }
+        rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true
+        GIT_SSH_COMMAND="$GIT_SSH" git push origin main 2>>"$LOG_DIR/cron.log" || {
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gauge push failed after retry" >> "$LOG_DIR/cron.log"
+        }
     }
 fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gauge fetch completed (exit $FETCH_EXIT): $CONTAINER_NAME" \
     >> "$LOG_DIR/cron.log"
+
