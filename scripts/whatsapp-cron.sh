@@ -150,7 +150,7 @@ cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/script/ft_and_percentage.js "$APP_DIR/script/" 2>/dev/null || true
 
-# ── Safety net: if bot left stranded commits, push them from host ──
+# ── Safety net: commit any data changes and push ──
 cd "$APP_DIR"
 rm -f .git/hooks/pre-push .git/hooks/post-commit .git/hooks/post-checkout .git/hooks/post-merge
 git config --local filter.lfs.clean cat
@@ -158,18 +158,39 @@ git config --local filter.lfs.smudge cat
 git config --local filter.lfs.process ""
 git config --local filter.lfs.required false
 
+# Discard fake LFS-caused media modifications
+git checkout -- media/ 2>/dev/null || true
+
+# Stage all data files (catches changes from hydro-cron, manual ingestions, etc.)
+git add data/daily_water_situation.sqlite data/kp_stations_data.sqlite \
+       data/gb_stations.sqlite data/other_gauges.sqlite \
+       FFD_other_gauge_fetch/latest_all_gauges.json \
+       script/ft_and_percentage.js \
+       res_storages/Daily\ Water\ Situation.pdf res_kp/Flood\ Report.pdf \
+       res_gb/SWHP\ Report.pdf 2>/dev/null || true
+git add --ignore-removal res_storages/Historical\ Daily\ Storages \
+       res_kp/Historical\ KP\ Reports res_gb/Historical\ GB\ Reports 2>/dev/null || true
+
+# Commit if there are staged changes
+if ! git diff --cached --quiet 2>/dev/null; then
+    git commit -m "Auto-sync data after bot run $(date '+%Y-%m-%d %H:%M')" 2>/dev/null
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Safety net: committed data changes" >> "$LOG_DIR/cron.log"
+fi
+
+# Push any unpushed commits (from bot or from above)
 UNPUSHED=$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l)
 if [ "$UNPUSHED" -gt 0 ]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Safety net: $UNPUSHED stranded commit(s) found. Pushing..." >> "$LOG_DIR/cron.log"
-    GIT_SSH_COMMAND="$GIT_SSH" git push 2>>"$LOG_DIR/cron.log" || {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Safety net: $UNPUSHED commit(s) to push..." >> "$LOG_DIR/cron.log"
+    GIT_SSH_COMMAND="$GIT_SSH" git push origin main 2>>"$LOG_DIR/cron.log" || {
         rm -f .git/hooks/pre-push .git/hooks/post-commit
+        git checkout -- media/ 2>/dev/null || true
         GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
             git rebase --abort 2>/dev/null || true
-            GIT_SSH_COMMAND="$GIT_SSH" git fetch origin 2>/dev/null || true
+            GIT_SSH_COMMAND="$GIT_SSH" git fetch origin main 2>/dev/null || true
             git reset --hard origin/main 2>/dev/null || true
         }
         rm -f .git/hooks/pre-push .git/hooks/post-commit
-        GIT_SSH_COMMAND="$GIT_SSH" git push 2>>"$LOG_DIR/cron.log" || true
+        GIT_SSH_COMMAND="$GIT_SSH" git push origin main 2>>"$LOG_DIR/cron.log" || true
     }
 fi
 cd - >/dev/null
