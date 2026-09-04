@@ -67,7 +67,7 @@ git config --local filter.lfs.required false
 
 # ── CRITICAL: Discard fake LFS-caused "modifications" to media files ──
 # Without this, git pull/push fails because 60+ media files appear modified
-git checkout -- media/ 2>/dev/null || true
+git ls-files -z media/ 2>/dev/null | xargs -0 git update-index --assume-unchanged 2>/dev/null || true
 
 # Pull latest first
 GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
@@ -79,7 +79,7 @@ GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
 }
 # Re-neutralize after pull (pull regenerates hooks)
 rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true
-git checkout -- media/ 2>/dev/null || true
+git ls-files -z media/ 2>/dev/null | xargs -0 git update-index --assume-unchanged 2>/dev/null || true
 
 # Stage and commit
 git add FFD_other_gauge_fetch/latest_all_gauges.json data/other_gauges.sqlite 2>/dev/null
@@ -91,7 +91,7 @@ else
     GIT_SSH_COMMAND="$GIT_SSH" git push origin main 2>>"$LOG_DIR/cron.log" || {
         # Retry once after fresh pull
         rm -f .git/hooks/pre-push .git/hooks/post-commit 2>/dev/null || true
-        git checkout -- media/ 2>/dev/null || true
+        git ls-files -z media/ 2>/dev/null | xargs -0 git update-index --assume-unchanged 2>/dev/null || true
         GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
             git rebase --abort 2>/dev/null || true
             GIT_SSH_COMMAND="$GIT_SSH" git fetch origin main 2>/dev/null || true

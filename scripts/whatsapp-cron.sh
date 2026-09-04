@@ -159,7 +159,7 @@ git config --local filter.lfs.process ""
 git config --local filter.lfs.required false
 
 # Discard fake LFS-caused media modifications
-git checkout -- media/ 2>/dev/null || true
+git ls-files -z media/ 2>/dev/null | xargs -0 git update-index --assume-unchanged 2>/dev/null || true
 
 # Stage all data files (catches changes from hydro-cron, manual ingestions, etc.)
 git add data/daily_water_situation.sqlite data/kp_stations_data.sqlite \
@@ -183,7 +183,7 @@ if [ "$UNPUSHED" -gt 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Safety net: $UNPUSHED commit(s) to push..." >> "$LOG_DIR/cron.log"
     GIT_SSH_COMMAND="$GIT_SSH" git push origin main 2>>"$LOG_DIR/cron.log" || {
         rm -f .git/hooks/pre-push .git/hooks/post-commit
-        git checkout -- media/ 2>/dev/null || true
+        git ls-files -z media/ 2>/dev/null | xargs -0 git update-index --assume-unchanged 2>/dev/null || true
         GIT_SSH_COMMAND="$GIT_SSH" git pull --rebase --autostash 2>/dev/null || {
             git rebase --abort 2>/dev/null || true
             GIT_SSH_COMMAND="$GIT_SSH" git fetch origin main 2>/dev/null || true
