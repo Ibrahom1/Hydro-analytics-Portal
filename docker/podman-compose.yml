@@ -88,7 +88,7 @@ services:
     network_mode: "host"
     volumes:
       - /opt/hydroanalytics/app/index.html:/usr/share/nginx/html/index.html:ro
-      - /opt/hydroanalytics/app/media:/usr/share/nginx/html/media:ro
+      - /opt/hydroanalytics/media_static:/usr/share/nginx/html/media:ro
       - /opt/hydroanalytics/app/style:/usr/share/nginx/html/style:ro
       - /opt/hydroanalytics/app/script:/usr/share/nginx/html/script:ro
       - /opt/hydroanalytics/script/ft_and_percentage.js:/usr/share/nginx/html/script/ft_and_percentage.js:ro
