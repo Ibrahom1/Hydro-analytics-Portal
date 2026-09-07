@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-09-07T10:00:02Z",
+  "fetched_at": "2026-09-07T13:00:02Z",
   "total_stations": 26,
   "stations": [
     {
@@ -361,8 +361,8 @@
       "status": "NORMAL",
       "outflow": 18000.0,
       "inflow": 18000.0,
-      "outflow_trend": "Falling",
-      "inflow_trend": "Falling",
+      "outflow_trend": "Rising",
+      "inflow_trend": "Rising",
       "latitude": 34.167337,
       "longitude": 71.369716,
       "recording_time": "07-Sep 08 PKT",
@@ -411,8 +411,8 @@
       "status": "NORMAL",
       "outflow": 227971.0,
       "inflow": 235595.0,
-      "outflow_trend": "Falling",
-      "inflow_trend": "Falling",
+      "outflow_trend": "Rising",
+      "inflow_trend": "Rising",
       "latitude": 32.91853,
       "longitude": 71.52192,
       "recording_time": "07-Sep 08 PKT",
