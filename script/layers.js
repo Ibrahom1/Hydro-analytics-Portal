@@ -8275,30 +8275,90 @@ function addHydrometLayersToMap(map) {
         const isMonsoon = rangeInfo.isMonsoon || false;
         const monsoonYear = rangeInfo.monsoonYear || 2026;
 
-        // Group points by day (YYYY-MM-DD key)
-        const dailyBuckets = new Map();
+        // ── Stage 1: Sort all outflow points chronologically by timestamp ──
+        const sorted = outflowPoints
+          .filter(pt => pt.date && !isNaN(pt.date.getTime()) && pt.y != null && !isNaN(Number(pt.y)))
+          .map(pt => ({ date: pt.date, y: Number(pt.y) }))
+          .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-        outflowPoints.forEach(pt => {
-          if (!pt.date || isNaN(pt.date.getTime()) || pt.y === null || pt.y === undefined || isNaN(pt.y)) return;
-          const y = pt.date.getFullYear();
-          const m = String(pt.date.getMonth() + 1).padStart(2, '0');
-          const d = String(pt.date.getDate()).padStart(2, '0');
-          const key = `${y}-${m}-${d}`;
+        if (sorted.length === 0) {
+          return { labels: [], values: [], totalMaf: 0, peakMaf: 0, peakLabel: '', meanDailyMaf: 0, count: 0, daysWithData: 0, barMeta: [], rangeInfo };
+        }
 
-          if (!dailyBuckets.has(key)) {
-            dailyBuckets.set(key, { date: pt.date, readings: [] });
-          }
-          dailyBuckets.get(key).readings.push(pt.y);
-        });
+        // ── Stage 2: Trapezoidal integration across consecutive pairs ──
+        // Volume = Σ (Q1+Q2)/2 × Δt   where Δt = min(T2-T1, MAX_GAP)
+        const MAX_GAP_SECONDS = 86400; // Cap any single interval at 24 hours
+        const MAF_DIVISOR = 43560000000; // 1 MAF = 43.56 billion cubic feet
 
-        // Compute daily MAF for each day with readings
+        // dailyMafs: dateKey → { maf, totalQ, intervalCount, readingCount, date }
         const dailyMafs = new Map();
-        dailyBuckets.forEach((bucket, dateKey) => {
-          const avgQ = bucket.readings.reduce((sum, v) => sum + v, 0) / bucket.readings.length;
-          const maf = avgQ * CUSECS_PER_DAY_TO_MAF;
-          dailyMafs.set(dateKey, { avgQ, maf, date: bucket.date, count: bucket.readings.length });
+
+        // Helper: get dateKey from a Date object
+        const toDateKey = (d) => {
+          const yy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${yy}-${mm}-${dd}`;
+        };
+
+        // Helper: ensure a dailyMafs entry exists
+        const ensureDay = (dateKey, dateObj) => {
+          if (!dailyMafs.has(dateKey)) {
+            dailyMafs.set(dateKey, { maf: 0, avgQ: 0, totalQ: 0, intervalCount: 0, count: 0, date: dateObj });
+          }
+        };
+
+        // Count raw readings per day (for barMeta recordsCount)
+        const readingsPerDay = new Map();
+        sorted.forEach(pt => {
+          const dk = toDateKey(pt.date);
+          readingsPerDay.set(dk, (readingsPerDay.get(dk) || 0) + 1);
         });
 
+        if (sorted.length === 1) {
+          // Single reading total — fall back to Q × 24h (best we can do)
+          const pt = sorted[0];
+          const dateKey = toDateKey(pt.date);
+          const maf = (pt.y * 86400) / MAF_DIVISOR;
+          dailyMafs.set(dateKey, { maf, avgQ: pt.y, totalQ: pt.y, intervalCount: 1, count: 1, date: pt.date });
+        } else {
+          // Walk consecutive pairs: trapezoidal rule
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const Q1 = sorted[i].y;
+            const Q2 = sorted[i + 1].y;
+            const T1_sec = sorted[i].date.getTime() / 1000;
+            const T2_sec = sorted[i + 1].date.getTime() / 1000;
+
+            const deltaT_raw = T2_sec - T1_sec;
+            if (deltaT_raw <= 0) continue; // Skip duplicate or out-of-order timestamps
+
+            const deltaT = Math.min(deltaT_raw, MAX_GAP_SECONDS); // Cap at 24 hours
+            const avgQ = (Q1 + Q2) / 2;
+            const intervalMAF = (avgQ * deltaT) / MAF_DIVISOR;
+
+            // Assign this interval's MAF to the calendar day of its midpoint
+            const midMs = (sorted[i].date.getTime() + sorted[i + 1].date.getTime()) / 2;
+            const midDate = new Date(midMs);
+            const dateKey = toDateKey(midDate);
+
+            ensureDay(dateKey, midDate);
+            const entry = dailyMafs.get(dateKey);
+            entry.maf += intervalMAF;
+            entry.totalQ += avgQ;
+            entry.intervalCount += 1;
+          }
+
+          // Compute average Q per day (for display in barMeta)
+          dailyMafs.forEach((val, dateKey) => {
+            if (val.intervalCount > 0) {
+              val.avgQ = val.totalQ / val.intervalCount;
+            }
+            val.count = readingsPerDay.get(dateKey) || 0;
+          });
+        }
+
+        // ── Stage 3: Aggregate into bars (monthly / monsoon / daily) ──
+        // This logic is identical to before — it reads from dailyMafs
         const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         let labels = [];
@@ -8383,6 +8443,7 @@ function addHydrometLayersToMap(map) {
           });
         }
 
+        // ── Stage 4: Summary statistics ──
         const totalMaf = values.reduce((sum, v) => sum + v, 0);
         let peakMaf = 0;
         let peakLabel = '';
