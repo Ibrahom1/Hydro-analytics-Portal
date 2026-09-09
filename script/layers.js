@@ -7947,28 +7947,26 @@ function addHydrometLayersToMap(map) {
         const lastYearData = series.map(p => p.last_year);
         const avg5Data = series.map(p => p.avg_last_5_years);
         const avg10Data = series.map(p => p.avg_last_10_years);
-        const maxMaf = data.max_maf;
+        const maxMaf = (data.max_maf != null && !isNaN(Number(data.max_maf)) && Number(data.max_maf) > 0)
+          ? Number(data.max_maf)
+          : null;
         const capacityData = series.map(() => maxMaf);
 
-        // Compute dynamic headroom and cushion so points never collide with top legend
         const allNumeric = [...todayData, ...lastYearData, ...avg5Data, ...avg10Data]
           .map(Number)
           .filter(v => !isNaN(v) && v > 0);
-        if (maxMaf != null && !isNaN(Number(maxMaf))) {
-          allNumeric.push(Number(maxMaf));
-        }
 
-        const maxVal = allNumeric.length ? Math.max(...allNumeric) : 6;
-        const minVal = allNumeric.length ? Math.min(...allNumeric) : 0;
-        const valSpan = maxVal - minVal;
+        const dataMax = allNumeric.length ? Math.max(...allNumeric) : (maxMaf || 6);
+        const dataMin = allNumeric.length ? Math.min(...allNumeric) : 0;
+        const dataSpan = dataMax - dataMin || 1;
 
-        // Dynamic headroom: at least 35% of the data span or 10% of maxVal (whichever is larger)
-        const headroom = Math.max(valSpan * 0.35, maxVal * 0.10);
-        const ySuggestedMax = maxVal + headroom;
+        // The maximum of the y-axis MUST strictly match the dam's physical capacity (maxMaf).
+        // It should NEVER exceed capacity: Mangla = 7.258, Tarbela = 5.58, Chashma = 0.311.
+        const yAxisMax = (maxMaf != null) ? Math.max(dataMax, maxMaf) : Math.ceil(dataMax * 1.08);
 
-        // Dynamic bottom cushion: at least 15% of span or 4% of maxVal (minimum 0)
-        const bottomCushion = Math.max(valSpan * 0.15, maxVal * 0.04);
-        const ySuggestedMin = Math.max(0, minVal - bottomCushion);
+        // Bottom cushion: comfortable margin below minVal, never below 0
+        const bottomCushion = Math.max(dataSpan * 0.15, (dataMin > 1 ? 0.3 : dataMin * 0.1));
+        const yAxisMin = Math.max(0, Number((dataMin - bottomCushion).toFixed(2)));
 
         // Custom plugin: draw value labels above each visible circle point
         const pointLabelPlugin = {
@@ -8003,11 +8001,13 @@ function addHydrometLayersToMap(map) {
                 const pt = meta.data[i];
                 const val = ds.data[i];
                 if (val == null || !pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
+                const dsColors = ['#06b6d4', '#f59e0b', '#a855f7', '#ec4899'];
                 pointsAtI.push({
                   dsIndex,
                   pt,
                   val: Number(val),
                   formatted: Number(val).toFixed(2),
+                  color: dsColors[dsIndex] || '#06b6d4'
                 });
               });
 
@@ -8025,11 +8025,11 @@ function addHydrometLayersToMap(map) {
 
                 if (k === 0) {
                   // Topmost point at this date
-                  if (cur.pt.y < chartTop + 16) {
-                    yPos = cur.pt.y + 7;
+                  if (cur.pt.y < chartTop + 18) {
+                    yPos = cur.pt.y + (isFullscreen ? 11 : 9);
                     baseline = 'top';
                   } else {
-                    yPos = cur.pt.y - 7;
+                    yPos = cur.pt.y - (isFullscreen ? 10 : 8);
                     baseline = 'bottom';
                   }
                 } else {
@@ -8037,16 +8037,16 @@ function addHydrometLayersToMap(map) {
                   const prevPlace = placements[k - 1];
                   const vertDist = cur.pt.y - prev.pt.y;
 
-                  if (vertDist < 20) {
+                  if (vertDist < 24) {
                     // Lines are very close vertically: push this lower point's label below its circle
-                    yPos = cur.pt.y + 7;
+                    yPos = cur.pt.y + (isFullscreen ? 11 : 9);
                     baseline = 'top';
                     // If previous label also went below, push this one further down
-                    if (prevPlace.baseline === 'top' && yPos <= prevPlace.yPos + 12) {
-                      yPos = prevPlace.yPos + 14;
+                    if (prevPlace.baseline === 'top' && yPos <= prevPlace.yPos + 14) {
+                      yPos = prevPlace.yPos + 16;
                     }
                   } else {
-                    yPos = cur.pt.y - 7;
+                    yPos = cur.pt.y - (isFullscreen ? 10 : 8);
                     baseline = 'bottom';
                   }
                 }
@@ -8054,13 +8054,17 @@ function addHydrometLayersToMap(map) {
                 placements.push({ yPos, baseline });
               }
 
+              const showDot = pointsAtI.length > 1;
+              const dotRadius = isFullscreen ? 3 : 2.5;
+
               // Draw each point label with boundary edge protection
               for (let k = 0; k < pointsAtI.length; k++) {
                 const cur = pointsAtI[k];
                 const { yPos, baseline } = placements[k];
 
                 const textWidth = ctx.measureText(cur.formatted).width;
-                const halfWidth = textWidth / 2;
+                const totalWidth = showDot ? (textWidth + dotRadius * 2 + 5) : textWidth;
+                const halfWidth = totalWidth / 2;
 
                 let align = 'center';
                 let textX = cur.pt.x;
@@ -8074,6 +8078,31 @@ function addHydrometLayersToMap(map) {
                   textX = Math.min(cur.pt.x - 4, chartRight - 5);
                 }
 
+                if (showDot) {
+                  let dotX;
+                  if (align === 'center') {
+                    dotX = textX - textWidth / 2 - dotRadius - 4;
+                  } else if (align === 'left') {
+                    dotX = textX + dotRadius;
+                    textX += (dotRadius * 2 + 5);
+                  } else {
+                    dotX = textX - textWidth - dotRadius - 4;
+                  }
+                  const dotY = (baseline === 'bottom') 
+                    ? (yPos - (isFullscreen ? 6 : 5))
+                    : (yPos + (isFullscreen ? 6 : 5));
+
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                  ctx.fillStyle = cur.color;
+                  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+                  ctx.shadowBlur = 3;
+                  ctx.fill();
+                  ctx.restore();
+                }
+
+                ctx.fillStyle = '#ffffff';
                 ctx.textAlign = align;
                 ctx.textBaseline = baseline;
                 ctx.fillText(cur.formatted, textX, yPos);
@@ -8170,6 +8199,7 @@ function addHydrometLayersToMap(map) {
             borderDash: [8, 5],
             hidden: true,
             order: 5,
+            clip: false,
           });
         }
 
@@ -8283,15 +8313,15 @@ function addHydrometLayersToMap(map) {
                 grid: { color: 'rgba(148, 163, 184, 0.1)' }
               },
               y: {
-                suggestedMax: ySuggestedMax,
-                suggestedMin: ySuggestedMin,
+                min: yAxisMin,
+                max: yAxisMax,
                 ticks: {
                   color: '#94a3b8',
                   padding: 8,
                   font: { size: isFullscreen ? 11 : 9.5 },
                   callback: (v) => {
                     const num = Number(v);
-                    const span = ySuggestedMax - ySuggestedMin;
+                    const span = yAxisMax - yAxisMin;
                     return span < 1.5 ? `${num.toFixed(2)} MAF` : `${num.toFixed(1)} MAF`;
                   }
                 },
