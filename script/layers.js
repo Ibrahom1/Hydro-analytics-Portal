@@ -6658,11 +6658,22 @@ function addHydrometLayersToMap(map) {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
-      // Fetch from GitHub raw URL with cache busting
-      const response = await fetch(`https://raw.githubusercontent.com/Ibrahom1/hydrosituation/main/latest.json?_t=${Date.now()}`, {
+      // Fetch from GitHub raw URL with cache busting, fallback to jsDelivr CDN if GitHub is down
+      let response = await fetch(`https://raw.githubusercontent.com/Ibrahom1/hydrosituation/main/latest.json?_t=${Date.now()}`, {
         signal: controller.signal,
         method: 'GET'
+      }).catch(err => {
+        console.warn('GitHub raw fetch failed, trying CDN fallback...', err);
+        return null;
       });
+
+      if (!response || !response.ok) {
+        console.warn(`GitHub raw returned ${response ? response.status : 'network error'}, falling back to jsDelivr CDN...`);
+        response = await fetch(`https://cdn.jsdelivr.net/gh/Ibrahom1/hydrosituation@main/latest.json?_t=${Date.now()}`, {
+          signal: controller.signal,
+          method: 'GET'
+        });
+      }
       clearTimeout(timeoutId);
 
       if (!response.ok) {
