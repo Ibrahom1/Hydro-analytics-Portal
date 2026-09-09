@@ -5297,22 +5297,31 @@ video, canvas:not(#map canvas) {
 }
 
 .ffd-history-controls {
-  padding: clamp(6px, 0.8vw, 10px) clamp(8px, 1vw, 12px) 0 !important;
-  gap: clamp(4px, 0.6vw, 8px) !important;
+  padding: clamp(8px, 1vw, 12px) clamp(10px, 1.2vw, 14px) 0 !important;
+  gap: clamp(6px, 0.8vw, 10px) !important;
 }
 
 .ffd-history-label {
-  font-size: clamp(10px, 1vw, 12px) !important;
+  font-size: clamp(12px, 1.1vw, 14px) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
 }
 
 .ffd-history-inputs input[type="date"] {
-  padding: clamp(4px, 0.5vw, 6px) clamp(6px, 0.6vw, 8px) !important;
-  font-size: clamp(10px, 1vw, 12px) !important;
+  padding: clamp(6px, 0.7vw, 9px) clamp(8px, 0.9vw, 12px) !important;
+  font-size: clamp(12px, 1.15vw, 14.5px) !important;
+  font-weight: 500 !important;
+}
+
+.ffd-history-sep {
+  font-size: clamp(12px, 1.1vw, 14px) !important;
+  font-weight: 600 !important;
 }
 
 .ffd-history-btn {
-  padding: clamp(4px, 0.5vw, 6px) clamp(6px, 0.6vw, 8px) !important;
-  font-size: clamp(10px, 1vw, 12px) !important;
+  padding: clamp(6px, 0.7vw, 9px) clamp(10px, 1.1vw, 16px) !important;
+  font-size: clamp(12px, 1.15vw, 14px) !important;
+  font-weight: 600 !important;
 }
 
 .ffd-history-body {
@@ -5357,7 +5366,8 @@ video, canvas:not(#map canvas) {
 }
 
 .ffd-history-status {
-  font-size: clamp(10px, 1vw, 12px) !important;
+  font-size: clamp(11.5px, 1.1vw, 13.5px) !important;
+  font-weight: 500 !important;
 }
 
 .ffd-history-empty {

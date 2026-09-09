@@ -7910,16 +7910,36 @@ function addHydrometLayersToMap(map) {
         summaryEl.style.gridTemplateColumns = `repeat(${colCount}, minmax(0, 1fr))`;
       };
 
+      // Safe helper to destroy ANY existing chart attached to canvas
+      const safeDestroyChartOnCanvas = (canvas, isFullscreen = false) => {
+        if (!canvas) return;
+        try {
+          if (window.Chart && typeof window.Chart.getChart === 'function') {
+            const existing = window.Chart.getChart(canvas);
+            if (existing) {
+              existing.destroy();
+            }
+          }
+        } catch (e) {
+          console.warn('Error destroying existing chart on canvas:', e);
+        }
+        if (isFullscreen) {
+          if (ffdStorageFullscreenChart) { try { ffdStorageFullscreenChart.destroy(); } catch (_) {} ffdStorageFullscreenChart = null; }
+          if (ffdHistoryFullscreenChart) { try { ffdHistoryFullscreenChart.destroy(); } catch (_) {} ffdHistoryFullscreenChart = null; }
+          if (ffdMAFFullscreenChart) { try { ffdMAFFullscreenChart.destroy(); } catch (_) {} ffdMAFFullscreenChart = null; }
+        } else {
+          if (ffdStorageChart) { try { ffdStorageChart.destroy(); } catch (_) {} ffdStorageChart = null; }
+          if (ffdHistoryChart) { try { ffdHistoryChart.destroy(); } catch (_) {} ffdHistoryChart = null; }
+          if (ffdMAFChart) { try { ffdMAFChart.destroy(); } catch (_) {} ffdMAFChart = null; }
+        }
+      };
+
       const renderFFDStorageChart = (canvasId, data, isFullscreen = false) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas || !window.Chart || !data || !data.series || !data.series.length) return;
 
-        // Destroy previous
-        if (isFullscreen) {
-          if (ffdStorageFullscreenChart) { ffdStorageFullscreenChart.destroy(); ffdStorageFullscreenChart = null; }
-        } else {
-          if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
-        }
+        // Destroy any existing chart on this canvas to prevent "Canvas is already in use"
+        safeDestroyChartOnCanvas(canvas, isFullscreen);
 
         const series = data.series;
         const labels = series.map(p => p.date);
@@ -7936,13 +7956,15 @@ function addHydrometLayersToMap(map) {
           afterDatasetsDraw(chart) {
             const ctx = chart.ctx;
             ctx.save();
-            ctx.font = `bold ${isFullscreen ? 11 : 9}px Inter, sans-serif`;
+            ctx.font = `bold ${isFullscreen ? 13 : 11.5}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+            ctx.shadowBlur = 4;
 
             // Target datasets: Today (0), Last Year (1), Avg 5y (2), Avg 10y (3)
             const targetIndices = [0, 1, 2, 3];
-            const colors = ['#e0f2fe', '#fef3c7', '#f3e8ff', '#fce7f3'];
+            const colors = ['#38bdf8', '#fef3c7', '#f3e8ff', '#fce7f3'];
 
             targetIndices.forEach((dsIndex) => {
               const ds = chart.data.datasets[dsIndex];
@@ -7953,13 +7975,16 @@ function addHydrometLayersToMap(map) {
 
               ctx.fillStyle = colors[dsIndex] || '#e2e8f0';
 
+              const step = series.length > 60 ? Math.ceil(series.length / 30) : 1;
+
               meta.data.forEach((pt, i) => {
+                if (i % step !== 0 && i !== meta.data.length - 1) return;
                 const val = ds.data[i];
                 if (val == null) return;
                 // Ensure the point coordinates are valid numbers and not NaN/uncomputed
                 if (!pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
                 const formatted = Number(val).toFixed(2);
-                ctx.fillText(formatted, pt.x, pt.y - 5);
+                ctx.fillText(formatted, pt.x, pt.y - 7);
               });
             });
 
@@ -8063,6 +8088,14 @@ function addHydrometLayersToMap(map) {
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+              padding: {
+                top: 25,
+                bottom: 8,
+                left: 6,
+                right: 12
+              }
+            },
             animation: {
               duration: 800,
               easing: 'easeInOutCubic',
@@ -8070,11 +8103,13 @@ function addHydrometLayersToMap(map) {
             interaction: { intersect: false, mode: 'index' },
             plugins: {
               legend: {
+                position: 'top',
                 labels: {
                   color: '#e2e8f0',
                   boxWidth: 14,
+                  padding: 16,
                   usePointStyle: true,
-                  font: { size: isFullscreen ? 12 : 10 }
+                  font: { size: isFullscreen ? 12 : 11 }
                 },
                 onClick(e, legendItem, legend) {
                   const index = legendItem.datasetIndex;
@@ -8141,20 +8176,25 @@ function addHydrometLayersToMap(map) {
                   autoSkip: true,
                   minRotation: 0,
                   maxRotation: 0,
-                  font: { size: isFullscreen ? 11 : 9 },
+                  font: { size: isFullscreen ? 11 : 9.5 },
                   callback: (val, idx) => {
                     const lbl = labels[val];
                     if (!lbl) return '';
                     const d = new Date(lbl);
-                    return isNaN(d.getTime()) ? lbl : `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })}`;
+                    if (isNaN(d.getTime())) return lbl;
+                    const multiYear = labels.length > 180 || (labels.length > 1 && labels[0].slice(0, 4) !== labels[labels.length - 1].slice(0, 4));
+                    return multiYear 
+                      ? `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })} '${String(d.getFullYear()).slice(-2)}`
+                      : `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })}`;
                   }
                 },
                 grid: { color: 'rgba(148, 163, 184, 0.1)' }
               },
               y: {
+                grace: '18%',
                 ticks: {
                   color: '#94a3b8',
-                  font: { size: isFullscreen ? 11 : 9 },
+                  font: { size: isFullscreen ? 11 : 9.5 },
                   callback: (v) => `${Number(v).toFixed(1)} MAF`
                 },
                 grid: { color: 'rgba(148, 163, 184, 0.1)' },
@@ -8168,18 +8208,28 @@ function addHydrometLayersToMap(map) {
         else ffdStorageChart = chartInstance;
       };
 
-      const loadFFDStorageData = async () => {
+      const loadFFDStorageData = async (isCustomDateRange = false) => {
         if (!ffdHistoryName) return;
         const summaryEl = document.getElementById('ffd-history-summary');
         const chartEl = document.querySelector('.ffd-history-chart');
         if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Loading storage data…</div>';
 
         try {
-          const data = await fetchFFDStorageHistory(ffdHistoryName, ffdStorageDays);
+          const startInput = document.getElementById('ffd-history-start');
+          const endInput = document.getElementById('ffd-history-end');
+
+          let data;
+          if (isCustomDateRange && startInput && endInput && startInput.value && endInput.value) {
+            data = await fetchFFDStorageHistory(ffdHistoryName, null, startInput.value, endInput.value);
+            setFFDHistoryStatus(`Showing: ${startInput.value} to ${endInput.value}`);
+          } else {
+            data = await fetchFFDStorageHistory(ffdHistoryName, ffdStorageDays);
+            setFFDHistoryStatus(`Showing: Last ${ffdStorageDays} days`);
+          }
           ffdStorageLastData = data;
 
           if (!data.series || !data.series.length) {
-            if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">No storage data available.</div>';
+            if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">No storage data available for selected dates.</div>';
             return;
           }
 
@@ -8191,6 +8241,7 @@ function addHydrometLayersToMap(map) {
         } catch (err) {
           console.warn('Storage history fetch failed:', err);
           if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Storage data unavailable.</div>';
+          setFFDHistoryStatus('Storage service unavailable');
         }
       };
 
@@ -8537,11 +8588,8 @@ function addHydrometLayersToMap(map) {
         const canvas = document.getElementById(canvasId);
         if (!canvas || !window.Chart || !mafData) return;
 
-        if (isFullscreen) {
-          if (ffdMAFFullscreenChart) { ffdMAFFullscreenChart.destroy(); ffdMAFFullscreenChart = null; }
-        } else {
-          if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
-        }
+        // Destroy any existing chart on this canvas to prevent "Canvas is already in use"
+        safeDestroyChartOnCanvas(canvas, isFullscreen);
 
         const labels = mafData.labels || [];
         const values = mafData.values || [];
@@ -8791,15 +8839,8 @@ function addHydrometLayersToMap(map) {
           return;
         }
 
-        if (isFullscreen) {
-          if (ffdHistoryFullscreenChart) {
-            ffdHistoryFullscreenChart.destroy();
-          }
-        } else {
-          if (ffdHistoryChart) {
-            ffdHistoryChart.destroy();
-          }
-        }
+        // Destroy any existing chart on this canvas to prevent "Canvas is already in use"
+        safeDestroyChartOnCanvas(canvas, isFullscreen);
 
         const labels = bundle?.labels || [];
         const comparisonLabel = bundle?.comparisonLabel || getFFDHistoryComparisonLabel();
@@ -9257,7 +9298,11 @@ function addHydrometLayersToMap(map) {
               const days = parseInt(e.target.value, 10);
               if (!isNaN(days)) {
                 ffdStorageDays = days;
-                await loadFFDStorageData();
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+                const customOpt = document.getElementById('ffd-history-status-custom');
+                if (customOpt) customOpt.style.display = 'none';
+                await loadFFDStorageData(false);
               }
             } else {
               const days = parseInt(e.target.value, 10);
@@ -9394,6 +9439,8 @@ function addHydrometLayersToMap(map) {
             }
             if (ffdHistoryActiveTab === 'maf') {
               await loadMAFData(true);
+            } else if (ffdHistoryActiveTab === 'storage') {
+              await loadFFDStorageData(true);
             } else {
               await loadFFDHistoryData();
             }
@@ -9409,6 +9456,13 @@ function addHydrometLayersToMap(map) {
               const selectEl = document.getElementById('ffd-history-status');
               if (selectEl) selectEl.value = 'monsoon-2026';
               await loadMAFData();
+            } else if (ffdHistoryActiveTab === 'storage') {
+              ffdStorageDays = 7;
+              const selectEl = document.getElementById('ffd-history-status');
+              if (selectEl) selectEl.value = '7';
+              const customOpt = document.getElementById('ffd-history-status-custom');
+              if (customOpt) customOpt.style.display = 'none';
+              await loadFFDStorageData(false);
             } else {
               await loadFFDHistoryData();
             }
