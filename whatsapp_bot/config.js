@@ -62,5 +62,5 @@ module.exports = {
   // The number of recent messages to inspect on startup. Setting this higher
   // (e.g., 150) ensures the bot retrieves all weekend PDFs on Monday morning
   // even if the group chat is active.
-  historyScanLimit: 150,
+  historyScanLimit: parseInt(process.env.BACKFILL_LIMIT || '150', 10),
 };

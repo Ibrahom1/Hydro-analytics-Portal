@@ -178,7 +178,8 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
         
-    archive_path = os.path.join(archive_dir, f"{iso_date}.pdf")
+    time_safe = re.sub(r'[:\s]+', '', time_val or '').upper()  # "06:00 PM" → "0600PM"
+    archive_path = os.path.join(archive_dir, f"{iso_date}_{time_safe}.pdf") if time_safe else os.path.join(archive_dir, f"{iso_date}.pdf")
     if os.path.abspath(pdf_path) != os.path.abspath(archive_path):
         shutil.copy2(pdf_path, archive_path)
         print(f"Archived to {archive_path}")
