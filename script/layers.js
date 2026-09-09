@@ -7977,55 +7977,108 @@ function addHydrometLayersToMap(map) {
             const ctx = chart.ctx;
             ctx.save();
             ctx.font = `bold ${isFullscreen ? 13 : 11.5}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
             ctx.shadowBlur = 4;
             ctx.fillStyle = '#ffffff'; // Crisp pure white text
 
             // Target datasets: Today (0), Last Year (1), Avg 5y (2), Avg 10y (3)
             const targetIndices = [0, 1, 2, 3];
+            const step = series.length > 60 ? Math.ceil(series.length / 30) : 1;
 
-            targetIndices.forEach((dsIndex) => {
-              const ds = chart.data.datasets[dsIndex];
-              if (!ds) return;
-              const meta = chart.getDatasetMeta(dsIndex);
-              // Only draw if the dataset is visible (not hidden) in the chart
-              if (!chart.isDatasetVisible(dsIndex)) return;
+            const chartTop = chart.chartArea ? chart.chartArea.top : 0;
+            const chartLeft = chart.chartArea ? chart.chartArea.left : 0;
+            const chartRight = chart.chartArea ? chart.chartArea.right : chart.width;
 
-              const step = series.length > 60 ? Math.ceil(series.length / 30) : 1;
+            for (let i = 0; i < series.length; i++) {
+              if (i % step !== 0 && i !== series.length - 1) continue;
 
-              meta.data.forEach((pt, i) => {
-                if (i % step !== 0 && i !== meta.data.length - 1) return;
+              // Collect all visible points at this date index i
+              const pointsAtI = [];
+              targetIndices.forEach((dsIndex) => {
+                if (!chart.isDatasetVisible(dsIndex)) return;
+                const ds = chart.data.datasets[dsIndex];
+                if (!ds) return;
+                const meta = chart.getDatasetMeta(dsIndex);
+                if (!meta || !meta.data || !meta.data[i]) return;
+                const pt = meta.data[i];
                 const val = ds.data[i];
-                if (val == null) return;
-                // Ensure the point coordinates are valid numbers and not NaN/uncomputed
-                if (!pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
-                const formatted = Number(val).toFixed(2);
-                const chartTop = chart.chartArea ? chart.chartArea.top : 0;
-                const chartLeft = chart.chartArea ? chart.chartArea.left : 0;
-                const chartRight = chart.chartArea ? chart.chartArea.right : chart.width;
+                if (val == null || !pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
+                pointsAtI.push({
+                  dsIndex,
+                  pt,
+                  val: Number(val),
+                  formatted: Number(val).toFixed(2),
+                });
+              });
 
-                const textWidth = ctx.measureText(formatted).width;
+              if (!pointsAtI.length) continue;
+
+              // Sort points by vertical position on screen: lowest y (highest on screen) first
+              pointsAtI.sort((a, b) => a.pt.y - b.pt.y);
+
+              // Assign non-overlapping vertical placements
+              const placements = [];
+              for (let k = 0; k < pointsAtI.length; k++) {
+                const cur = pointsAtI[k];
+                let yPos;
+                let baseline = 'bottom';
+
+                if (k === 0) {
+                  // Topmost point at this date
+                  if (cur.pt.y < chartTop + 16) {
+                    yPos = cur.pt.y + 7;
+                    baseline = 'top';
+                  } else {
+                    yPos = cur.pt.y - 7;
+                    baseline = 'bottom';
+                  }
+                } else {
+                  const prev = pointsAtI[k - 1];
+                  const prevPlace = placements[k - 1];
+                  const vertDist = cur.pt.y - prev.pt.y;
+
+                  if (vertDist < 20) {
+                    // Lines are very close vertically: push this lower point's label below its circle
+                    yPos = cur.pt.y + 7;
+                    baseline = 'top';
+                    // If previous label also went below, push this one further down
+                    if (prevPlace.baseline === 'top' && yPos <= prevPlace.yPos + 12) {
+                      yPos = prevPlace.yPos + 14;
+                    }
+                  } else {
+                    yPos = cur.pt.y - 7;
+                    baseline = 'bottom';
+                  }
+                }
+
+                placements.push({ yPos, baseline });
+              }
+
+              // Draw each point label with boundary edge protection
+              for (let k = 0; k < pointsAtI.length; k++) {
+                const cur = pointsAtI[k];
+                const { yPos, baseline } = placements[k];
+
+                const textWidth = ctx.measureText(cur.formatted).width;
                 const halfWidth = textWidth / 2;
 
                 let align = 'center';
-                let textX = pt.x;
+                let textX = cur.pt.x;
 
                 // Prevent overlap with y-axis ticks on the left and clipping on the right
-                if (pt.x - halfWidth < chartLeft + 6) {
+                if (cur.pt.x - halfWidth < chartLeft + 6) {
                   align = 'left';
-                  textX = Math.max(pt.x + 4, chartLeft + 5);
-                } else if (pt.x + halfWidth > chartRight - 6) {
+                  textX = Math.max(cur.pt.x + 4, chartLeft + 5);
+                } else if (cur.pt.x + halfWidth > chartRight - 6) {
                   align = 'right';
-                  textX = Math.min(pt.x - 4, chartRight - 5);
+                  textX = Math.min(cur.pt.x - 4, chartRight - 5);
                 }
 
                 ctx.textAlign = align;
-                const yPos = (pt.y < chartTop + 14) ? (pt.y + 16) : (pt.y - 7);
-                ctx.fillText(formatted, textX, yPos);
-              });
-            });
+                ctx.textBaseline = baseline;
+                ctx.fillText(cur.formatted, textX, yPos);
+              }
+            }
 
             ctx.restore();
           }

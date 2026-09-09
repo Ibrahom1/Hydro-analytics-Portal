@@ -1072,16 +1072,18 @@ body {
 }
 
 .ffd-history-fullscreen {
-  position: absolute;
-  inset: 0;
-  background: #020617;
-  z-index: 1000002;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: #020617 !important;
+  z-index: 99999999 !important;
   display: none;
   flex-direction: column;
 }
 
 .ffd-history-fullscreen.open {
-  display: flex;
+  display: flex !important;
 }
 
 .ffd-history-fullscreen-header {
