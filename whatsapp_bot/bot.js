@@ -640,6 +640,15 @@ async function main() {
       }
 
       if (isKpReport && isKpHashIngested(hash)) {
+        if (process.env.REARCHIVE_KP) {
+          // Re-archive mode: still save + re-run ingestion to fix archive naming
+          log(`  🔄 [${msgDate}] "${fileName}" → Re-archiving with time-suffixed name...`);
+          const savePath = path.join(config.projectRoot, 'res_kp', config.kpPdfSaveName);
+          fs.writeFileSync(savePath, buffer);
+          if (config.autoRunPipeline) { runKpIngestionOnly(); }
+          log(`────────────────────────────────────────────`);
+          return { ingested: true, isToday: isTodayMsg, type: 'kp' };
+        }
         log(`  ℹ [${msgDate}] "${fileName}" → Already ingested in DB (Skipped)`);
         return { ingested: false };
       }

@@ -114,8 +114,26 @@ def ingest_pdf(pdf_path, db_path, archive_dir):
     # Check if this exact file was already fully ingested
     c.execute("SELECT 1 FROM kp_water_reports WHERE source_sha256=?", (file_hash,))
     if c.fetchone():
-        print(f"PDF {pdf_path} (hash {file_hash[:8]}) is already ingested.")
+        print(f"PDF {pdf_path} (hash {file_hash[:8]}) is already ingested in DB. Re-archiving...")
         conn.close()
+        # Still parse date/time so we can archive with time-suffixed name
+        date_val, time_val, _ = parse_pdf(pdf_path)
+        if date_val:
+            try:
+                parts = date_val.split('/')
+                if len(parts) == 3:
+                    iso_date = f"{parts[2]}-{parts[1]:0>2}-{parts[0]:0>2}"
+                else:
+                    iso_date = date_val
+            except Exception:
+                iso_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            if not os.path.exists(archive_dir):
+                os.makedirs(archive_dir)
+            time_safe = re.sub(r'[:\s]+', '', time_val or '').upper()
+            archive_path = os.path.join(archive_dir, f"{iso_date}_{time_safe}.pdf") if time_safe else os.path.join(archive_dir, f"{iso_date}.pdf")
+            if os.path.abspath(pdf_path) != os.path.abspath(archive_path):
+                shutil.copy2(pdf_path, archive_path)
+                print(f"Re-archived to {archive_path}")
         return
 
     date_val, time_val, rows = parse_pdf(pdf_path)
