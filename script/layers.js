@@ -7950,6 +7950,26 @@ function addHydrometLayersToMap(map) {
         const maxMaf = data.max_maf;
         const capacityData = series.map(() => maxMaf);
 
+        // Compute dynamic headroom and cushion so points never collide with top legend
+        const allNumeric = [...todayData, ...lastYearData, ...avg5Data, ...avg10Data]
+          .map(Number)
+          .filter(v => !isNaN(v) && v > 0);
+        if (maxMaf != null && !isNaN(Number(maxMaf))) {
+          allNumeric.push(Number(maxMaf));
+        }
+
+        const maxVal = allNumeric.length ? Math.max(...allNumeric) : 6;
+        const minVal = allNumeric.length ? Math.min(...allNumeric) : 0;
+        const valSpan = maxVal - minVal;
+
+        // Dynamic headroom: at least 35% of the data span or 10% of maxVal (whichever is larger)
+        const headroom = Math.max(valSpan * 0.35, maxVal * 0.10);
+        const ySuggestedMax = maxVal + headroom;
+
+        // Dynamic bottom cushion: at least 15% of span or 4% of maxVal (minimum 0)
+        const bottomCushion = Math.max(valSpan * 0.15, maxVal * 0.04);
+        const ySuggestedMin = Math.max(0, minVal - bottomCushion);
+
         // Custom plugin: draw value labels above each visible circle point
         const pointLabelPlugin = {
           id: 'storagePointLabels',
@@ -7959,12 +7979,12 @@ function addHydrometLayersToMap(map) {
             ctx.font = `bold ${isFullscreen ? 13 : 11.5}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
             ctx.shadowBlur = 4;
+            ctx.fillStyle = '#ffffff'; // Crisp pure white text
 
             // Target datasets: Today (0), Last Year (1), Avg 5y (2), Avg 10y (3)
             const targetIndices = [0, 1, 2, 3];
-            const colors = ['#38bdf8', '#fef3c7', '#f3e8ff', '#fce7f3'];
 
             targetIndices.forEach((dsIndex) => {
               const ds = chart.data.datasets[dsIndex];
@@ -7972,8 +7992,6 @@ function addHydrometLayersToMap(map) {
               const meta = chart.getDatasetMeta(dsIndex);
               // Only draw if the dataset is visible (not hidden) in the chart
               if (!chart.isDatasetVisible(dsIndex)) return;
-
-              ctx.fillStyle = colors[dsIndex] || '#e2e8f0';
 
               const step = series.length > 60 ? Math.ceil(series.length / 30) : 1;
 
@@ -7984,7 +8002,9 @@ function addHydrometLayersToMap(map) {
                 // Ensure the point coordinates are valid numbers and not NaN/uncomputed
                 if (!pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
                 const formatted = Number(val).toFixed(2);
-                ctx.fillText(formatted, pt.x, pt.y - 7);
+                const chartTop = chart.chartArea ? chart.chartArea.top : 0;
+                const yPos = (pt.y < chartTop + 14) ? (pt.y + 16) : (pt.y - 7);
+                ctx.fillText(formatted, pt.x, yPos);
               });
             });
 
@@ -8090,7 +8110,7 @@ function addHydrometLayersToMap(map) {
             maintainAspectRatio: false,
             layout: {
               padding: {
-                top: 25,
+                top: 14,
                 bottom: 8,
                 left: 6,
                 right: 12
@@ -8107,7 +8127,7 @@ function addHydrometLayersToMap(map) {
                 labels: {
                   color: '#e2e8f0',
                   boxWidth: 14,
-                  padding: 16,
+                  padding: 18,
                   usePointStyle: true,
                   font: { size: isFullscreen ? 12 : 11 }
                 },
@@ -8191,11 +8211,16 @@ function addHydrometLayersToMap(map) {
                 grid: { color: 'rgba(148, 163, 184, 0.1)' }
               },
               y: {
-                grace: '18%',
+                suggestedMax: ySuggestedMax,
+                suggestedMin: ySuggestedMin,
                 ticks: {
                   color: '#94a3b8',
                   font: { size: isFullscreen ? 11 : 9.5 },
-                  callback: (v) => `${Number(v).toFixed(1)} MAF`
+                  callback: (v) => {
+                    const num = Number(v);
+                    const span = ySuggestedMax - ySuggestedMin;
+                    return span < 1.5 ? `${num.toFixed(2)} MAF` : `${num.toFixed(1)} MAF`;
+                  }
                 },
                 grid: { color: 'rgba(148, 163, 184, 0.1)' },
                 title: { display: isFullscreen, text: 'Storage (MAF)', color: '#94a3b8', font: { size: 12 } }
