@@ -8003,8 +8003,27 @@ function addHydrometLayersToMap(map) {
                 if (!pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
                 const formatted = Number(val).toFixed(2);
                 const chartTop = chart.chartArea ? chart.chartArea.top : 0;
+                const chartLeft = chart.chartArea ? chart.chartArea.left : 0;
+                const chartRight = chart.chartArea ? chart.chartArea.right : chart.width;
+
+                const textWidth = ctx.measureText(formatted).width;
+                const halfWidth = textWidth / 2;
+
+                let align = 'center';
+                let textX = pt.x;
+
+                // Prevent overlap with y-axis ticks on the left and clipping on the right
+                if (pt.x - halfWidth < chartLeft + 6) {
+                  align = 'left';
+                  textX = Math.max(pt.x + 4, chartLeft + 5);
+                } else if (pt.x + halfWidth > chartRight - 6) {
+                  align = 'right';
+                  textX = Math.min(pt.x - 4, chartRight - 5);
+                }
+
+                ctx.textAlign = align;
                 const yPos = (pt.y < chartTop + 14) ? (pt.y + 16) : (pt.y - 7);
-                ctx.fillText(formatted, pt.x, yPos);
+                ctx.fillText(formatted, textX, yPos);
               });
             });
 
@@ -8215,6 +8234,7 @@ function addHydrometLayersToMap(map) {
                 suggestedMin: ySuggestedMin,
                 ticks: {
                   color: '#94a3b8',
+                  padding: 8,
                   font: { size: isFullscreen ? 11 : 9.5 },
                   callback: (v) => {
                     const num = Number(v);
