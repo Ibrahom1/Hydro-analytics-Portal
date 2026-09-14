@@ -71,6 +71,7 @@ cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/indian_reservoirs.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/ffd_fetch/latest_all_gauges.json "$APP_DIR/FFD_other_gauge_fetch/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$APP_DIR/res_storages/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_storages/Historical\ Daily\ Storages/* "$APP_DIR/res_storages/Historical Daily Storages/" 2>/dev/null || true
@@ -90,6 +91,7 @@ cp -f "$APP_DIR/res_gb/gb_stations_db.py" /opt/hydroanalytics/res_gb/ 2>/dev/nul
 cp -f "$APP_DIR/res_kp/kp_stations_db.py" /opt/hydroanalytics/res_kp/ 2>/dev/null || true
 cp -f "$APP_DIR/res_storages/daily_water_situation_db.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
 cp -f "$APP_DIR/res_storages/storages.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
+cp -f "$APP_DIR/res_storages/indian_dams_db.py" /opt/hydroanalytics/res_storages/ 2>/dev/null || true
 
 # 7. Reverse sync: copy historical PDFs FROM git tree INTO runtime volumes
 #    This ensures the bot container sees ALL archived PDFs (not just the latest)
@@ -97,6 +99,7 @@ cp -f "$APP_DIR/res_storages/storages.py" /opt/hydroanalytics/res_storages/ 2>/d
 cp -rn "$APP_DIR/res_gb/Historical GB Reports/"* "/opt/hydroanalytics/res_gb/Historical GB Reports/" 2>/dev/null || true
 cp -rn "$APP_DIR/res_kp/Historical KP Reports/"* "/opt/hydroanalytics/res_kp/Historical KP Reports/" 2>/dev/null || true
 cp -rn "$APP_DIR/res_storages/Historical Daily Storages/"* "/opt/hydroanalytics/res_storages/Historical Daily Storages/" 2>/dev/null || true
+cp -n "$APP_DIR/data/indian_reservoirs.sqlite" /opt/hydroanalytics/data/ 2>/dev/null || true
 
 cd - >/dev/null
 
@@ -105,6 +108,7 @@ BACKUP_DIR="/opt/hydroanalytics/backups/$(date +%Y-%m-%d)"
 mkdir -p "$BACKUP_DIR"
 cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$BACKUP_DIR/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$BACKUP_DIR/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/indian_reservoirs.sqlite "$BACKUP_DIR/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_storages/Daily\ Water\ Situation.pdf "$BACKUP_DIR/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/res_kp/Flood\ Report.pdf "$BACKUP_DIR/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$BACKUP_DIR/" 2>/dev/null || true
@@ -145,6 +149,7 @@ cp -f /opt/hydroanalytics/data/daily_water_situation.sqlite "$APP_DIR/data/" 2>/
 cp -f /opt/hydroanalytics/data/kp_stations_data.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/gb_stations.sqlite "$APP_DIR/data/" 2>/dev/null || true
 cp -f /opt/hydroanalytics/data/other_gauges.sqlite "$APP_DIR/data/" 2>/dev/null || true
+cp -f /opt/hydroanalytics/data/indian_reservoirs.sqlite "$APP_DIR/data/" 2>/dev/null || true
 # latest_all_gauges.json is already in the git tree via hydro-cron volume mount
 cp -f /opt/hydroanalytics/res_gb/SWHP\ Report.pdf "$APP_DIR/res_gb/" 2>/dev/null || true
 cp -rn /opt/hydroanalytics/res_gb/Historical\ GB\ Reports/* "$APP_DIR/res_gb/Historical GB Reports/" 2>/dev/null || true
@@ -164,6 +169,7 @@ git ls-files -z media/ 2>/dev/null | xargs -0 git update-index --assume-unchange
 # Stage all data files (catches changes from hydro-cron, manual ingestions, etc.)
 git add data/daily_water_situation.sqlite data/kp_stations_data.sqlite \
        data/gb_stations.sqlite data/other_gauges.sqlite \
+       data/indian_reservoirs.sqlite \
        FFD_other_gauge_fetch/latest_all_gauges.json \
        script/ft_and_percentage.js \
        res_storages/Daily\ Water\ Situation.pdf res_kp/Flood\ Report.pdf \

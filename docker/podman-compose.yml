@@ -115,7 +115,7 @@ services:
 
         # ── Initial run of all scripts on startup ──
         echo "[STARTUP] Running initial fetch..."
-        cd /app && python res_storages/fetch_indian_dams_sheet.py 2>&1 && echo "[STARTUP] Google Sheets: OK" || echo "[STARTUP] Google Sheets: FAILED"
+        cd /app && python res_storages/indian_dams_db.py --sync 2>&1 && echo "[STARTUP] Indian Dams Sync: OK" || echo "[STARTUP] Indian Dams Sync: FAILED"
         cd /app && python res_storages/storages.py 2>&1 && echo "[STARTUP] Storages: OK" || echo "[STARTUP] Storages: FAILED"
         cd /app && python res_storages/daily_water_situation_db.py 2>&1 && echo "[STARTUP] Daily Water DB: OK" || echo "[STARTUP] Daily Water DB: FAILED"
         cd /app && python FFD_other_gauge_fetch/fetch_other_gauges.py 2>&1 && echo "[STARTUP] FFD Gauges: OK" || echo "[STARTUP] FFD Gauges: FAILED"
@@ -125,8 +125,8 @@ services:
         # ── Background loop: Google Sheets every 5 minutes ──
         (while true; do
           sleep 300
-          echo "[$(date '+%H:%M:%S')] Running: fetch_indian_dams_sheet.py"
-          cd /app && python res_storages/fetch_indian_dams_sheet.py 2>&1 || echo "[ERROR] fetch_indian_dams_sheet.py failed"
+          echo "[$(date '+%H:%M:%S')] Running: indian_dams_db.py --sync"
+          cd /app && python res_storages/indian_dams_db.py --sync 2>&1 || echo "[ERROR] indian_dams_db.py failed"
         done) &
 
         # ── Background loop: FFD Gauges every 1 hour ──

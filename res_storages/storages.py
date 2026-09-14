@@ -855,6 +855,14 @@ def main() -> int:
 		print(f"[INFO] Updated JS: {js_path}")
 		try:
 			try:
+				from res_storages.indian_dams_db import sync_from_google_sheet as indian_sync
+			except ImportError:
+				from indian_dams_db import sync_from_google_sheet as indian_sync
+			indian_db_path = str(Path(__file__).resolve().parent.parent / "data" / "indian_reservoirs.sqlite")
+			indian_sync(indian_db_path, js_path)
+		except ImportError:
+			# Fallback to legacy sheet-only sync if indian_dams_db not yet deployed
+			try:
 				from res_storages.fetch_indian_dams_sheet import update_indian_dams_from_google_sheet
 			except ImportError:
 				from fetch_indian_dams_sheet import update_indian_dams_from_google_sheet

@@ -6969,6 +6969,14 @@ function addHydrometLayersToMap(map) {
       let ffdStorageLastData = null;
       let ffdStorageDays = 7;
 
+      // Indian storage tab state
+      let ffdHistoryIsIndian = false;
+      let indianStorageDays = 90;           // default 3 months
+      let indianChartMode = 'level';        // 'level' (ft) or 'pct' (fill %)
+      let indianStorageLastData = null;
+      let indianStorageChart = null;
+      let indianStorageFullscreenChart = null;
+
       // MAF tab state (River volume for Kotri)
       let ffdMAFChart = null;
       let ffdMAFFullscreenChart = null;
@@ -8373,6 +8381,492 @@ function addHydrometLayersToMap(map) {
         }
       };
 
+      // ================== INDIAN DAMS STORAGE HISTORY FUNCTIONS ==================
+
+      const fetchIndianStorageHistory = async (name, days, startDate, endDate) => {
+        let url = `${ffdHistoryConfig.apiBase}/api/indian-storage-history?name=${encodeURIComponent(name)}`;
+        if (startDate && endDate) {
+          url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        } else {
+          url += `&days=${days}`;
+        }
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`Indian Storage API HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Indian Storage API error');
+        return data;
+      };
+
+      const renderIndianStorageSummary = (data) => {
+        const summaryEl = document.getElementById('ffd-history-summary');
+        if (!summaryEl || !data || !data.series || !data.series.length) return;
+
+        const series = data.series;
+        const latest = series[series.length - 1];
+        const oldest = series[0];
+
+        const cards = [];
+
+        // Current Level card
+        if (latest.reservoir_level_ft != null) {
+          cards.push({
+            tone: 'storage-today',
+            label: `Current Level`,
+            value: `${Number(latest.reservoir_level_ft).toFixed(1)} ft`,
+            meta: latest.date ? latest.date : ''
+          });
+        }
+
+        // Current Fill %
+        if (latest.pct_current_year != null) {
+          cards.push({
+            tone: 'storage-today',
+            label: `Current Fill`,
+            value: `${Number(latest.pct_current_year).toFixed(1)}%`,
+            meta: ''
+          });
+        }
+
+        // vs Last Year
+        if (latest.pct_last_year != null && latest.pct_current_year != null) {
+          const delta = latest.pct_current_year - latest.pct_last_year;
+          const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '▶';
+          const tone = delta > 0 ? 'ffd-change-up' : delta < 0 ? 'ffd-change-down' : 'ffd-change-flat';
+          cards.push({
+            tone: delta < 0 ? 'storage-lastyear negative' : 'storage-lastyear',
+            label: 'vs Last Year',
+            valueHtml: `${Number(latest.pct_last_year).toFixed(1)}% <span class="${tone}">${arrow} ${Math.abs(delta).toFixed(1)} pp</span>`,
+            meta: ''
+          });
+        }
+
+        // vs 5-Year Normal
+        if (latest.pct_normal != null && latest.pct_current_year != null) {
+          const delta = latest.pct_current_year - latest.pct_normal;
+          const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '▶';
+          const tone = delta > 0 ? 'ffd-change-up' : delta < 0 ? 'ffd-change-down' : 'ffd-change-flat';
+          cards.push({
+            tone: delta < 0 ? 'storage-avg5 negative' : 'storage-avg5',
+            label: 'vs 5-Year Avg',
+            valueHtml: `${Number(latest.pct_normal).toFixed(1)}% <span class="${tone}">${arrow} ${Math.abs(delta).toFixed(1)} pp</span>`,
+            meta: ''
+          });
+        }
+
+        // Period change
+        if (oldest && latest && oldest.pct_current_year != null && latest.pct_current_year != null) {
+          const changePP = latest.pct_current_year - oldest.pct_current_year;
+          const changeArrow = changePP > 0 ? '▲' : changePP < 0 ? '▼' : '▶';
+          const changeTone = changePP > 0 ? 'ffd-change-up' : changePP < 0 ? 'ffd-change-down' : 'ffd-change-flat';
+          cards.push({
+            tone: changePP < 0 ? 'storage-change negative' : 'storage-change',
+            label: 'Period Change',
+            valueHtml: `<span class="${changeTone}">${changeArrow} ${Math.abs(changePP).toFixed(1)} pp</span>`,
+            meta: `${series.length} data points`
+          });
+        }
+
+        summaryEl.innerHTML = cards.map(card => `
+          <div class="ffd-history-card ${card.tone}">
+            <span>${card.label}</span>
+            <strong>${card.valueHtml || card.value || ''}</strong>
+            ${card.meta ? `<small>${card.meta}</small>` : ''}
+          </div>
+        `).join('');
+
+        const colCount = window.innerWidth <= 768 ? 2 : (window.innerWidth <= 1100 ? 3 : cards.length);
+        summaryEl.style.gridTemplateColumns = `repeat(${colCount}, minmax(0, 1fr))`;
+      };
+
+      const renderIndianStorageChart = (canvasId, data, isFullscreen = false) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !window.Chart || !data || !data.series || !data.series.length) return;
+
+        safeDestroyChartOnCanvas(canvas, isFullscreen);
+        // Also destroy Indian-specific chart refs
+        if (isFullscreen) {
+          if (indianStorageFullscreenChart) { try { indianStorageFullscreenChart.destroy(); } catch(_){} indianStorageFullscreenChart = null; }
+        } else {
+          if (indianStorageChart) { try { indianStorageChart.destroy(); } catch(_){} indianStorageChart = null; }
+        }
+
+        const series = data.series;
+        const labels = series.map(p => p.date);
+        const mode = indianChartMode; // 'level' or 'pct'
+        const frlFt = data.frl_ft || 0;
+
+        let primaryData, lyData, normData, yLabel, capacityVal;
+
+        if (mode === 'level') {
+          // Reservoir Level (ft) mode
+          primaryData = series.map(p => p.reservoir_level_ft);
+          // Back-calculate last year and normal levels from percentages and FRL
+          lyData = series.map(p => (p.pct_last_year != null && frlFt) ? (p.pct_last_year / 100) * frlFt : null);
+          normData = series.map(p => (p.pct_normal != null && frlFt) ? (p.pct_normal / 100) * frlFt : null);
+          yLabel = 'Reservoir Level (ft)';
+          capacityVal = frlFt;
+        } else {
+          // Fill Percentage mode
+          primaryData = series.map(p => p.pct_current_year);
+          lyData = series.map(p => p.pct_last_year);
+          normData = series.map(p => p.pct_normal);
+          yLabel = 'Fill Percentage (%)';
+          capacityVal = 100;
+        }
+
+        const allNumeric = [...primaryData, ...lyData, ...normData]
+          .map(Number).filter(v => !isNaN(v) && v > 0);
+        const dataMax = allNumeric.length ? Math.max(...allNumeric) : (capacityVal || 100);
+        const dataMin = allNumeric.length ? Math.min(...allNumeric) : 0;
+        const dataSpan = dataMax - dataMin || 1;
+
+        let yAxisMax, yAxisMin;
+        if (mode === 'pct') {
+          yAxisMax = 100;
+          yAxisMin = Math.max(0, Math.floor(dataMin - 5));
+        } else {
+          yAxisMax = capacityVal ? Math.max(dataMax, capacityVal) : Math.ceil(dataMax * 1.08);
+          const bottomCushion = Math.max(dataSpan * 0.15, 10);
+          yAxisMin = Math.max(0, Number((dataMin - bottomCushion).toFixed(0)));
+        }
+
+        // Point label plugin (same pattern as Pakistani storage chart)
+        const indianPointLabelPlugin = {
+          id: 'indianStoragePointLabels',
+          afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = `bold ${isFullscreen ? 13 : 11.5}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = '#ffffff';
+
+            const step = series.length > 30 ? Math.ceil(series.length / 15) : 1;
+            const chartTop = chart.chartArea ? chart.chartArea.top : 0;
+            const chartLeft = chart.chartArea ? chart.chartArea.left : 0;
+            const chartRight = chart.chartArea ? chart.chartArea.right : chart.width;
+
+            for (let i = 0; i < series.length; i++) {
+              if (i % step !== 0 && i !== series.length - 1) continue;
+
+              const pointsAtI = [];
+              [0, 1, 2].forEach((dsIndex) => {
+                if (!chart.isDatasetVisible(dsIndex)) return;
+                const ds = chart.data.datasets[dsIndex];
+                if (!ds) return;
+                const meta = chart.getDatasetMeta(dsIndex);
+                if (!meta || !meta.data || !meta.data[i]) return;
+                const pt = meta.data[i];
+                const val = ds.data[i];
+                if (val == null || !pt || pt.x == null || pt.y == null || isNaN(pt.x) || isNaN(pt.y)) return;
+                const dsColors = ['#06b6d4', '#f59e0b', '#a855f7'];
+                const suffix = mode === 'pct' ? '%' : ' ft';
+                pointsAtI.push({
+                  dsIndex, pt, val: Number(val),
+                  formatted: mode === 'pct' ? Number(val).toFixed(1) + '%' : Number(val).toFixed(1),
+                  color: dsColors[dsIndex] || '#06b6d4'
+                });
+              });
+
+              if (!pointsAtI.length) continue;
+              pointsAtI.sort((a, b) => a.pt.y - b.pt.y);
+
+              const placements = [];
+              for (let k = 0; k < pointsAtI.length; k++) {
+                const cur = pointsAtI[k];
+                let yPos, baseline;
+                if (k === 0) {
+                  if (cur.pt.y < chartTop + 18) {
+                    yPos = cur.pt.y + (isFullscreen ? 11 : 9);
+                    baseline = 'top';
+                  } else {
+                    yPos = cur.pt.y - (isFullscreen ? 10 : 8);
+                    baseline = 'bottom';
+                  }
+                } else {
+                  const prev = pointsAtI[k - 1];
+                  const prevPlace = placements[k - 1];
+                  const vertDist = cur.pt.y - prev.pt.y;
+                  if (vertDist < 24) {
+                    yPos = cur.pt.y + (isFullscreen ? 11 : 9);
+                    baseline = 'top';
+                    if (prevPlace.baseline === 'top' && yPos <= prevPlace.yPos + 14) {
+                      yPos = prevPlace.yPos + 16;
+                    }
+                  } else {
+                    yPos = cur.pt.y - (isFullscreen ? 10 : 8);
+                    baseline = 'bottom';
+                  }
+                }
+                placements.push({ yPos, baseline });
+              }
+
+              const showDot = pointsAtI.length > 1;
+              const dotRadius = isFullscreen ? 3 : 2.5;
+              for (let k = 0; k < pointsAtI.length; k++) {
+                const cur = pointsAtI[k];
+                const { yPos, baseline } = placements[k];
+                const textWidth = ctx.measureText(cur.formatted).width;
+                const totalWidth = showDot ? (textWidth + dotRadius * 2 + 5) : textWidth;
+                const halfWidth = totalWidth / 2;
+                let align = 'center';
+                let textX = cur.pt.x;
+                if (cur.pt.x - halfWidth < chartLeft + 6) {
+                  align = 'left'; textX = Math.max(cur.pt.x + 4, chartLeft + 5);
+                } else if (cur.pt.x + halfWidth > chartRight - 6) {
+                  align = 'right'; textX = Math.min(cur.pt.x - 4, chartRight - 5);
+                }
+                if (showDot) {
+                  let dotX;
+                  if (align === 'center') dotX = textX - textWidth / 2 - dotRadius - 4;
+                  else if (align === 'left') { dotX = textX + dotRadius; textX += (dotRadius * 2 + 5); }
+                  else dotX = textX - textWidth - dotRadius - 4;
+                  const dotY = (baseline === 'bottom') ? (yPos - (isFullscreen ? 6 : 5)) : (yPos + (isFullscreen ? 6 : 5));
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                  ctx.fillStyle = cur.color;
+                  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+                  ctx.shadowBlur = 3;
+                  ctx.fill();
+                  ctx.restore();
+                }
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = align;
+                ctx.textBaseline = baseline;
+                ctx.fillText(cur.formatted, textX, yPos);
+              }
+            }
+            ctx.restore();
+          }
+        };
+
+        const ctx2d = canvas.getContext('2d');
+        const gradient = ctx2d.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+        gradient.addColorStop(0, 'rgba(6, 182, 212, 0.45)');
+        gradient.addColorStop(0.6, 'rgba(6, 182, 212, 0.12)');
+        gradient.addColorStop(1, 'rgba(6, 182, 212, 0.02)');
+
+        const primaryLabel = mode === 'level' ? 'Current Level (ft)' : 'Current Year %';
+        const lyLabel = mode === 'level' ? 'Last Year Level (ft)' : 'Last Year %';
+        const normLabel = mode === 'level' ? '5-Year Normal Level (ft)' : '5-Year Normal %';
+        const capLabel = mode === 'level' ? `FRL (${Number(capacityVal).toFixed(0)} ft)` : '100% (Full)';
+
+        const datasets = [
+          {
+            label: primaryLabel,
+            data: primaryData,
+            borderColor: '#06b6d4',
+            backgroundColor: gradient,
+            fill: 'origin',
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 5 : 4,
+            pointHoverRadius: isFullscreen ? 7 : 6,
+            pointBackgroundColor: '#0c1825',
+            pointBorderColor: '#06b6d4',
+            pointBorderWidth: 2,
+            borderWidth: isFullscreen ? 3 : 2.5,
+            order: 1,
+          },
+          {
+            label: lyLabel,
+            data: lyData,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.06)',
+            fill: false,
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 2 : 1.8,
+            borderDash: [6, 4],
+            hidden: mode === 'level',
+            order: 2,
+          },
+          {
+            label: normLabel,
+            data: normData,
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168, 85, 247, 0.06)',
+            fill: false,
+            tension: 0.38,
+            spanGaps: true,
+            pointRadius: isFullscreen ? 3 : 2,
+            pointHoverRadius: isFullscreen ? 5 : 4,
+            borderWidth: isFullscreen ? 2 : 1.8,
+            borderDash: [4, 4],
+            hidden: mode === 'level',
+            order: 3,
+          },
+          {
+            label: capLabel,
+            data: series.map(() => capacityVal),
+            borderColor: '#ef4444',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0,
+            spanGaps: true,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderWidth: isFullscreen ? 2.5 : 2,
+            borderDash: [8, 5],
+            hidden: true,
+            order: 4,
+            clip: false,
+          }
+        ];
+
+        const chartInstance = new Chart(canvas, {
+          type: 'line',
+          plugins: [indianPointLabelPlugin],
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 14, bottom: 8, left: 6, right: 12 } },
+            animation: { duration: 800, easing: 'easeInOutCubic' },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  color: '#e2e8f0', boxWidth: 14, padding: 18, usePointStyle: true,
+                  font: { size: isFullscreen ? 12 : 11 }
+                },
+                onClick(e, legendItem, legend) {
+                  const index = legendItem.datasetIndex;
+                  const meta = legend.chart.getDatasetMeta(index);
+                  meta.hidden = !meta.hidden;
+                  legend.chart.update();
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  title: (items) => items[0]?.label ? items[0].label : '',
+                  label: (ctx) => {
+                    if (ctx.parsed.y == null) return null;
+                    const val = Number(ctx.parsed.y);
+                    const label = ctx.dataset.label || '';
+                    const suffix = mode === 'pct' ? '%' : ' ft';
+                    return `${label}: ${val.toFixed(mode === 'pct' ? 1 : 2)}${suffix}`;
+                  }
+                },
+                backgroundColor: 'rgba(6, 24, 44, 0.95)',
+                borderColor: 'rgba(6, 182, 212, 0.4)',
+                borderWidth: 1,
+                titleColor: '#22d3ee',
+                bodyColor: '#f8fafc',
+                padding: 10,
+                boxPadding: 4,
+              },
+              zoom: isFullscreen ? {
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                pan: { enabled: true, mode: 'x' }
+              } : false
+            },
+            scales: {
+              x: {
+                ticks: {
+                  color: '#94a3b8',
+                  maxTicksLimit: isFullscreen ? 14 : (window.innerWidth <= 480 ? 5 : 8),
+                  autoSkip: true,
+                  minRotation: 0,
+                  maxRotation: 0,
+                  font: { size: isFullscreen ? 11 : 9.5 },
+                  callback: (val, idx) => {
+                    const lbl = labels[val];
+                    if (!lbl) return '';
+                    const d = new Date(lbl);
+                    if (isNaN(d.getTime())) return lbl;
+                    const multiYear = labels.length > 1 && labels[0].slice(0, 4) !== labels[labels.length - 1].slice(0, 4);
+                    return multiYear
+                      ? `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })} '${String(d.getFullYear()).slice(-2)}`
+                      : `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })}`;
+                  }
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.1)' }
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                ticks: {
+                  color: '#94a3b8',
+                  padding: 8,
+                  font: { size: isFullscreen ? 11 : 9.5 },
+                  callback: (v) => {
+                    const num = Number(v);
+                    return mode === 'pct' ? `${num.toFixed(0)}%` : `${num.toFixed(0)} ft`;
+                  }
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                title: { display: isFullscreen, text: yLabel, color: '#94a3b8', font: { size: 12 } }
+              }
+            }
+          }
+        });
+
+        if (isFullscreen) indianStorageFullscreenChart = chartInstance;
+        else indianStorageChart = chartInstance;
+      };
+
+      const loadIndianStorageData = async (isCustomDateRange = false) => {
+        if (!ffdHistoryName) return;
+        const summaryEl = document.getElementById('ffd-history-summary');
+        const chartEl = document.querySelector('.ffd-history-chart');
+        if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Loading Indian dam storage data…</div>';
+
+        try {
+          const startInput = document.getElementById('ffd-history-start');
+          const endInput = document.getElementById('ffd-history-end');
+
+          let data;
+          if (isCustomDateRange && startInput && endInput && startInput.value && endInput.value) {
+            data = await fetchIndianStorageHistory(ffdHistoryName, null, startInput.value, endInput.value);
+            setFFDHistoryStatus(`Showing: ${startInput.value} to ${endInput.value}`);
+          } else {
+            data = await fetchIndianStorageHistory(ffdHistoryName, indianStorageDays);
+            setFFDHistoryStatus(`Showing: Last ${indianStorageDays} days`);
+          }
+          indianStorageLastData = data;
+
+          if (!data.series || !data.series.length) {
+            if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">No Indian dam storage data available for selected dates.</div>';
+            return;
+          }
+
+          if (chartEl) chartEl.classList.add('storage-mode');
+
+          renderIndianStorageSummary(data);
+          renderIndianStorageChart('ffd-history-canvas', data);
+        } catch (err) {
+          console.warn('Indian storage history fetch failed:', err);
+          if (summaryEl) summaryEl.innerHTML = '<div class="ffd-history-empty">Indian dam storage data unavailable.</div>';
+          setFFDHistoryStatus('Indian storage service unavailable');
+        }
+      };
+
+      const updatePeriodSelector = (mode) => {
+        const sel = document.getElementById('ffd-history-status');
+        if (!sel) return;
+        sel.innerHTML = '';
+        const options = mode === 'indian'
+          ? [{v:14,t:'Last 14 days'}, {v:30,t:'Last 1 month'}, {v:90,t:'Last 3 months',def:true}, {v:180,t:'Last 6 months'}]
+          : [{v:7,t:'Last 7 days'}, {v:14,t:'Last 14 days'}, {v:30,t:'Last 30 days'}];
+        options.forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o.v;
+          opt.textContent = `Showing: ${o.t}`;
+          if (o.def) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        const customOpt = document.createElement('option');
+        customOpt.value = 'custom';
+        customOpt.id = 'ffd-history-status-custom';
+        customOpt.style.display = 'none';
+        sel.appendChild(customOpt);
+      };
+
       // ================== END STORAGE HISTORY FUNCTIONS ==================
 
       // ================== MAF (RIVER VOLUME) FUNCTIONS ==================
@@ -9346,6 +9840,35 @@ function addHydrometLayersToMap(map) {
           });
         }
 
+        const indianLevelBtn = document.getElementById('indian-level-toggle');
+        const indianPctBtn = document.getElementById('indian-pct-toggle');
+
+        if (indianLevelBtn) {
+          indianLevelBtn.addEventListener('click', () => {
+            if (indianChartMode === 'level') return;
+            indianChartMode = 'level';
+            indianLevelBtn.classList.add('active');
+            if (indianPctBtn) indianPctBtn.classList.remove('active');
+            if (indianStorageLastData) {
+              renderIndianStorageChart('ffd-history-canvas', indianStorageLastData);
+              renderIndianStorageSummary(indianStorageLastData);
+            }
+          });
+        }
+
+        if (indianPctBtn) {
+          indianPctBtn.addEventListener('click', () => {
+            if (indianChartMode === 'pct') return;
+            indianChartMode = 'pct';
+            indianPctBtn.classList.add('active');
+            if (indianLevelBtn) indianLevelBtn.classList.remove('active');
+            if (indianStorageLastData) {
+              renderIndianStorageChart('ffd-history-canvas', indianStorageLastData);
+              renderIndianStorageSummary(indianStorageLastData);
+            }
+          });
+        }
+
         const setControlsOpen = (isOpen) => {
           panel.classList.toggle('controls-open', isOpen);
           if (dateToggleBtn) {
@@ -9364,6 +9887,11 @@ function addHydrometLayersToMap(map) {
           if (ffdMAFChart) {
             requestAnimationFrame(() => {
               ffdMAFChart.resize();
+            });
+          }
+          if (indianStorageChart) {
+            requestAnimationFrame(() => {
+              indianStorageChart.resize();
             });
           }
         };
@@ -9422,6 +9950,16 @@ function addHydrometLayersToMap(map) {
               const customOpt = document.getElementById('ffd-history-status-custom');
               if (customOpt) customOpt.style.display = 'none';
               await loadMAFData();
+            } else if (ffdHistoryActiveTab === 'storage' && ffdHistoryIsIndian) {
+              const days = parseInt(e.target.value, 10);
+              if (!isNaN(days)) {
+                indianStorageDays = days;
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+                const customOpt = document.getElementById('ffd-history-status-custom');
+                if (customOpt) customOpt.style.display = 'none';
+                await loadIndianStorageData(false);
+              }
             } else if (ffdHistoryActiveTab === 'storage') {
               const days = parseInt(e.target.value, 10);
               if (!isNaN(days)) {
@@ -9480,12 +10018,28 @@ function addHydrometLayersToMap(map) {
             ffdMAFFullscreenChart.destroy();
             ffdMAFFullscreenChart = null;
           }
+          if (indianStorageFullscreenChart) {
+            indianStorageFullscreenChart.destroy();
+            indianStorageFullscreenChart = null;
+          }
         };
 
         if (closeBtn) {
           closeBtn.addEventListener('click', () => {
             panel.classList.remove('open');
             closeFullscreen();
+            if (ffdHistoryIsIndian) {
+              ffdHistoryIsIndian = false;
+              const lvlBtn = document.getElementById('indian-level-toggle');
+              if (lvlBtn) lvlBtn.style.display = 'none';
+              const pctBtn = document.getElementById('indian-pct-toggle');
+              if (pctBtn) pctBtn.style.display = 'none';
+              const storageToggle = document.getElementById('ffd-storage-toggle');
+              if (storageToggle) storageToggle.style.display = '';
+              const compareContainer = panel.querySelector('.ffd-history-compare');
+              if (compareContainer) compareContainer.style.display = '';
+              updatePeriodSelector('pakistan');
+            }
             if (typeof ffdLegend === 'function') ffdLegend();
           });
         }
@@ -9513,6 +10067,15 @@ function addHydrometLayersToMap(map) {
               }
               fullscreenPanel.classList.add('open');
               renderMAFBarChart('ffd-history-canvas-full', ffdMAFLastData, true);
+            } else if (ffdHistoryActiveTab === 'storage' && ffdHistoryIsIndian) {
+              if (!indianStorageLastData) {
+                return;
+              }
+              if (fullscreenTitle) {
+                fullscreenTitle.textContent = `${ffdHistoryName || 'Indian Dam'} - Storage Fullscreen (${indianChartMode === 'level' ? 'Level ft' : 'Fill %'})`;
+              }
+              fullscreenPanel.classList.add('open');
+              renderIndianStorageChart('ffd-history-canvas-full', indianStorageLastData, true);
             } else if (ffdHistoryActiveTab === 'storage') {
               if (!ffdStorageLastData) {
                 return;
@@ -9543,6 +10106,7 @@ function addHydrometLayersToMap(map) {
             if (ffdHistoryFullscreenChart) { ffdHistoryFullscreenChart.destroy(); ffdHistoryFullscreenChart = null; }
             if (ffdStorageFullscreenChart) { ffdStorageFullscreenChart.destroy(); ffdStorageFullscreenChart = null; }
             if (ffdMAFFullscreenChart) { ffdMAFFullscreenChart.destroy(); ffdMAFFullscreenChart = null; }
+            if (indianStorageFullscreenChart) { indianStorageFullscreenChart.destroy(); indianStorageFullscreenChart = null; }
           });
         }
 
@@ -9567,6 +10131,8 @@ function addHydrometLayersToMap(map) {
             }
             if (ffdHistoryActiveTab === 'maf') {
               await loadMAFData(true);
+            } else if (ffdHistoryActiveTab === 'storage' && ffdHistoryIsIndian) {
+              await loadIndianStorageData(true);
             } else if (ffdHistoryActiveTab === 'storage') {
               await loadFFDStorageData(true);
             } else {
@@ -9584,6 +10150,14 @@ function addHydrometLayersToMap(map) {
               const selectEl = document.getElementById('ffd-history-status');
               if (selectEl) selectEl.value = 'monsoon-2026';
               await loadMAFData();
+            } else if (ffdHistoryActiveTab === 'storage' && ffdHistoryIsIndian) {
+              indianStorageDays = 90;
+              updatePeriodSelector('indian');
+              const selectEl = document.getElementById('ffd-history-status');
+              if (selectEl) selectEl.value = '90';
+              const customOpt = document.getElementById('ffd-history-status-custom');
+              if (customOpt) customOpt.style.display = 'none';
+              await loadIndianStorageData(false);
             } else if (ffdHistoryActiveTab === 'storage') {
               ffdStorageDays = 7;
               const selectEl = document.getElementById('ffd-history-status');
@@ -9717,6 +10291,15 @@ function addHydrometLayersToMap(map) {
         ffdHistoryCurrentProps = props || null;
         titleEl.textContent = `${ffdHistoryName} - History`;
         panel.classList.remove('controls-open');
+
+        // Clear Indian dams state and toggles
+        ffdHistoryIsIndian = false;
+        const indianLvl = document.getElementById('indian-level-toggle');
+        if (indianLvl) indianLvl.style.display = 'none';
+        const indianPct = document.getElementById('indian-pct-toggle');
+        if (indianPct) indianPct.style.display = 'none';
+        if (indianStorageChart) { try { indianStorageChart.destroy(); } catch(_){} indianStorageChart = null; }
+
         const dateToggleBtn = document.getElementById('ffd-history-date-toggle');
         if (dateToggleBtn) {
           dateToggleBtn.setAttribute('aria-expanded', 'false');
@@ -15657,6 +16240,109 @@ document.getElementById("di_ht").addEventListener("change", function () {
     if (indianDamData.hasOwnProperty(damName)) {
       const dam = indianDamData[damName];
       showDamFluidMeter(damName, dam.percentage, dam.level, dam);
+
+      // Map display name to API reservoir key
+      const indianNameToKey = { 'BHAKRA DAM': 'BHAKRA', 'PONG DAM': 'PONG', 'THEIN DAM': 'THEIN' };
+      const indianDamKey = indianNameToKey[damName] || damName;
+
+      // Open history panel for Indian dam storage
+      const indianHistoryPanel = document.getElementById('ffd-history-panel');
+      if (indianHistoryPanel) {
+        ensureFFDHistoryPanelInitialized();
+
+        const keepManualPosition = indianHistoryPanel.classList.contains('open') && indianHistoryPanel.dataset.dragged === 'true';
+        if (!keepManualPosition) {
+          indianHistoryPanel.dataset.dragged = '';
+          indianHistoryPanel.style.width = `${Math.round(getFFDHistoryDockWidth())}px`;
+          indianHistoryPanel.style.right = '16px';
+          indianHistoryPanel.style.bottom = '16px';
+          indianHistoryPanel.style.left = 'auto';
+          indianHistoryPanel.style.top = 'auto';
+        }
+
+        ffdHistoryName = indianDamKey;
+        ffdHistoryIsIndian = true;
+        ffdHistoryActiveTab = 'storage';
+        indianChartMode = 'level';
+        indianStorageDays = 90;
+
+        document.getElementById('ffd-history-name').textContent = `${damName} — Storage History`;
+
+        // Hide Pakistani toggles
+        const storageToggle = document.getElementById('ffd-storage-toggle');
+        const mafToggle = document.getElementById('ffd-maf-toggle');
+        if (storageToggle) storageToggle.style.display = 'none';
+        if (mafToggle) mafToggle.style.display = 'none';
+
+        // Show/create Indian toggle buttons
+        let levelBtn = document.getElementById('indian-level-toggle');
+        let pctBtn = document.getElementById('indian-pct-toggle');
+        const headerActions = indianHistoryPanel.querySelector('.ffd-history-header-actions');
+
+        if (!levelBtn && headerActions) {
+          levelBtn = document.createElement('button');
+          levelBtn.id = 'indian-level-toggle';
+          levelBtn.className = 'ffd-storage-toggle active';
+          levelBtn.title = 'Reservoir Level (ft) View';
+          levelBtn.textContent = 'L';
+          levelBtn.style.display = 'inline-flex';
+          const dateToggle = document.getElementById('ffd-history-date-toggle');
+          if (dateToggle) headerActions.insertBefore(levelBtn, dateToggle);
+          else headerActions.appendChild(levelBtn);
+
+          pctBtn = document.createElement('button');
+          pctBtn.id = 'indian-pct-toggle';
+          pctBtn.className = 'ffd-storage-toggle';
+          pctBtn.title = 'Fill Percentage (%) View';
+          pctBtn.textContent = '%';
+          pctBtn.style.display = 'inline-flex';
+          headerActions.insertBefore(pctBtn, levelBtn.nextSibling);
+
+          // Event listeners for toggle buttons
+          levelBtn.addEventListener('click', () => {
+            if (indianChartMode === 'level') return;
+            indianChartMode = 'level';
+            levelBtn.classList.add('active');
+            pctBtn.classList.remove('active');
+            if (indianStorageLastData) {
+              renderIndianStorageChart('ffd-history-canvas', indianStorageLastData);
+              renderIndianStorageSummary(indianStorageLastData);
+            }
+          });
+          pctBtn.addEventListener('click', () => {
+            if (indianChartMode === 'pct') return;
+            indianChartMode = 'pct';
+            pctBtn.classList.add('active');
+            levelBtn.classList.remove('active');
+            if (indianStorageLastData) {
+              renderIndianStorageChart('ffd-history-canvas', indianStorageLastData);
+              renderIndianStorageSummary(indianStorageLastData);
+            }
+          });
+        }
+
+        if (levelBtn) { levelBtn.style.display = 'inline-flex'; levelBtn.classList.add('active'); }
+        if (pctBtn) { pctBtn.style.display = 'inline-flex'; pctBtn.classList.remove('active'); }
+
+        // Hide compare buttons (not applicable for Indian dams)
+        const compareContainer = indianHistoryPanel.querySelector('.ffd-history-compare');
+        if (compareContainer) compareContainer.style.display = 'none';
+
+        // Set Indian period selector
+        updatePeriodSelector('indian');
+
+        indianHistoryPanel.classList.add('open', 'storage-mode');
+        if (typeof ffdLegend === 'function') ffdLegend();
+
+        const fluidContainer = document.getElementById('fluidMeterContainer');
+        if (fluidContainer && fluidContainer.style.display === 'block') {
+          if (!fluidContainer.style.left || fluidContainer.style.left === 'auto') {
+            dockFluidMeter(fluidContainer);
+          }
+        }
+
+        loadIndianStorageData();
+      }
     }
   });
 

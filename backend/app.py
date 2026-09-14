@@ -58,6 +58,7 @@ RIVER_HEADWORKS_MAP = {
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.abspath(os.path.join(APP_DIR, '..', 'data', 'hydro_history.db'))
 DAILY_WATER_DB_PATH = os.path.abspath(os.path.join(APP_DIR, '..', 'data', 'daily_water_situation.sqlite'))
+INDIAN_RES_DB_PATH = os.path.abspath(os.path.join(APP_DIR, '..', 'data', 'indian_reservoirs.sqlite'))
 # Historical CSV path (June 15 to Aug 18, 2025)
 CSV_PATH = os.path.abspath(os.path.join(APP_DIR, '..', 'data', 'historical_river_data', 'historic2025flooddata_16june.csv'))
 # Historical river CSVs (2014 to 2024)
@@ -1355,6 +1356,98 @@ def get_storage_history():
 
     except Exception as e:
         logging.error(f"Error fetching storage history for {name}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/indian-storage-history')
+def get_indian_storage_history():
+    """Get Indian reservoir storage history from indian_reservoirs.sqlite"""
+    name = request.args.get('name', '').strip()
+    days = int(request.args.get('days', 90))
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    if not name:
+        return jsonify({'success': False, 'error': 'Missing name parameter'}), 400
+
+    # Map name to canonical reservoir name
+    norm = name.upper().strip()
+    if 'BHAKRA' in norm or 'GOBIND' in norm:
+        reservoir = 'BHAKRA'
+    elif 'PONG' in norm:
+        reservoir = 'PONG'
+    elif 'THEIN' in norm:
+        reservoir = 'THEIN'
+    else:
+        return jsonify({'success': False, 'error': f'No Indian reservoir data for: {name}'}), 404
+
+    if not os.path.exists(INDIAN_RES_DB_PATH):
+        return jsonify({'success': False, 'error': 'Indian reservoir database not found'}), 404
+
+    # FRL in feet for reference line
+    FRL_FT = {
+        'BHAKRA': 512.0 * 3.28084,   # 1679.79 ft
+        'PONG': 423.67 * 3.28084,     # 1389.66 ft
+        'THEIN': 527.91 * 3.28084,    # 1731.59 ft
+    }
+
+    try:
+        conn = sqlite3.connect(INDIAN_RES_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        if start_date and end_date:
+            cur.execute("""
+                SELECT date_iso, reservoir_level_ft, pct_current_year, pct_last_year, pct_normal
+                FROM indian_reservoir_history
+                WHERE reservoir_name = ? AND date_iso >= ? AND date_iso <= ?
+                ORDER BY date_iso ASC
+            """, (reservoir, start_date, end_date))
+        else:
+            # Fetch last N days relative to the latest available date
+            cur.execute("SELECT MAX(date_iso) FROM indian_reservoir_history WHERE reservoir_name = ?", (reservoir,))
+            latest_row = cur.fetchone()
+            latest_date = latest_row[0] if latest_row else None
+            if not latest_date:
+                conn.close()
+                return jsonify({'success': True, 'reservoir': reservoir, 'series': [], 'frl_ft': FRL_FT.get(reservoir)})
+
+            from datetime import datetime as _dt, timedelta as _td
+            latest_dt = _dt.strptime(latest_date, '%Y-%m-%d')
+            cutoff_dt = latest_dt - _td(days=days - 1)
+            cutoff_str = cutoff_dt.strftime('%Y-%m-%d')
+
+            cur.execute("""
+                SELECT date_iso, reservoir_level_ft, pct_current_year, pct_last_year, pct_normal
+                FROM indian_reservoir_history
+                WHERE reservoir_name = ? AND date_iso >= ?
+                ORDER BY date_iso ASC
+            """, (reservoir, cutoff_str))
+
+        rows = cur.fetchall()
+        conn.close()
+
+        series = []
+        for row in rows:
+            date_val, level_ft, pct_cur, pct_ly, pct_norm = row
+            series.append({
+                'date': date_val,
+                'reservoir_level_ft': round(float(level_ft), 2) if level_ft is not None else None,
+                'pct_current_year': round(float(pct_cur), 2) if pct_cur is not None else None,
+                'pct_last_year': round(float(pct_ly), 2) if pct_ly is not None else None,
+                'pct_normal': round(float(pct_norm), 2) if pct_norm is not None else None,
+            })
+
+        return jsonify({
+            'success': True,
+            'reservoir': reservoir,
+            'frl_ft': round(FRL_FT.get(reservoir, 0), 2),
+            'series': series,
+            'points': len(series)
+        })
+
+    except Exception as e:
+        logging.error(f"Error fetching Indian storage history for {name}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
