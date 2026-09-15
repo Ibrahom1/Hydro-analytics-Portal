@@ -9763,6 +9763,12 @@ function addHydrometLayersToMap(map) {
           // destroy other charts
           if (ffdStorageChart) { ffdStorageChart.destroy(); ffdStorageChart = null; }
           if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
+          if (indianStorageChart) { indianStorageChart.destroy(); indianStorageChart = null; }
+          const indLBtn = document.getElementById('indian-level-toggle');
+          const indPBtn = document.getElementById('indian-pct-toggle');
+          if (indLBtn) indLBtn.style.display = 'none';
+          if (indPBtn) indPBtn.style.display = 'none';
+          ffdHistoryIsIndian = false;
 
           restoreStandardDropdownOptions();
           await loadFFDHistoryData();
@@ -9770,6 +9776,11 @@ function addHydrometLayersToMap(map) {
 
         const switchToStorageTab = async () => {
           ffdHistoryActiveTab = 'storage';
+          ffdHistoryIsIndian = false;
+          const indLBtn = document.getElementById('indian-level-toggle');
+          const indPBtn = document.getElementById('indian-pct-toggle');
+          if (indLBtn) indLBtn.style.display = 'none';
+          if (indPBtn) indPBtn.style.display = 'none';
           panel.classList.remove('maf-mode');
           panel.classList.add('storage-mode');
           if (mafToggleBtn) mafToggleBtn.classList.remove('active');
@@ -9787,6 +9798,7 @@ function addHydrometLayersToMap(map) {
           // destroy other charts
           if (ffdHistoryChart) { ffdHistoryChart.destroy(); ffdHistoryChart = null; }
           if (ffdMAFChart) { ffdMAFChart.destroy(); ffdMAFChart = null; }
+          if (indianStorageChart) { indianStorageChart.destroy(); indianStorageChart = null; }
 
           restoreStandardDropdownOptions();
           ffdStorageDays = 7;
@@ -10376,6 +10388,86 @@ function addHydrometLayersToMap(map) {
 
         await loadFFDHistoryData();
       };
+      window.openFFDHistoryPanel = openFFDHistoryPanel;
+
+      const openIndianStoragePanel = async (damName) => {
+        ensureFFDHistoryPanelInitialized();
+
+        const panel = document.getElementById('ffd-history-panel');
+        if (!panel) return;
+
+        const upper = String(damName || '').toUpperCase();
+        let indianDamKey = 'BHAKRA';
+        if (upper.includes('PONG')) indianDamKey = 'PONG';
+        else if (upper.includes('THEIN') || upper.includes('RANJIT')) indianDamKey = 'THEIN';
+        else if (upper.includes('BHAKRA') || upper.includes('GOBIND')) indianDamKey = 'BHAKRA';
+
+        const displayName = indianDamKey === 'BHAKRA' ? 'BHAKRA DAM' : (indianDamKey === 'PONG' ? 'PONG DAM' : 'THEIN DAM');
+
+        ffdHistoryName = indianDamKey;
+        ffdHistoryIsIndian = true;
+        ffdHistoryActiveTab = 'storage';
+        indianChartMode = 'level';
+        indianStorageDays = 90;
+
+        const titleEl = document.getElementById('ffd-history-name');
+        if (titleEl) {
+          titleEl.textContent = `${displayName} — Storage History`;
+        }
+        panel.classList.remove('controls-open');
+
+        // Hide Pakistani toggles (S, R)
+        const storageToggle = document.getElementById('ffd-storage-toggle');
+        const mafToggle = document.getElementById('ffd-maf-toggle');
+        if (storageToggle) storageToggle.style.display = 'none';
+        if (mafToggle) mafToggle.style.display = 'none';
+
+        // Show Indian toggles (L, %)
+        const levelBtn = document.getElementById('indian-level-toggle');
+        const pctBtn = document.getElementById('indian-pct-toggle');
+        if (levelBtn) {
+          levelBtn.style.display = 'inline-flex';
+          levelBtn.classList.add('active');
+        }
+        if (pctBtn) {
+          pctBtn.style.display = 'inline-flex';
+          pctBtn.classList.remove('active');
+        }
+
+        // Hide compare section
+        const compareContainer = panel.querySelector('.ffd-history-compare');
+        if (compareContainer) compareContainer.style.display = 'none';
+
+        // Populate Indian period dropdown options (14d, 1mo, 3mo [default], 6mo)
+        updatePeriodSelector('indian');
+
+        const keepManualPosition = panel.classList.contains('open') && panel.dataset.dragged === 'true';
+        if (!keepManualPosition) {
+          panel.dataset.dragged = '';
+          panel.style.width = `${Math.round(getFFDHistoryDockWidth())}px`;
+          panel.style.right = '16px';
+          panel.style.bottom = '16px';
+          panel.style.left = 'auto';
+          panel.style.top = 'auto';
+        }
+
+        panel.classList.add('open', 'storage-mode');
+        if (typeof ffdLegend === 'function') ffdLegend();
+
+        const fluidContainer = document.getElementById('fluidMeterContainer');
+        if (fluidContainer && fluidContainer.style.display === 'block') {
+          if (!fluidContainer.style.left || fluidContainer.style.left === 'auto') {
+            dockFluidMeter(fluidContainer);
+          }
+        }
+
+        if (!keepManualPosition) {
+          alignFFDHistoryPanelToFluidMeter();
+        }
+
+        await loadIndianStorageData();
+      };
+      window.openIndianStoragePanel = openIndianStoragePanel;
 
       // Add popup on click (keeping your existing popup code)
       // Enhanced FFD popup click handler with professional styling and N/A units fix
@@ -16082,35 +16174,37 @@ document.getElementById("di_ht").addEventListener("change", function () {
     }
   });
 
-  map1.on("click", "indian", function (e) {
-    // Get clicked features
-    const features = map1.queryRenderedFeatures(e.point, { layers: ["indian"] });
+  const handleIndianDamClick = function (e) {
+    const features = map1.queryRenderedFeatures(e.point, { layers: ["indian", "gis-existing-indian-label"] });
     if (!features.length) return;
     const feature = features[0];
+    const props = feature.properties || {};
 
     // Helper to format property
     const formatProp = (label, value) => {
       return `<div class="discharge-item"><span class="discharge-label">${label}:</span><span class="discharge-value">${value || 'N/A'}</span></div>`;
     };
 
+    const rawName = String(props.Name || props.name || props.NAME || props["Dam Name"] || props["dam_name"] || 'Unknown Dam').trim();
+
     // Build styled popup HTML (card style, similar to ffd_point)
     const popupHTML = `
     <div class="ffd-popup-container">
       <div class="popup-header" style="border-left: 4px solid #007bff;">
         <div class="station-info">
-          <h3 class="station-name">${feature.properties["Name"] || 'Unknown Dam'}</h3>
+          <h3 class="station-name">${rawName}</h3>
           <div class="status-badge" style="background-color: #007bff;">
             <i class="fas fa-water"></i>
-            ${feature.properties["River Name"] || 'Unknown River'}
+            ${props["River Name"] || props["river_name"] || props["River"] || 'Unknown River'}
           </div>
         </div>
       </div>
       <div class="popup-content">
         <div class="discharge-section">
           <div class="discharge-grid">
-            ${formatProp('Max Discharge', feature.properties["Max Dis Cs"])}
-            ${formatProp('Storage Capacity (AF)', feature.properties["Stg Cap AF"])}
-            ${formatProp('Power (MW)', feature.properties["Power MW"])}
+            ${formatProp('Max Discharge', props["Max Dis Cs"] || props["max_discharge"])}
+            ${formatProp('Storage Capacity (AF)', props["Stg Cap AF"] || props["storage_capacity"])}
+            ${formatProp('Power (MW)', props["Power MW"] || props["power_mw"])}
           </div>
         </div>
       </div>
@@ -16206,153 +16300,70 @@ document.getElementById("di_ht").addEventListener("change", function () {
       .setHTML(popupHTML)
       .addTo(map1);
 
-    // Show fluid meter if special Indian dam
-    const indianDamData = {
-      'BHAKRA DAM': {
-        percentage: fillPercentage_Bhakra,
-        level: res_lvl_value_Bhakra,
-        country: 'India',
-        region: 'Bilaspur, HP',
-        fullCapacity: 1680,
-        fillLastYear: fillPercentage_Bhakra_last_year,
-        fillNormal: fillPercentage_Bhakra_5year_normal
-      },
-      'PONG DAM': {
-        percentage: fillPercentage_Pong,
-        level: res_lvl_value_Pong,
-        country: 'India',
-        region: 'Kangra, HP',
-        fullCapacity: 1390,
-        fillLastYear: fillPercentage_Pong_last_year,
-        fillNormal: fillPercentage_Pong_5year_normal
-      },
-      'THEIN DAM': {
-        percentage: fillPercentage_Thein,
-        level: res_lvl_value_Thein,
-        country: 'India',
-        region: 'Pathankot, PB',
-        fullCapacity: 1732,
-        fillLastYear: fillPercentage_Thein_last_year,
-        fillNormal: fillPercentage_Thein_5year_normal
-      }
-    };
-    const damName = feature.properties.Name;
-    if (indianDamData.hasOwnProperty(damName)) {
-      const dam = indianDamData[damName];
-      showDamFluidMeter(damName, dam.percentage, dam.level, dam);
+    // Identify dam key by case-insensitive pattern
+    const upper = rawName.toUpperCase();
+    let matchedKey = null;
+    if (upper.includes('BHAKRA') || upper.includes('GOBIND')) {
+      matchedKey = 'BHAKRA DAM';
+    } else if (upper.includes('PONG')) {
+      matchedKey = 'PONG DAM';
+    } else if (upper.includes('THEIN') || upper.includes('RANJIT')) {
+      matchedKey = 'THEIN DAM';
+    }
 
-      // Map display name to API reservoir key
-      const indianNameToKey = { 'BHAKRA DAM': 'BHAKRA', 'PONG DAM': 'PONG', 'THEIN DAM': 'THEIN' };
-      const indianDamKey = indianNameToKey[damName] || damName;
-
-      // Open history panel for Indian dam storage
-      const indianHistoryPanel = document.getElementById('ffd-history-panel');
-      if (indianHistoryPanel) {
-        ensureFFDHistoryPanelInitialized();
-
-        const keepManualPosition = indianHistoryPanel.classList.contains('open') && indianHistoryPanel.dataset.dragged === 'true';
-        if (!keepManualPosition) {
-          indianHistoryPanel.dataset.dragged = '';
-          indianHistoryPanel.style.width = `${Math.round(getFFDHistoryDockWidth())}px`;
-          indianHistoryPanel.style.right = '16px';
-          indianHistoryPanel.style.bottom = '16px';
-          indianHistoryPanel.style.left = 'auto';
-          indianHistoryPanel.style.top = 'auto';
+    if (matchedKey) {
+      const indianDamData = {
+        'BHAKRA DAM': {
+          percentage: typeof fillPercentage_Bhakra !== 'undefined' ? fillPercentage_Bhakra : 64.13,
+          level: typeof res_lvl_value_Bhakra !== 'undefined' ? res_lvl_value_Bhakra : 1643.75,
+          country: 'India',
+          region: 'Bilaspur, HP',
+          fullCapacity: 1680,
+          fillLastYear: typeof fillPercentage_Bhakra_last_year !== 'undefined' ? fillPercentage_Bhakra_last_year : null,
+          fillNormal: typeof fillPercentage_Bhakra_5year_normal !== 'undefined' ? fillPercentage_Bhakra_5year_normal : null
+        },
+        'PONG DAM': {
+          percentage: typeof fillPercentage_Pong !== 'undefined' ? fillPercentage_Pong : 73.81,
+          level: typeof res_lvl_value_Pong !== 'undefined' ? res_lvl_value_Pong : 1372.47,
+          country: 'India',
+          region: 'Kangra, HP',
+          fullCapacity: 1390,
+          fillLastYear: typeof fillPercentage_Pong_last_year !== 'undefined' ? fillPercentage_Pong_last_year : null,
+          fillNormal: typeof fillPercentage_Pong_5year_normal !== 'undefined' ? fillPercentage_Pong_5year_normal : null
+        },
+        'THEIN DAM': {
+          percentage: typeof fillPercentage_Thein !== 'undefined' ? fillPercentage_Thein : 51.77,
+          level: typeof res_lvl_value_Thein !== 'undefined' ? res_lvl_value_Thein : 1679.63,
+          country: 'India',
+          region: 'Pathankot, PB',
+          fullCapacity: 1732,
+          fillLastYear: typeof fillPercentage_Thein_last_year !== 'undefined' ? fillPercentage_Thein_last_year : null,
+          fillNormal: typeof fillPercentage_Thein_5year_normal !== 'undefined' ? fillPercentage_Thein_5year_normal : null
         }
+      };
 
-        ffdHistoryName = indianDamKey;
-        ffdHistoryIsIndian = true;
-        ffdHistoryActiveTab = 'storage';
-        indianChartMode = 'level';
-        indianStorageDays = 90;
+      const dam = indianDamData[matchedKey];
+      showDamFluidMeter(matchedKey, dam.percentage, dam.level, dam);
 
-        document.getElementById('ffd-history-name').textContent = `${damName} — Storage History`;
-
-        // Hide Pakistani toggles
-        const storageToggle = document.getElementById('ffd-storage-toggle');
-        const mafToggle = document.getElementById('ffd-maf-toggle');
-        if (storageToggle) storageToggle.style.display = 'none';
-        if (mafToggle) mafToggle.style.display = 'none';
-
-        // Show/create Indian toggle buttons
-        let levelBtn = document.getElementById('indian-level-toggle');
-        let pctBtn = document.getElementById('indian-pct-toggle');
-        const headerActions = indianHistoryPanel.querySelector('.ffd-history-header-actions');
-
-        if (!levelBtn && headerActions) {
-          levelBtn = document.createElement('button');
-          levelBtn.id = 'indian-level-toggle';
-          levelBtn.className = 'ffd-storage-toggle active';
-          levelBtn.title = 'Reservoir Level (ft) View';
-          levelBtn.textContent = 'L';
-          levelBtn.style.display = 'inline-flex';
-          const dateToggle = document.getElementById('ffd-history-date-toggle');
-          if (dateToggle) headerActions.insertBefore(levelBtn, dateToggle);
-          else headerActions.appendChild(levelBtn);
-
-          pctBtn = document.createElement('button');
-          pctBtn.id = 'indian-pct-toggle';
-          pctBtn.className = 'ffd-storage-toggle';
-          pctBtn.title = 'Fill Percentage (%) View';
-          pctBtn.textContent = '%';
-          pctBtn.style.display = 'inline-flex';
-          headerActions.insertBefore(pctBtn, levelBtn.nextSibling);
-
-          // Event listeners for toggle buttons
-          levelBtn.addEventListener('click', () => {
-            if (indianChartMode === 'level') return;
-            indianChartMode = 'level';
-            levelBtn.classList.add('active');
-            pctBtn.classList.remove('active');
-            if (indianStorageLastData) {
-              renderIndianStorageChart('ffd-history-canvas', indianStorageLastData);
-              renderIndianStorageSummary(indianStorageLastData);
-            }
-          });
-          pctBtn.addEventListener('click', () => {
-            if (indianChartMode === 'pct') return;
-            indianChartMode = 'pct';
-            pctBtn.classList.add('active');
-            levelBtn.classList.remove('active');
-            if (indianStorageLastData) {
-              renderIndianStorageChart('ffd-history-canvas', indianStorageLastData);
-              renderIndianStorageSummary(indianStorageLastData);
-            }
-          });
-        }
-
-        if (levelBtn) { levelBtn.style.display = 'inline-flex'; levelBtn.classList.add('active'); }
-        if (pctBtn) { pctBtn.style.display = 'inline-flex'; pctBtn.classList.remove('active'); }
-
-        // Hide compare buttons (not applicable for Indian dams)
-        const compareContainer = indianHistoryPanel.querySelector('.ffd-history-compare');
-        if (compareContainer) compareContainer.style.display = 'none';
-
-        // Set Indian period selector
-        updatePeriodSelector('indian');
-
-        indianHistoryPanel.classList.add('open', 'storage-mode');
-        if (typeof ffdLegend === 'function') ffdLegend();
-
-        const fluidContainer = document.getElementById('fluidMeterContainer');
-        if (fluidContainer && fluidContainer.style.display === 'block') {
-          if (!fluidContainer.style.left || fluidContainer.style.left === 'auto') {
-            dockFluidMeter(fluidContainer);
-          }
-        }
-
-        loadIndianStorageData();
+      // Open history panel for Indian dam storage via globally exposed function
+      if (typeof window.openIndianStoragePanel === 'function') {
+        window.openIndianStoragePanel(matchedKey);
+      } else {
+        console.warn('openIndianStoragePanel not available yet');
       }
     }
-  });
+  };
 
-  // 3. Move the cursor event handlers OUTSIDE the click handler (add these separately):
-  map1.on('mouseenter', 'indian', () => {
-    map1.getCanvas().style.cursor = 'pointer';
-  });
+  map1.on('click', 'indian', handleIndianDamClick);
+  map1.on('click', 'gis-existing-indian-label', handleIndianDamClick);
 
-  map1.on('mouseleave', 'indian', () => {
-    map1.getCanvas().style.cursor = '';
+  ['indian', 'gis-existing-indian-label'].forEach(layerId => {
+    map1.on('mouseenter', layerId, () => {
+      map1.getCanvas().style.cursor = 'pointer';
+    });
+    map1.on('mouseleave', layerId, () => {
+      map1.getCanvas().style.cursor = '';
+    });
   });
 
   ///Flood Events 15 Aug
