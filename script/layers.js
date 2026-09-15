@@ -8470,13 +8470,31 @@ function addHydrometLayersToMap(map) {
             ctx.shadowBlur = 4;
             ctx.fillStyle = '#ffffff';
 
-            const step = series.length > 30 ? Math.ceil(series.length / 15) : 1;
             const chartTop = chart.chartArea ? chart.chartArea.top : 0;
             const chartLeft = chart.chartArea ? chart.chartArea.left : 0;
             const chartRight = chart.chartArea ? chart.chartArea.right : chart.width;
+            const chartWidth = chartRight - chartLeft || 550;
+
+            // Dynamically calculate how many labels can comfortably fit horizontally without overlap
+            const minSpacing = isFullscreen ? 65 : 75;
+            const targetMaxLabels = Math.max(4, Math.min(isFullscreen ? 18 : 7, Math.floor(chartWidth / minSpacing)));
+
+            // Compute indices to display: always include first (0) and last (series.length - 1)
+            const indicesToShow = new Set();
+            if (series.length <= targetMaxLabels) {
+              for (let idx = 0; idx < series.length; idx++) indicesToShow.add(idx);
+            } else {
+              indicesToShow.add(0);
+              indicesToShow.add(series.length - 1);
+              const numIntervals = Math.min(targetMaxLabels - 1, series.length - 1);
+              for (let k = 1; k < numIntervals; k++) {
+                const idx = Math.round((k * (series.length - 1)) / numIntervals);
+                indicesToShow.add(idx);
+              }
+            }
 
             for (let i = 0; i < series.length; i++) {
-              if (i % step !== 0 && i !== series.length - 1) continue;
+              if (!indicesToShow.has(i)) continue;
 
               const pointsAtI = [];
               [0, 1, 2].forEach((dsIndex) => {
