@@ -8427,32 +8427,6 @@ function addHydrometLayersToMap(map) {
           });
         }
 
-        // vs Last Year
-        if (latest.pct_last_year != null && latest.pct_current_year != null) {
-          const delta = latest.pct_current_year - latest.pct_last_year;
-          const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '▶';
-          const tone = delta > 0 ? 'ffd-change-up' : delta < 0 ? 'ffd-change-down' : 'ffd-change-flat';
-          cards.push({
-            tone: delta < 0 ? 'storage-lastyear negative' : 'storage-lastyear',
-            label: 'vs Last Year',
-            valueHtml: `${Number(latest.pct_last_year).toFixed(1)}% <span class="${tone}">${arrow} ${Math.abs(delta).toFixed(1)} pp</span>`,
-            meta: ''
-          });
-        }
-
-        // vs 5-Year Normal
-        if (latest.pct_normal != null && latest.pct_current_year != null) {
-          const delta = latest.pct_current_year - latest.pct_normal;
-          const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '▶';
-          const tone = delta > 0 ? 'ffd-change-up' : delta < 0 ? 'ffd-change-down' : 'ffd-change-flat';
-          cards.push({
-            tone: delta < 0 ? 'storage-avg5 negative' : 'storage-avg5',
-            label: 'vs 5-Year Avg',
-            valueHtml: `${Number(latest.pct_normal).toFixed(1)}% <span class="${tone}">${arrow} ${Math.abs(delta).toFixed(1)} pp</span>`,
-            meta: ''
-          });
-        }
-
         // Period change
         if (oldest && latest && oldest.pct_current_year != null && latest.pct_current_year != null) {
           const changePP = latest.pct_current_year - oldest.pct_current_year;
