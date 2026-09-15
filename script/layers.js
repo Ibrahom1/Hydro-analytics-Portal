@@ -8398,58 +8398,13 @@ function addHydrometLayersToMap(map) {
       };
 
       const renderIndianStorageSummary = (data) => {
+        // Hide summary cards for Indian dams — popup already shows this data.
+        // Hiding frees up vertical space for the chart.
         const summaryEl = document.getElementById('ffd-history-summary');
-        if (!summaryEl || !data || !data.series || !data.series.length) return;
-
-        const series = data.series;
-        const latest = series[series.length - 1];
-        const oldest = series[0];
-
-        const cards = [];
-
-        // Current Level card
-        if (latest.reservoir_level_ft != null) {
-          cards.push({
-            tone: 'storage-today',
-            label: `Current Level`,
-            value: `${Number(latest.reservoir_level_ft).toFixed(1)} ft`,
-            meta: latest.date ? latest.date : ''
-          });
+        if (summaryEl) {
+          summaryEl.style.display = 'none';
+          summaryEl.innerHTML = '';
         }
-
-        // Current Fill %
-        if (latest.pct_current_year != null) {
-          cards.push({
-            tone: 'storage-today',
-            label: `Current Fill`,
-            value: `${Number(latest.pct_current_year).toFixed(1)}%`,
-            meta: ''
-          });
-        }
-
-        // Period change
-        if (oldest && latest && oldest.pct_current_year != null && latest.pct_current_year != null) {
-          const changePP = latest.pct_current_year - oldest.pct_current_year;
-          const changeArrow = changePP > 0 ? '▲' : changePP < 0 ? '▼' : '▶';
-          const changeTone = changePP > 0 ? 'ffd-change-up' : changePP < 0 ? 'ffd-change-down' : 'ffd-change-flat';
-          cards.push({
-            tone: changePP < 0 ? 'storage-change negative' : 'storage-change',
-            label: 'Period Change',
-            valueHtml: `<span class="${changeTone}">${changeArrow} ${Math.abs(changePP).toFixed(1)} pp</span>`,
-            meta: `${series.length} data points`
-          });
-        }
-
-        summaryEl.innerHTML = cards.map(card => `
-          <div class="ffd-history-card ${card.tone}">
-            <span>${card.label}</span>
-            <strong>${card.valueHtml || card.value || ''}</strong>
-            ${card.meta ? `<small>${card.meta}</small>` : ''}
-          </div>
-        `).join('');
-
-        const colCount = window.innerWidth <= 768 ? 2 : (window.innerWidth <= 1100 ? 3 : cards.length);
-        summaryEl.style.gridTemplateColumns = `repeat(${colCount}, minmax(0, 1fr))`;
       };
 
       const renderIndianStorageChart = (canvasId, data, isFullscreen = false) => {
@@ -10285,6 +10240,9 @@ function addHydrometLayersToMap(map) {
         const indianPct = document.getElementById('indian-pct-toggle');
         if (indianPct) indianPct.style.display = 'none';
         if (indianStorageChart) { try { indianStorageChart.destroy(); } catch(_){} indianStorageChart = null; }
+        // Restore summary cards visibility (hidden for Indian dams)
+        const summaryEl = document.getElementById('ffd-history-summary');
+        if (summaryEl) { summaryEl.style.display = ''; }
 
         const dateToggleBtn = document.getElementById('ffd-history-date-toggle');
         if (dateToggleBtn) {
